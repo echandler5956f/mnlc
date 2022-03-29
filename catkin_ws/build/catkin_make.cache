@@ -1,0 +1,2 @@
+lab2
+-DCATKIN_DEVEL_PREFIX=/home/sdbelleville/RBE3002_D22_Team06/catkin_ws/devel -DCMAKE_INSTALL_PREFIX=/home/sdbelleville/RBE3002_D22_Team06/catkin_ws/install -G Unix Makefiles
