@@ -19,6 +19,7 @@ class PIDController():
     prevError = 0
     currError = 0
     currEffort = 0
+    effortCap = 0
 
     def PIDController(self, Kp, Ki, Kd, errorBound):
         """
@@ -28,6 +29,7 @@ class PIDController():
         self.Ki = Ki
         self.Kd = Kd
         self.errorBound = errorBound
+        self.effortCap = 0
 
     def ComputeEffort(self, error):
         self.currError = error  # store in case we want it later
@@ -41,6 +43,8 @@ class PIDController():
         self.prevError = self.currError
         self.currEffort = self.Kp * self.currError + \
             self.Ki * self.sumError + self.Kd * derivError
+        if(self.effortCap > 0 and self.currEffort > self.effortCap):
+            self.currEffort = self.effortCap
         return self.currEffort
 
     def reset(self):
@@ -139,8 +143,10 @@ class Lab2:
 
     def driveToPoint(self, position):
         # uses two PID loops-
-        # one for correcting heading so that the robot is always facing the point vector, 
+        # one for correcting heading so that the robot is always facing the point vector,
         # and one to move forward
+        self.positionController.reset()
+        self.headingController.reset()
         fx = position.x  # final x
         fy = position.y  # final y
         reachedPosition = False
@@ -184,6 +190,7 @@ class Lab2:
 
     def turnTo(self, orientation):
         # uses a simple PID control loop to turn in place to a desired heading
+        self.turningController.reset()
         quat = orientation
         q = [quat.x, quat.y, quat.z, quat.w]
         roll, pitch, tHeading = euler_from_quaternion(q)
@@ -197,6 +204,30 @@ class Lab2:
             else:
                 angularSpeed = self.turningController.ComputeEffort(error)
                 self.send_speed(0.0, angularSpeed)
+            rospy.sleep(self.ctrl_invl)
+
+    def smooth_drive(self, distance, max_speed):
+        """
+        Drives the robot in a straight line by changing the actual speed smoothly.
+        :param distance     [float] [m]   The distance to cover.
+        :param linear_speed [float] [m/s] The maximum forward linear speed.
+        """
+        # EXTRA CREDIT
+        self.positionController.reset()
+        self.positionController.effortCap = max_speed
+        (self.px, self.py, self.ptheta) = (self.cx, self.cy, self.ctheta)
+        reachedP = False
+        while (not reachedP and not rospy.is_shutdown()):
+            currentDistance = math.sqrt(
+                math.pow((self.cx - self.px), 2) + math.pow((self.cy - self.py), 2))
+            error = distance - currentDistance
+            if (abs(error) < 0.1):
+                reachedP = True
+                self.stop()
+                break
+            else:
+                speed = self.positionController.ComputeEffort(error)
+                self.send_speed(speed, 0)
             rospy.sleep(self.ctrl_invl)
 
     def driveToPose(self, poseStamped):
@@ -234,15 +265,13 @@ class Lab2:
         while (not reachedP and not rospy.is_shutdown()):
             currentDistance = math.sqrt(
                 math.pow((self.cx - self.px), 2) + math.pow((self.cy - self.py), 2))
-            error = currentDistance - distance
-            if (abs(error) < 0.1):
+            if (abs(currentDistance - distance) < 0.1):
                 reachedP = True
                 self.stop()
                 break
             else:
                 self.send_speed(linear_speed, 0)
             rospy.sleep(self.ctrl_invl)
-            # print(error)
 
     def rotate(self, angle, aspeed):
         """
@@ -255,7 +284,7 @@ class Lab2:
         magAspeed = abs(aspeed)
         while (not reachedT and not rospy.is_shutdown()):
             error = angle - self.ctheta
-            if (abs(error) < 0.1):
+            if (abs(error) < 0.075):
                 reachedT = True
                 self.stop()
                 break
@@ -265,7 +294,6 @@ class Lab2:
                 if error > 0:
                     self.send_speed(0, magAspeed)
                 rospy.sleep(self.ctrl_invl)
-            # print(error)
 
     def go_to(self, msg):
         """
@@ -282,9 +310,9 @@ class Lab2:
         d = math.sqrt(math.pow((fx - self.cx), 2) +
                       math.pow((fy - self.cy), 2))  # Euclidean distance
         it = (math.atan2(fy - self.cy, fx - self.cx)) - self.ctheta
-        self.rotate(it, 0.1)  # first turn at constant velocity
-        self.drive(d, 0.1)  # drive distance 'd' at constant velocity
-        self.rotate(ft, 0.1)  # rotate to final angle at constant velocity
+        self.rotate(it, 0.15)  # first turn at constant velocity
+        self.drive(d, 0.2)  # drive distance 'd' at constant velocity
+        self.rotate(ft, 0.15)  # rotate to final angle at constant velocity
 
 
 if __name__ == '__main__':
