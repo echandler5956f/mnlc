@@ -7,4 +7,5 @@
 # new environment variables
 
 # modified environment variables
+export PKG_CONFIG_PATH="/home/sdbelleville/RBE3002_D22_Team06/catkin_ws/devel/lib/pkgconfig:$PKG_CONFIG_PATH"
 export PWD='/home/sdbelleville/RBE3002_D22_Team06/catkin_ws/build'
