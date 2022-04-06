@@ -1,4 +1,6 @@
 <launch>
+  <arg name="IK" default="arc_to"/>
+  <param name="IK" value="$(arg IK)"/>
   <arg name="sim" default="1"/> 
   <param name="sim" value="$(arg sim)"/>
   <group if="$(arg sim)">

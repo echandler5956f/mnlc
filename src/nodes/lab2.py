@@ -10,7 +10,6 @@ import rospy
 import math
 import tf
 
-
 class PIDController():
     # basic PID controller borrowed from my RBE2002 final project
     sumError = 0
@@ -72,18 +71,23 @@ class Lab2:
         self.w_radius = 3.52 / 100.0  # cm
         self.w_base = 23.0 / 100.0  # cm
         # communication rate:
-        self.ctrl_invl = 0.01  # s
+        self.ctrl_invl = 0.05  # s
         # Tell ROS that this node publishes Twist messages on the '/cmd_vel' topic
         self.cmd_vel_pub = rospy.Publisher(
-            '/cmd_vel', Twist, None, queue_size=10)
+            '/cmd_vel', Twist, None, queue_size=5)
         # Tell ROS that this node subscribes to Odometry messages on the '/odom' topic
         # When a message is received, call self.update_odometry
         self.odom_sub = rospy.Subscriber(
             '/odom', Odometry, self.update_odometry)
         # Tell ROS that this node subscribes to PoseStamped messages on the '/move_base_simple/goal' topic
         # When a message is received, call self.go_to
+        IKMethods = {'driveToPose': self.driveToPose, 'go_to_smooth': self.go_to_smooth, 'arc_to': self.arc_to, 'go_to': self.go_to}
+        IK = 'arc_to'
+        if(rospy.has_param('/IK')):
+            if rospy.get_param != ('driveToPose' or 'go_to_smooth' or 'arc_to' or 'go_to'):
+                IK = rospy.get_param('/IK')
         self.goal_sub = rospy.Subscriber(
-            '/move_base_simple/goal', PoseStamped, self.driveToPose)
+            '/move_base_simple/goal', PoseStamped, IKMethods[IK])
         self.odom_l = tf.TransformListener()
         self.odom_br = tf.TransformBroadcaster()
         self.c_pose = PoseStamped()
@@ -168,7 +172,7 @@ class Lab2:
             dy = fy - self.cy
             thetaError = self.ctheta - math.atan2(dy, dx)
             distError = pow(pow(abs(dx), 2) + pow(abs(dy), 2), 0.5)
-            if (abs(distError) < 0.00625):
+            if (abs(distError) < 0.01):
                 reachedPosition = True
                 self.stop()
                 break
@@ -192,7 +196,7 @@ class Lab2:
         reachedHeading = False
         while (not reachedHeading and not rospy.is_shutdown()):
             error = yaw - self.ctheta
-            if(abs(error) < 0.00625):
+            if(abs(error) < 0.075):
                 reachedHeading = True
                 self.stop()
                 break
@@ -216,7 +220,7 @@ class Lab2:
             currentDistance = math.sqrt(
                 math.pow((self.cx - self.px), 2) + math.pow((self.cy - self.py), 2))
             error = distance - currentDistance
-            if (abs(error) < 0.00625):
+            if (abs(error) < 0.1):
                 reachedP = True
                 self.stop()
                 break
@@ -282,7 +286,7 @@ class Lab2:
         while (not reachedALength and not rospy.is_shutdown()):
             arcLength = R * self.ctheta
             error = totalArcLength - arcLength
-            if (abs(error) < 0.00625):
+            if (abs(error) < 0.1):
                 reachedALength = True
                 self.stop()
                 break
@@ -291,7 +295,12 @@ class Lab2:
                 angularSpeed = linearSpeed / R
                 self.send_speed(linearSpeed, angularSpeed)
             rospy.sleep(self.ctrl_invl)
-        self.turnTo(pose.pose.orientation)
+        quat = [0, 0, 0, 0]
+        quat[0] = pose.pose.orientation.x
+        quat[1] = pose.pose.orientation.y
+        quat[2] = pose.pose.orientation.z
+        quat[3] = pose.pose.orientation.w
+        self.turnTo(quat)
 
     def stop(self):
         self.send_speed(0, 0)
