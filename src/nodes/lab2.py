@@ -1,11 +1,11 @@
 #!/usr/bin/env python2
 
-from cmath import pi
 from tf.transformations import euler_from_quaternion
 from tf.transformations import quaternion_from_euler
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
+from cmath import pi
 import rospy
 import math
 import tf
@@ -63,6 +63,11 @@ class Lab2:
         # REQUIRED CREDIT
         # Initialize node, name it 'lab2'
         rospy.init_node('lab2')
+        sim = True
+        # using substitution args in .launch to evaluate the sim param to an input from the command line
+        # default condition is that the program is launching as a sim
+        if rospy.has_param('/sim'):
+            sim = rospy.get_param('/sim')
         # robot intrinsics
         self.w_radius = 3.52 / 100.0  # cm
         self.w_base = 23.0 / 100.0  # cm
@@ -93,13 +98,21 @@ class Lab2:
         ######################### PID Stuff #############################
 
         self.positionController = PIDController()
-        self.positionController.PIDController(0.1, 0.25, 0.02, 0.0875)
-
         self.headingController = PIDController()
-        self.headingController.PIDController(0.0875, 0.0, 0.075, 0.0)
-
         self.turningController = PIDController()
-        self.turningController.PIDController(0.25, 0.0, 0.0, 0.0)
+        self.arcController = PIDController()
+        if(sim):  # PID values for use in simulation
+            self.positionController.PIDController(0.125, 0.25, 0.02, 0.0875)
+            self.headingController.PIDController(0.0875, 0.0, 0.075, 0.0)
+            self.turningController.PIDController(0.25, 0.0, 0.0, 0.0)
+            self.arcController.PIDController(0.1, 0.0, 0.0, 0.25)
+        else:  # PID values for use on physical robot
+            # TODO
+            # Tune PID values on robot
+            self.positionController.PIDController(0.125, 0.25, 0.02, 0.0875)
+            self.headingController.PIDController(0.0875, 0.0, 0.075, 0.0)
+            self.turningController.PIDController(0.25, 0.0, 0.0, 0.0)
+            self.arcController.PIDController(0.1, 0.0, 0.0, 0.25)
 
         rospy.sleep(2)
 
@@ -141,63 +154,45 @@ class Lab2:
         except:
             pass
 
-    def driveToPoint(self, position):
+    def driveToPoint(self, pose):
         # uses two PID loops-
         # one for correcting heading so that the robot is always facing the point vector,
         # and one to move forward
         self.positionController.reset()
         self.headingController.reset()
-        fx = position.x  # final x
-        fy = position.y  # final y
+        fx = pose.pose.position.x  # final x
+        fy = pose.pose.position.y  # final y
         reachedPosition = False
         while (not reachedPosition and not rospy.is_shutdown()):
             dx = fx - self.cx
             dy = fy - self.cy
             thetaError = self.ctheta - math.atan2(dy, dx)
-            # atan2 is funky, im not sure why this works
             distError = pow(pow(abs(dx), 2) + pow(abs(dy), 2), 0.5)
             if (abs(distError) < 0.00625):
                 reachedPosition = True
                 self.stop()
                 break
             else:
-                if(thetaError > pi + 0.2 or thetaError < - pi - 0.2):
-                    # override the arc controller if the theta error is too large
-                    # this is a rare case and may take one or two tries to get it right,
-                    # but the system converges on the desired point eventually
-                    # 99% of the time the robot will never enter this section of the control algorithm
-                    tmp = PoseStamped()
-                    orientation = tmp.pose.orientation
-                    (orientation.x, orientation.y, orientation.z, orientation.w) = quaternion_from_euler(
-                        0, 0, math.atan2(dy, dx), 'rxyz')
-                    # turn in place to corrected orientation
-                    self.turnTo(orientation)
-                    # update error calculations after the emergency turnTo
-                    self.headingController.reset()
-                    self.positionController.reset()
-                    # try again but at the easier angle
-                else:
-                    # default case is to drive to a point via arcs
-                    IKLeftSpeed = self.positionController.ComputeEffort(
-                        distError) + self.headingController.ComputeEffort(thetaError)  # cm/s
-                    IKRightSpeed = self.positionController.ComputeEffort(
-                        distError) - self.headingController.ComputeEffort(thetaError)  # cm/s
-                    IKDriveBaseVelocity = (IKRightSpeed + IKLeftSpeed) / 2.0
-                    IKDriveBaseOmega = (
-                        IKRightSpeed - IKLeftSpeed) / self.w_base
-                    self.send_speed(IKDriveBaseVelocity, IKDriveBaseOmega)
-                    rospy.sleep(self.ctrl_invl)
+                # default case is to drive to a point via combined heading and position controller
+                IKLeftSpeed = self.positionController.ComputeEffort(
+                    distError) + self.headingController.ComputeEffort(thetaError)  # cm/s
+                IKRightSpeed = self.positionController.ComputeEffort(
+                    distError) - self.headingController.ComputeEffort(thetaError)  # cm/s
+                IKDriveBaseVelocity = (IKRightSpeed + IKLeftSpeed) / 2.0
+                IKDriveBaseOmega = (
+                    IKRightSpeed - IKLeftSpeed) / self.w_base
+                self.send_speed(IKDriveBaseVelocity, IKDriveBaseOmega)
+            rospy.sleep(self.ctrl_invl)
 
     def turnTo(self, orientation):
         # uses a simple PID control loop to turn in place to a desired heading
         self.turningController.reset()
-        quat = orientation
-        q = [quat.x, quat.y, quat.z, quat.w]
-        roll, pitch, tHeading = euler_from_quaternion(q)
+        print(orientation)
+        roll, pitch, yaw = euler_from_quaternion(orientation, 'rxyz')
         reachedHeading = False
         while (not reachedHeading and not rospy.is_shutdown()):
-            error = tHeading - self.ctheta
-            if(abs(error) < 0.075):
+            error = yaw - self.ctheta
+            if(abs(error) < 0.00625):
                 reachedHeading = True
                 self.stop()
                 break
@@ -221,7 +216,7 @@ class Lab2:
             currentDistance = math.sqrt(
                 math.pow((self.cx - self.px), 2) + math.pow((self.cy - self.py), 2))
             error = distance - currentDistance
-            if (abs(error) < 0.1):
+            if (abs(error) < 0.00625):
                 reachedP = True
                 self.stop()
                 break
@@ -236,10 +231,67 @@ class Lab2:
         :param msg [PoseStamped] The target pose.
         """
         # EXTRA CREDIT
-        self.driveToPoint(poseStamped.pose.position)
+        self.driveToPoint(poseStamped)
         # drives to a point via arcs
-        self.turnTo(poseStamped.pose.orientation)
+        quat = [0, 0, 0, 0]
+        quat[0] = poseStamped.pose.orientation.x
+        quat[1] = poseStamped.pose.orientation.y
+        quat[2] = poseStamped.pose.orientation.z
+        quat[3] = poseStamped.pose.orientation.w
+        self.turnTo(quat)
         # turns in place to a certain orientation
+
+    def go_to_smooth(self, msg):
+        """
+        Calls turnTo(), smooth_drive(), and turnTo() to attain a given pose.
+        This method is a callback bound to a Subscriber.
+        :param msg [PoseStamped] The target pose.
+        """
+        fx = msg.pose.position.x  # final x
+        fy = msg.pose.position.y  # final y
+        quat = [0, 0, 0, 0]
+        quat[0] = msg.pose.orientation.x
+        quat[1] = msg.pose.orientation.y
+        quat[2] = msg.pose.orientation.z
+        quat[3] = msg.pose.orientation.w
+        # the final angle to turn to
+        d = math.sqrt(math.pow((fx - self.cx), 2) +
+                      math.pow((fy - self.cy), 2))  # Euclidean distance
+        it = (math.atan2(fy - self.cy, fx - self.cx)) - self.ctheta
+        tmp = PoseStamped()
+        q = tmp.pose.orientation
+        q = quaternion_from_euler(0, 0, it, 'rxyz')
+        self.turnTo(q)  # first turn with PID
+        # # drive distance 'd' with PID and a max speed
+        self.smooth_drive(d, 0.2)
+        self.turnTo(quat)  # rotate to final angle with PID
+
+    def arc_to(self, pose):
+        """
+        Drives to a given position in an arc.
+        :param msg [PoseStamped] The target pose.
+        """
+        # EXTRA CREDIT
+        self.arcController.reset()
+        fx = pose.pose.position.x  # final x
+        fy = pose.pose.position.y  # final y
+        R = (math.pow(fx,2) - 2 * fx * self.cx + math.pow(fy,2) - 2 * fy * self.cy + math.pow(self.cx,2) + math.pow(self.cy,2)) / (2 * (fy * math.cos(self.ctheta) - self.cy * math.cos(self.ctheta) - fx * math.sin(self.ctheta) + self.cx * math.sin(self.ctheta)))
+        fTheta = self.ctheta + 2 * math.atan((fy - self.cy - fx * math.tan(self.ctheta) + self.cx * math.tan(self.ctheta)) / (fx - self.cx + fy * math.tan(self.ctheta) - self.cy * math.tan(self.ctheta)))
+        totalArcLength = R * fTheta
+        reachedALength = False
+        while (not reachedALength and not rospy.is_shutdown()):
+            arcLength = R * self.ctheta
+            error = totalArcLength - arcLength
+            if (abs(error) < 0.00625):
+                reachedALength = True
+                self.stop()
+                break
+            else:
+                linearSpeed = self.arcController.ComputeEffort(error)
+                angularSpeed = linearSpeed / R
+                self.send_speed(linearSpeed, angularSpeed)
+            rospy.sleep(self.ctrl_invl)
+        self.turnTo(pose.pose.orientation)
 
     def stop(self):
         self.send_speed(0, 0)
@@ -313,7 +365,6 @@ class Lab2:
         self.rotate(it, 0.15)  # first turn at constant velocity
         self.drive(d, 0.2)  # drive distance 'd' at constant velocity
         self.rotate(ft, 0.15)  # rotate to final angle at constant velocity
-
 
 if __name__ == '__main__':
     Lab2().run()
