@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 
+from time import sleep
 from tf.transformations import euler_from_quaternion
 from tf.transformations import quaternion_from_euler
 from geometry_msgs.msg import PoseStamped
@@ -70,8 +71,8 @@ class Lab2:
         # robot intrinsics
         self.w_radius = 3.52 / 100.0  # cm
         self.w_base = 23.0 / 100.0  # cm
-        # communication rate:
-        self.ctrl_invl = 0.05  # s
+        # time between loop iterations; arbitrarily chosen based off of communication speed
+        self.ctrl_invl = 0.01  # /s
         # Tell ROS that this node publishes Twist messages on the '/cmd_vel' topic
         self.cmd_vel_pub = rospy.Publisher(
             '/cmd_vel', Twist, None, queue_size=5)
@@ -79,12 +80,11 @@ class Lab2:
         # When a message is received, call self.update_odometry
         self.odom_sub = rospy.Subscriber(
             '/odom', Odometry, self.update_odometry)
-        # Tell ROS that this node subscribes to PoseStamped messages on the '/move_base_simple/goal' topic
-        # When a message is received, call self.go_to
+        # Function dictionary that takes an arg from the command line and passes it to a parameter
+        # Tells goal_sub what IK method to perform the callback with
         IKMethods = {'driveToPose': self.driveToPose, 'go_to_smooth': self.go_to_smooth, 'arc_to': self.arc_to, 'go_to': self.go_to}
         IK = 'arc_to'
         if(rospy.has_param('/IK')):
-            if rospy.get_param != ('driveToPose' or 'go_to_smooth' or 'arc_to' or 'go_to'):
                 IK = rospy.get_param('/IK')
         self.goal_sub = rospy.Subscriber(
             '/move_base_simple/goal', PoseStamped, IKMethods[IK])
@@ -177,7 +177,6 @@ class Lab2:
                 self.stop()
                 break
             else:
-                # default case is to drive to a point via combined heading and position controller
                 IKLeftSpeed = self.positionController.ComputeEffort(
                     distError) + self.headingController.ComputeEffort(thetaError)  # cm/s
                 IKRightSpeed = self.positionController.ComputeEffort(
@@ -185,7 +184,7 @@ class Lab2:
                 IKDriveBaseVelocity = (IKRightSpeed + IKLeftSpeed) / 2.0
                 IKDriveBaseOmega = (
                     IKRightSpeed - IKLeftSpeed) / self.w_base
-                self.send_speed(IKDriveBaseVelocity, IKDriveBaseOmega)
+                self.send_speed(IKDriveBaseVelocity, IKDriveBaseOmega) # twisty!
             rospy.sleep(self.ctrl_invl)
 
     def turnTo(self, orientation):
@@ -196,7 +195,7 @@ class Lab2:
         reachedHeading = False
         while (not reachedHeading and not rospy.is_shutdown()):
             error = yaw - self.ctheta
-            if(abs(error) < 0.075):
+            if(abs(error) < 0.00625):
                 reachedHeading = True
                 self.stop()
                 break
@@ -231,7 +230,7 @@ class Lab2:
 
     def driveToPose(self, poseStamped):
         """
-        Drives to a given pose in an arc followed by a turn to heading.
+        Drives to a given pose in a series of arcs followed by a turn to heading.
         :param msg [PoseStamped] The target pose.
         """
         # EXTRA CREDIT
@@ -266,8 +265,10 @@ class Lab2:
         q = tmp.pose.orientation
         q = quaternion_from_euler(0, 0, it, 'rxyz')
         self.turnTo(q)  # first turn with PID
+        sleep(0.25)
         # # drive distance 'd' with PID and a max speed
-        self.smooth_drive(d, 0.2)
+        self.smooth_drive(d, 0.1)
+        sleep(0.25)
         self.turnTo(quat)  # rotate to final angle with PID
 
     def arc_to(self, pose):
@@ -279,6 +280,9 @@ class Lab2:
         self.arcController.reset()
         fx = pose.pose.position.x  # final x
         fy = pose.pose.position.y  # final y
+        # Note- R and fTheta were derrived via Matlab. There are far simpler ways to evaluate R and fTheta
+        # However, this form of the derrivation provides an interesting insight as to how the arc is actually formed
+        # Regardless, these two values are only calculated once per path, so it is pretty much just as computationally expensive as a simpler method
         R = (math.pow(fx,2) - 2 * fx * self.cx + math.pow(fy,2) - 2 * fy * self.cy + math.pow(self.cx,2) + math.pow(self.cy,2)) / (2 * (fy * math.cos(self.ctheta) - self.cy * math.cos(self.ctheta) - fx * math.sin(self.ctheta) + self.cx * math.sin(self.ctheta)))
         fTheta = self.ctheta + 2 * math.atan((fy - self.cy - fx * math.tan(self.ctheta) + self.cx * math.tan(self.ctheta)) / (fx - self.cx + fy * math.tan(self.ctheta) - self.cy * math.tan(self.ctheta)))
         totalArcLength = R * fTheta
@@ -286,11 +290,12 @@ class Lab2:
         while (not reachedALength and not rospy.is_shutdown()):
             arcLength = R * self.ctheta
             error = totalArcLength - arcLength
-            if (abs(error) < 0.1):
+            if (abs(error) < 0.145):
                 reachedALength = True
                 self.stop()
                 break
             else:
+                # PID control on the linear speed, with the remaining arclength as the error input
                 linearSpeed = self.arcController.ComputeEffort(error)
                 angularSpeed = linearSpeed / R
                 self.send_speed(linearSpeed, angularSpeed)
@@ -300,6 +305,7 @@ class Lab2:
         quat[1] = pose.pose.orientation.y
         quat[2] = pose.pose.orientation.z
         quat[3] = pose.pose.orientation.w
+        # turn in place to the desired orientation after the position has been reached
         self.turnTo(quat)
 
     def stop(self):
@@ -371,9 +377,9 @@ class Lab2:
         d = math.sqrt(math.pow((fx - self.cx), 2) +
                       math.pow((fy - self.cy), 2))  # Euclidean distance
         it = (math.atan2(fy - self.cy, fx - self.cx)) - self.ctheta
-        self.rotate(it, 0.15)  # first turn at constant velocity
-        self.drive(d, 0.2)  # drive distance 'd' at constant velocity
-        self.rotate(ft, 0.15)  # rotate to final angle at constant velocity
+        self.rotate(it, 0.025)  # first turn at constant velocity
+        self.drive(d, 0.1)  # drive distance 'd' at constant velocity
+        self.rotate(ft, 0.025)  # rotate to final angle at constant velocity
 
 if __name__ == '__main__':
     Lab2().run()
