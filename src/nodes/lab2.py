@@ -158,6 +158,18 @@ class Lab2:
         except:
             pass
 
+    def pathExecutor(self, plan):
+        for commands in plan:
+            duration = commands[0]
+            rightVelocity = commands[1]
+            leftVelocity = commands[2]
+            omega = (rightVelocity - leftVelocity) / (23.0/100.0)
+            avgVel = (rightVelocity + leftVelocity)/2
+            self.send_speed(avgVel, omega)
+            for timeIntoCommand in range(0, int(1000*duration), int(0.01*1000)):
+                sleep(0.01)
+        self.stop()
+
     def driveToPoint(self, pose):
         # uses two PID loops-
         # one for correcting heading so that the robot is always facing the point vector,
