@@ -3,6 +3,7 @@
   <param name="IK" value="$(arg IK)"/>
   <arg name="sim" default="1"/> 
   <param name="sim" value="$(arg sim)"/>
+  <node name="lab2" pkg="rbe3002" type="lab2.py" output="screen"/>
   <group if="$(arg sim)">
     <arg name="model" default="$(env TURTLEBOT3_MODEL)" doc="model type [burger, waffle, waffle_pi]"/>
     <arg name="x_pos" default="0.0"/>
@@ -24,8 +25,7 @@
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-urdf -model turtlebot3_$(arg model) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description" />
   </group>
   <group unless="$(arg sim)">
-    <node name="autoSSH" pkg="rbe3002_lab2" type="autoSSH.sh" output="screen"/>
     <include file="$(find turtlebot3_gazebo)/launch/turtlebot3_gazebo_rviz.launch"/>
+    <node name="autoSSH" pkg="rbe3002" type="autoSSH.sh" output="screen"/>
   </group>
-  <node name="lab2" pkg="rbe3002_lab2" type="lab2.py" output="screen"/>
 </launch>

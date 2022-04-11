@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(rbe3002_lab2)
+project(rbe3002)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
