@@ -7,6 +7,8 @@ from nav_msgs.srv import GetPlan, GetMap
 import rospy
 import numpy
 import math
+import cv2
+n = 0
 
 class PathPlanner:
 
@@ -40,6 +42,7 @@ class PathPlanner:
 
     @staticmethod
     def grid_to_index(mapdata, x, y):
+        timeInit = rospy.get_time()
         """
         Returns the index corresponding to the given (x,y) coordinates in the occupancy grid.
         :param x [int] The cell X coordinate.
@@ -47,10 +50,13 @@ class PathPlanner:
         :return  [int] The index.
         """
         # REQUIRED CREDIT
-        return x + (y * mapdata.info.width)
-
+        index = x + (y * mapdata.info.width)
+        # print("Calculating grid_to_index took: ", rospy.get_time() - timeInit)
+        return index
+        
     @staticmethod
     def euclidean_distance(x1, y1, x2, y2):
+        timeInit = rospy.get_time()
         """
         Calculates the Euclidean distance between two points.
         :param x1 [int or float] X coordinate of first point.
@@ -60,10 +66,13 @@ class PathPlanner:
         :return   [float]        The distance.
         """
         # REQUIRED CREDIT
-        return (math.sqrt(pow(x2-x1, 2)+pow(y2-y1, 2)))
+        dist = (math.sqrt(pow(x2-x1, 2)+pow(y2-y1, 2)))
+        # print("Calculating euclidean_distance took: ", rospy.get_time() - timeInit)
+        return dist
 
     @staticmethod
     def grid_to_world(mapdata, x, y):
+        timeInit = rospy.get_time()
         """
         Transforms a cell coordinate in the occupancy grid into a world coordinate.
         :param mapdata [OccupancyGrid] The map information.
@@ -79,10 +88,12 @@ class PathPlanner:
         point.y = (y * mapdata.info.resolution) + \
             mapdata.info.origin.position.y + (mapdata.info.resolution/2)
         point.z = 0
+        # print("Calculating grid_to_world took: ", rospy.get_time() - timeInit)
         return point
 
     @staticmethod
     def world_to_grid(mapdata, wp):
+        timeInit = rospy.get_time()
         """
         Transforms a world coordinate into a cell coordinate in the occupancy grid.
         :param mapdata [OccupancyGrid] The map information.
@@ -94,10 +105,12 @@ class PathPlanner:
                 mapdata.info.resolution))
         y = int(math.floor((wp.y - mapdata.info.origin.position.y) /
                 mapdata.info.resolution))
+        # print("Calculating world_to_grid took: ", rospy.get_time() - timeInit)
         return (x, y)
 
     @staticmethod
     def path_to_poses(mapdata, path):
+        timeInit = rospy.get_time()
         """
         Converts the given path into a list of PoseStamped.
         :param mapdata [OccupancyGrid] The map information.
@@ -113,10 +126,12 @@ class PathPlanner:
             pathOfPoses.append(pose)
             # orientation at each point will be overriden by the local planner, so it is not dealt with here
         pathOfPoses.reverse()
+        # print("Calculating path_to_poses took: ", rospy.get_time() - timeInit)
         return pathOfPoses
 
     @staticmethod
     def is_cell_walkable(mapdata, x, y):
+        timeInit = rospy.get_time()
         """
         A cell is walkable if all of these conditions are true:
         1. It is within the boundaries of the grid;
@@ -130,12 +145,15 @@ class PathPlanner:
         if x > 0 and x < mapdata.info.width and y > 0 and y < mapdata.info.height:
             cell_index = PathPlanner.grid_to_index(mapdata, x, y)
             cell_probability = mapdata.data[cell_index]
-            if cell_probability != -1 and cell_probability < 45:
+            if cell_probability != -1 and cell_probability < 55:
+                # print("Calculating blank took: ", rospy.get_time() - timeInit)
                 return True
+        # print("Calculating is_cell_walkable took: ", rospy.get_time() - timeInit)
         return False
 
     @staticmethod
     def neighbors_of_4(mapdata, x, y):
+        timeInit = rospy.get_time()
         """
         Returns the walkable 4-neighbors cells of (x,y) in the occupancy grid.
         :param mapdata [OccupancyGrid] The map information.
@@ -149,10 +167,13 @@ class PathPlanner:
         for cell in neighbours:
             if(PathPlanner.is_cell_walkable(mapdata, cell[0], cell[1])):
                 cell_neighbors.append(cell)
+        # print("Calculating neighbors_of_4 took: ", rospy.get_time() - timeInit)
         return cell_neighbors
 
     @staticmethod
     def neighbors_of_8(mapdata, x, y):
+        timeInit = rospy.get_time()
+        global n
         """
         Returns the walkable 8-neighbors cells of (x,y) in the occupancy grid.
         :param mapdata [OccupancyGrid] The map information.
@@ -169,10 +190,13 @@ class PathPlanner:
             if(PathPlanner.is_cell_walkable(mapdata, cell[0], cell[1])):
                 cell_neighbors.append(cell)
             # print("I am walkable!", PathPlanner.is_cell_walkable(mapdata, cell[0], cell[1]))
+        # print("Calculating neighbors_of_8 took: ", rospy.get_time() - timeInit)
+        n = len(cell_neighbors)
         return cell_neighbors
 
     @staticmethod
     def request_map():
+        timeInit = rospy.get_time()
         """
         Requests the map from the map server.
         :return [OccupancyGrid] The grid if the service call was successful,
@@ -183,9 +207,11 @@ class PathPlanner:
         m = rospy.ServiceProxy('/static_map', GetMap)
         map = m()
         # print(map.map.info)
+        # print("Calculating request_map took: ", rospy.get_time() - timeInit)
         return map.map
 
     def calc_cspace(self, mapdata, padding):
+        timeInit = rospy.get_time()
         """
         Calculates the C-Space, i.e., makes the obstacles in the map thicker.
         Publishes the list of cells that were added to the original map.
@@ -237,16 +263,51 @@ class PathPlanner:
         self.expanded_cells_pub.publish(expandedCells)
         # print(expandedCells)
         # Return the C-space
+        # print("Calculating calc_cspace took: ", rospy.get_time() - timeInit)
         return cspace
 
+    # def calc_cspace(self, mapdata, padding):
+    #     global n
+    #     timeInit = rospy.get_time()
+    #     """
+    #     Calculates the C-Space, i.e., makes the obstacles in the map thicker.
+    #     Publishes the list of cells that were added to the original map.
+    #     :param mapdata [OccupancyGrid] The map data.
+    #     :param padding [int]           The number of cells around the obstacles.
+    #     :return        [OccupancyGrid] The C-Space.
+    #     """
+    #     # REQUIRED CREDIT
+    #     rospy.loginfo("Calculating C-Space")
+    #     self.n = 0
+    #     cspace = mapdata
+    #     occGrid = OccupancyGrid()
+    #     # Go through each cell in the occupancy grid
+    #     # Inflate the obstacles where necessary
+    #     obstacles = {k: v for k, v in zip((tuple(map(lambda index : index % mapdata.info.width, range(0,len((mapdata.data))))), 
+    #                                        tuple(map(lambda index : index / mapdata.info.height, range(0,len(mapdata.data))))), 
+    #                                        tuple(mapdata.data))} # a dictionary of [tuples] points as keys to [int] occupency data
+    #     # creates a new dict containing only the points that we consider obstacles (i.e. with occupancy probability values higher than 55) and only include the border of those obstacles
+    #     obstacle_borders = {k: v for k, v in obstacles.items() if v > 55 and len(self.neighbors_of_8(mapdata, k[0], k[1]) > 4)}
+    #     # print(obstacles.values())
+    #     # now expand but only in the direction of free or unkown space
+    #     for iterator in range(padding + 1):
+    #         obstacles.update({k: v for k, v in zip(map(lambda k: tuple(self.neighbors_of_8(mapdata, k[0], k[1])), obstacles.keys()), tuple([1] * (100 - iterator * 20)))})
+            
+    #     cspace.data = tuple(obstacles.values())
+    #     print("Calculating calc_cspace took: ", rospy.get_time() - timeInit)
+    #     return cspace
+
     def distance_to_nearest_obstacle(self, obstacleList, x, y):
+            timeInit = rospy.get_time()
             dx = [x - p[0] for p in obstacleList]
             dy = [y - p[1] for p in obstacleList]
             dist = numpy.hypot(dx, dy)
             index = numpy.argmin(dist)
+            # print("Calculating distance_to_nearest_obstacle took: ", rospy.get_time() - timeInit)
             return dist[index]
 
     def a_star(self, mapdata, start, goal):
+        timeInit = rospy.get_time()
         # REQUIRED CREDIT
         rospy.loginfo("Executing A* from (%d,%d) to (%d,%d)" %
                       (start[0], start[1], goal[0], goal[1]))
@@ -288,10 +349,12 @@ class PathPlanner:
         self.frontier_pub.publish(frontierGrid)
         path = self.reconstruct_path(came_from, start, goal)
         # print(path)
+        # print("Calculating a_star took: ", rospy.get_time() - timeInit)
         return path
 
     @staticmethod
     def optimize_path(path):
+        timeInit = rospy.get_time()
         """
         Optimizes the path, removing unnecessary intermediate nodes.
         :param path [[(x,y)]] The path as a list of tuples (grid coordinates)
@@ -299,9 +362,11 @@ class PathPlanner:
         """
         # EXTRA CREDIT
         rospy.loginfo("Optimizing path")
+        # print("Calculating optimize_path took: ", rospy.get_time() - timeInit)
         return path
 
     def path_to_message(self, mapdata, path):
+        timeInit = rospy.get_time()
         """
         Takes a path on the grid and returns a Path message.
         :param path [[(int,int)]] The path on the grid (a list of tuples)
@@ -325,9 +390,11 @@ class PathPlanner:
             its = its + 1
         pathMsg.header.frame_id = "map"
         self.a_star_pub.publish(pathMsg)
+        # print("Calculating path_to_message took: ", rospy.get_time() - timeInit)
         return pathMsg
 
     def reconstruct_path(self, came_from, start, goal):
+        timeInit = rospy.get_time()
         current = goal
         path = []
         while current != start:
@@ -335,9 +402,11 @@ class PathPlanner:
             current = came_from[current]
         path.append(start)
         path.reverse()
+        # print("Calculating reconstruct_path took: ", rospy.get_time() - timeInit)
         return path
 
     def plan_path(self, msg):
+        timeInit = rospy.get_time()
         """
         Plans a path between the start and goal locations in the requested.
         Internally uses A* to plan the optimal path.
@@ -359,6 +428,7 @@ class PathPlanner:
         # Optimize waypoints
         waypoints = PathPlanner.optimize_path(path)
         # Return a Path message
+        # print("Calculating plan_path took: ", rospy.get_time() - timeInit)
         return self.path_to_message(mapdata, waypoints)
 
     def run(self):

@@ -60,6 +60,7 @@ class NavHandler:
         rospy.loginfo("Nav Handler node ready")
 
     def send_speed(self, linear_speed, angular_speed):
+        timeInit = rospy.get_time()
         """
         Sends the speeds to the motors.
         :param linear_speed  [float] [m/s]   The forward linear speed.
@@ -72,8 +73,10 @@ class NavHandler:
         # Publish the message
         # print(msg_cmd_vel)
         self.cmd_vel_pub.publish(msg_cmd_vel)
+        # print("Calculating send_speed took: ", rospy.get_time() - timeInit)
 
     def handleGoalPose(self, msg):
+        timeInit = rospy.get_time()
         rospy.wait_for_service('plan_path')
         try:
             path_srv = rospy.ServiceProxy('plan_path', GetPlan)
@@ -86,36 +89,39 @@ class NavHandler:
         except rospy.ServiceException as e:
             print("Service call failed: %s" % e)
         self.execute_path(path.plan)
+        # print("Calculating handleGoalPose took: ", rospy.get_time() - timeInit)
 
     def update_odometry(self, msg):
+        timeInit = rospy.get_time()
         """
         Updates the current pose of the robot.
         This method is a callback bound to a Subscriber.
         :param msg [Odometry] The current odometry information.
         """
-        try:
-            self.c_pose.pose = msg.pose.pose
-            self.c_pose.header.stamp = rospy.Time.now()
-            self.odom_br.sendTransform(
-                (self.c_pose.pose.position.x, self.c_pose.pose.position.y,
-                 self.c_pose.pose.position.z),
-                (self.c_pose.pose.orientation.x, self.c_pose.pose.orientation.y,
-                 self.c_pose.pose.orientation.z, self.c_pose.pose.orientation.w),
-                rospy.Time.now(), "base_footprint", "odom")
-            (tr, rot) = self.odom_l.lookupTransform(
+        self.c_pose.pose = msg.pose.pose
+        self.c_pose.header.stamp = rospy.Time.now()
+        self.odom_br.sendTransform(
+            (self.c_pose.pose.position.x, self.c_pose.pose.position.y,
+             self.c_pose.pose.position.z),
+            (self.c_pose.pose.orientation.x, self.c_pose.pose.orientation.y,
+             self.c_pose.pose.orientation.z, self.c_pose.pose.orientation.w),
+            rospy.Time.now(), "base_footprint", "odom")
+        (tr, rot) = self.odom_l.lookupTransform(
                 "odom", "base_footprint", rospy.Time(0))
-            self.odom_br.sendTransform(
-                (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0),
-                rospy.Time.now(), "map", "odom")
-            self.cx = tr[0]
-            self.cy = tr[1]
-            self.rx = self.cx - ((w_base / 2) * math.cos(self.ctheta))
-            self.ry = self.cy - ((w_base / 2) * math.sin(self.ctheta))
-            roll, pitch, self.ctheta = euler_from_quaternion(rot)
-        except:
-            pass
+        self.odom_br.sendTransform(
+            (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0),
+            rospy.Time.now(), "map", "odom") 
+        # not sure why but the map moves with the robot when amcl is on if this command is not included
+        self.cx = tr[0]
+        self.cy = tr[1]
+        self.rx = self.cx - ((w_base / 2) * math.cos(self.ctheta))
+        self.ry = self.cy - ((w_base / 2) * math.sin(self.ctheta))
+        roll, pitch, self.ctheta = euler_from_quaternion(rot)
+        # print("Calculating update_odometry took: ", rospy.get_time() - timeInit)
+
 
     def execute_path(self, path):
+        timeInit = rospy.get_time()
         # print("Correct? ", path)
         last_index = len(path.poses) - 1
         t_index, lf  = self.search_target(path)
@@ -126,12 +132,16 @@ class NavHandler:
             self.send_speed(linVel, angVel)
         self.old_nearest = None
         self.stop()
+        # print("Calculating execute_path took: ", rospy.get_time() - timeInit)
 
     def update_imu(self, msg):
+        timeInit = rospy.get_time()
         self.acc = msg.linear_acceleration.x
         self.vel += self.acc * ctrl_invl
+        # print("Calculating update_imu took: ", rospy.get_time() - timeInit)
 
     def search_target(self, path):
+        timeInit = rospy.get_time()
         if self.old_nearest is None:
             dx = [self.rx - ip.pose.position.x for ip in path.poses]
             dy = [self.ry - ip.pose.position.y for ip in path.poses]
@@ -157,9 +167,11 @@ class NavHandler:
             if index + 1 >= len(path.poses):
                 break
             index += 1
+        # print("Calculating search_target took: ", rospy.get_time() - timeInit)
         return index, lf
 
     def pp_steering(self, path, prev_index): # don't laugh
+        timeInit = rospy.get_time()
         (index, lf) = self.search_target(path)
         if prev_index >= index:
             index = prev_index
@@ -172,6 +184,7 @@ class NavHandler:
             index = len(path.poses) - 1
         sigma = math.atan2(2.0 * w_base * math.sin(math.atan2(ty -
                            self.ry, tx - self.rx) - self.ctheta) / lf, 1.0)
+        # print("Calculating pp_steering took: ", rospy.get_time() - timeInit)
         return sigma, index
 
     def stop(self):
