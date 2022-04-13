@@ -18,10 +18,10 @@ lad = 0.375  # [m] look-ahead distance
 w_radius = 3.52 / 100.0  # [m] wheel radius
 w_base = 23.0 / 100.0  # [m] wheel base
 ctrl_invl = 0.005  # [s] control loop interval
-lfg = 0.00475 # look forward gain
+lfg = 0.00625 # look forward gain
 kv = 1/0.22
 ka = 0.02
-kp = 0.625  # speed proportional gain
+kp = 0.75  # speed proportional gain
 
 
 class NavHandler:
@@ -53,7 +53,7 @@ class NavHandler:
         self.rx = self.cx - ((w_base / 2) * math.cos(self.ctheta))
         self.ry = self.cy - ((w_base / 2) * math.sin(self.ctheta))
         self.vel, self.acc = 0.0, 0.0
-        self.target_speed = 0.0875
+        self.target_speed = 0.1
         self.old_nearest = None
         # Sleep to allow roscore to do some housekeeping
         rospy.sleep(2.0)

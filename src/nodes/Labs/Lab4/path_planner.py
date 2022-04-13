@@ -162,7 +162,8 @@ class PathPlanner:
             cell_index = PathPlanner.grid_to_index(mapdata, x, y)
             # print(cell_index)
             cell_probability = mapdata.data[cell_index]
-            if cell_probability != -1 and cell_probability < 55:
+            # if cell_probability != -1 and cell_probability < 55:
+            if cell_probability < 90:
                 # print("Calculating blank took: ", rospy.get_time() - timeInit)
                 return True
         # print("Calculating is_cell_walkable took: ", rospy.get_time() - timeInit)
@@ -297,6 +298,7 @@ class PathPlanner:
         expandedCells = GridCells()
         expandedCells.cell_height = mapdata.info.resolution
         expandedCells.cell_width = mapdata.info.resolution
+        print(mapdata)
         # obstacles = []
         # iterator = 0
         # for i in cspace.data:
@@ -315,16 +317,19 @@ class PathPlanner:
                     # print(listCspace[index])
                     # min_distance = self.distance_to_nearest_obstacle(obstacles, x, y)
                     # listCspace[index] = math.pow(0.72, min_distance - 14)
-                    listCspace[index] = 100 - 15 * iterations
+                    listCspace[index] = 100 - 25 * iterations
                     # print('ok!')
                     neighbours = [(x + 1, y + 1), (x + 1, y), (x + 1, y - 1), (x, y + 1),
                                   (x, y - 1), (x - 1, y + 1), (x - 1, y), (x - 1, y - 1)]
                     for cellN in neighbours:
                         indexOfInflatedCell = PathPlanner.grid_to_index(cspace, cellN[0], cellN[1])
-                        # listCspace[indexOfInflatedCell] = math.pow(0.72, min_distance - 14)
-                        listCspace[indexOfInflatedCell] = 100 - 10 * iterations
-                        expandedCells.cells.append(self.grid_to_world(mapdata, cellN[0], cellN[1]))
+                        if (indexOfInflatedCell >= 0) and (indexOfInflatedCell < (mapdata.info.width * mapdata.info.height)):
+                            # print(indexOfInflatedCell)
+                            # listCspace[indexOfInflatedCell] = math.pow(0.72, min_distance - 14)
+                            listCspace[indexOfInflatedCell] = 100 - 25 * iterations
+                            expandedCells.cells.append(self.grid_to_world(mapdata, cellN[0], cellN[1]))
                 index += 1
+                # print(index)
             cspace.data = tuple(listCspace)
         # Create a GridCells message and publish it
         expandedCells.header.frame_id = "map"
@@ -391,26 +396,28 @@ class PathPlanner:
         cost_so_far = dict()
         came_from[start] = None
         cost_so_far[start] = 0
+        # print(mapdata)
         # print("Frontier: ", frontier.elements)
         # print("Frontier is empty? ", frontier.empty())
         while not frontier.empty():
             current = frontier.get()
             if current == goal:
+                print("Goal Found!")
                 break
-            # print("Current is: ", current)
+            print("Current is: ", current)
             # print(cost_so_far[current])
             neighbors = PathPlanner.neighbors_of_8(mapdata, current[0], current[1])
             orthogonals = PathPlanner.neighbors_of_4(mapdata, current[0], current[1])
-            # print("Neighbors: ", neighbors)
+            print("Neighbors: ", neighbors)
             for next in neighbors:
                 turningCost = 0.0
                 if next not in orthogonals:
                     turningCost = 1
                 kinodynamicCost = 0.0
                 if next not in self.neighbors_of_6(mapdata, current):
-                    kinodynamicCost = 22
+                    kinodynamicCost = 100
                 elif next not in self.neighbors_of_3(mapdata, current):
-                        kinodynamicCost = 11
+                        kinodynamicCost = 50
                 new_cost = cost_so_far[current] + mapdata.data[self.grid_to_index(mapdata, next[0], next[1])] + turningCost + kinodynamicCost
                 # print("New cost: ", new_cost)
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
@@ -507,7 +514,7 @@ class PathPlanner:
             self.firstMap = False
             print("Finished first map")
         # Calculate the C-space and publish it
-        cspacedata = self.calc_cspace(mapdata, 6)
+        cspacedata = self.calc_cspace(mapdata, 1)
         # print("I made it!")
         self.c_space_pub.publish(cspacedata)
         # Execute A*
