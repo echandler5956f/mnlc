@@ -391,6 +391,9 @@ class PathPlanner:
         frontierGrid = GridCells()
         frontierGrid.cell_height = mapdata.info.resolution
         frontierGrid.cell_width = mapdata.info.resolution
+        simpleFrontier = GridCells()
+        simpleFrontier.cell_height = mapdata.info.resolution
+        simpleFrontier.cell_width = mapdata.info.resolution
         frontier.put(start, 0)
         came_from = dict()
         cost_so_far = dict()
@@ -407,26 +410,32 @@ class PathPlanner:
             print("Current is: ", current)
             # print(cost_so_far[current])
             neighbors = PathPlanner.neighbors_of_8(mapdata, current[0], current[1])
-            orthogonals = PathPlanner.neighbors_of_4(mapdata, current[0], current[1])
+            # orthogonals = PathPlanner.neighbors_of_4(mapdata, current[0], current[1])
             print("Neighbors: ", neighbors)
             for next in neighbors:
-                turningCost = 0.0
-                if next not in orthogonals:
-                    turningCost = 1
-                kinodynamicCost = 0.0
-                if next not in self.neighbors_of_6(mapdata, current):
-                    kinodynamicCost = 100
-                elif next not in self.neighbors_of_3(mapdata, current):
-                        kinodynamicCost = 50
-                new_cost = cost_so_far[current] + mapdata.data[self.grid_to_index(mapdata, next[0], next[1])] + turningCost + kinodynamicCost
+                rospy.sleep(0.0125)
+                # turningCost = 0.0
+                # if next not in orthogonals:
+                #     turningCost = 1
+                # kinodynamicCost = 0.0
+                # if next not in self.neighbors_of_6(mapdata, current):
+                #     kinodynamicCost = 100
+                # elif next not in self.neighbors_of_3(mapdata, current):
+                #         kinodynamicCost = 50
+                new_cost = cost_so_far[current] + mapdata.data[self.grid_to_index(mapdata, next[0], next[1])]# + turningCost + kinodynamicCost
                 # print("New cost: ", new_cost)
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost
-                    # priority = new_cost + PathPlanner.euclidean_distance(goal[0], goal[1], next[0], next[1])
-                    point, ctheta = self.whichCellAmIFacing(mapdata, current)
-                    priority = new_cost + PathPlanner.arc_length(goal[0], goal[1], next[0], next[1], ctheta)
+                    priority = new_cost + PathPlanner.euclidean_distance(goal[0], goal[1], next[0], next[1])
+                    # point, ctheta = self.whichCellAmIFacing(mapdata, current)
+                    # priority = new_cost + PathPlanner.arc_length(goal[0], goal[1], next[0], next[1], ctheta)
                     frontier.put(next, priority)
                     frontierGrid.cells.append(self.grid_to_world(mapdata, current[0], current[1]))
+                    simpleFrontier.cells = frontierGrid.cells
+                    simpleFrontier.cells.reverse()
+                    simpleFrontier.header.frame_id = "map"
+                    simpleFrontier.header.stamp = rospy.Time.now()
+                    self.frontier_pub.publish(simpleFrontier)
                     came_from[next] = current
         # print(came_from)
         # print(cost_so_far)
@@ -434,7 +443,7 @@ class PathPlanner:
         frontierGrid.header.frame_id = "map"
         frontierGrid.header.stamp = rospy.Time.now()
         # print(frontierGrid)
-        self.frontier_pub.publish(frontierGrid)
+        # self.frontier_pub.publish(frontierGrid)
         path = self.reconstruct_path(came_from, start, goal)
         # print(path)
         print("Calculating a_star took: ", rospy.get_time() - timeInit)
