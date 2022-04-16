@@ -5,15 +5,15 @@ from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import Point, PoseStamped
 from priority_queue import PriorityQueue
 from nav_msgs.srv import GetPlan, GetMap
-from nav_msgs.msg import Odometry
+# from collections import OrderedDict
+from scipy.spatial import distance
 import numpy as np
-import collections
 import rospy
+import time
 import math
 import cv2
+# import sys
 import tf
-
-n = 0
 
 class PathPlanner:
 
@@ -27,7 +27,6 @@ class PathPlanner:
         # Create a new service called "plan_path" that accepts messages of
         # type GetPlan and calls self.plan_path() when a message is received
         p = rospy.Service('plan_path', GetPlan, self.plan_path)
-        # m = rospy.Service('request_map', GetMap, PathPlanner.request_map)
         # Create a publisher for the C-space (the enlarged occupancy grid)
         # The topic is "/path_planner/cspace", the message type is OccupencyGrid
         self.c_space_pub = rospy.Publisher(
@@ -41,7 +40,7 @@ class PathPlanner:
         self.a_star_pub = rospy.Publisher('/path_planner/a_star', Path, queue_size=1)
         self.odom_listener = tf.TransformListener()
         self.firstMap = True
-        self.points = None
+        self.pointMatrix = None
         # Initialize the request counter
         # TODO
         # Sleep to allow roscore to do some housekeeping
@@ -162,8 +161,8 @@ class PathPlanner:
             cell_index = PathPlanner.grid_to_index(mapdata, x, y)
             # print(cell_index)
             cell_probability = mapdata.data[cell_index]
-            # if cell_probability != -1 and cell_probability < 55:
-            if cell_probability < 90:
+            if cell_probability != -1 and cell_probability < 90:
+            # if cell_probability < 90:
                 # print("Calculating blank took: ", rospy.get_time() - timeInit)
                 return True
         # print("Calculating is_cell_walkable took: ", rospy.get_time() - timeInit)
@@ -172,7 +171,6 @@ class PathPlanner:
     @staticmethod
     def neighbors_of_8(mapdata, x, y):
         timeInit = rospy.get_time()
-        global n
         """
         Returns the walkable 8-neighbors cells of (x,y) in the occupancy grid.
         :param mapdata [OccupancyGrid] The map information.
@@ -190,7 +188,6 @@ class PathPlanner:
                 cell_neighbors.append(cell)
             # print("I am walkable!", PathPlanner.is_cell_walkable(mapdata, cell[0], cell[1]))
         # print("Calculating neighbors_of_8 took: ", rospy.get_time() - timeInit)
-        n = len(cell_neighbors)
         return cell_neighbors
     
     def neighbors_of_6(self, mapdata, currentCell):
@@ -280,98 +277,37 @@ class PathPlanner:
          # print("Calculating angleToGoalCell took: ", rospy.get_time() - timeInit)
         return math.atan2(goalCell[1] - point[1], goalCell[0] - point[0]) - ctheta
 
-    def calc_cspace(self, mapdata, padding):
+    def filter_map(self, mapdata, padding):
         timeInit = rospy.get_time()
-        """
-        Calculates the C-Space, i.e., makes the obstacles in the map thicker.
-        Publishes the list of cells that were added to the original map.
-        :param mapdata [OccupancyGrid] The map data.
-        :param padding [int]           The number of cells around the obstacles.
-        :return        [OccupancyGrid] The C-Space.
-        """
-        # REQUIRED CREDIT
-        rospy.loginfo("Calculating C-Space")
-        # Go through each cell in the occupancy grid
-        # Inflate the obstacles where necessary
         cspace = mapdata
-        listCspace = list(cspace.data)
-        expandedCells = GridCells()
-        expandedCells.cell_height = mapdata.info.resolution
-        expandedCells.cell_width = mapdata.info.resolution
-        print(mapdata)
-        # obstacles = []
-        # iterator = 0
-        # for i in cspace.data:
-        #     if i > 55:
-        #         x = iterator % mapdata.info.width
-        #         y = iterator / mapdata.info.height
-        #         obstacles.append((x, y))
-        #     iterator += 1
-        for iterations in range(padding + 1):
-            index = 0
-            for cell in cspace.data:
-                x = index % mapdata.info.width
-                y = index / mapdata.info.height
-                # print("x: ", x, "y: ", y)
-                if cell > 10:
-                    # print(listCspace[index])
-                    # min_distance = self.distance_to_nearest_obstacle(obstacles, x, y)
-                    # listCspace[index] = math.pow(0.72, min_distance - 14)
-                    listCspace[index] = 100 - 25 * iterations
-                    # print('ok!')
-                    neighbours = [(x + 1, y + 1), (x + 1, y), (x + 1, y - 1), (x, y + 1),
-                                  (x, y - 1), (x - 1, y + 1), (x - 1, y), (x - 1, y - 1)]
-                    for cellN in neighbours:
-                        indexOfInflatedCell = PathPlanner.grid_to_index(cspace, cellN[0], cellN[1])
-                        if (indexOfInflatedCell >= 0) and (indexOfInflatedCell < (mapdata.info.width * mapdata.info.height)):
-                            # print(indexOfInflatedCell)
-                            # listCspace[indexOfInflatedCell] = math.pow(0.72, min_distance - 14)
-                            listCspace[indexOfInflatedCell] = 100 - 25 * iterations
-                            expandedCells.cells.append(self.grid_to_world(mapdata, cellN[0], cellN[1]))
-                index += 1
-                # print(index)
-            cspace.data = tuple(listCspace)
-        # Create a GridCells message and publish it
-        expandedCells.header.frame_id = "map"
-        # expandedCells.header.stamp = rospy.Time.now()
-        self.expanded_cells_pub.publish(expandedCells)
-        # print(expandedCells)
-        # Return the C-space
-        print("Calculating calc_cspace took: ", rospy.get_time() - timeInit)
-        return cspace
-
-    # def calc_cspace(self, mapdata, padding):
-    #     global n
-    #     timeInit = rospy.get_time()
-    #     """
-    #     Calculates the C-Space, i.e., makes the obstacles in the map thicker.
-    #     Publishes the list of cells that were added to the original map.
-    #     :param mapdata [OccupancyGrid] The map data.
-    #     :param padding [int]           The number of cells around the obstacles.
-    #     :return        [OccupancyGrid] The C-Space.
-    #     """
-    #     # REQUIRED CREDIT
-    #     rospy.loginfo("Calculating C-Space")
-    #     self.n = 0
-    #     points = self.points
-    #     data = mapdata.data
-    #     # print(data)
-    #     cspace = mapdata
-    #     occGrid = OccupancyGrid()
-    #     # Go through each cell in the occupancy grid
-    #     # Inflate the obstacles where necessary
-    #     obstacles = {k: v for k, v in zip(points, data)} # a dictionary of [tuples] points as keys to [int] occupency data
-    #     # creates a new dict containing only the points that we consider obstacles (i.e. with occupancy probability values higher than 55) and only include the border of those obstacles
-    #     obstacle_borders = {k: v for k, v in obstacles.items() if ((v > 55) and len(self.neighbors_of_8(mapdata, k[0], k[1])) > 2)}
-    #     # print(obstacle_borders)
-    #     # # now expand but only in the direction of free or unkown space
-    #     for iterator in range(padding + 1):
-    #         obstacles.update({k: v for k, v in zip(map(lambda t: tuple(self.neighbors_of_8(mapdata, t[0], t[1])), obstacle_borders.keys()), np.full(shape=n, fill_value=100))})
-    #     # print(sorted(obstacles.keys()))
-    #     cspace.data = tuple([obstacles[k] for k in tuple(sorted(obstacles.keys()))])
-    #     print(cspace.data)
-    #     print("Calculating calc_cspace took: ", rospy.get_time() - timeInit)
-    #     return cspace
+        path = r'/home/quant/rbe3002_ws/src/rbe3002/maps/simple_map.pgm'
+        img = cv2.imread(path, -1)
+        kernel1 = np.ones((padding,padding), np.float)
+        img_erosion = cv2.erode(img, kernel = kernel1, iterations = 1)
+        # ksize and sigma are constants that require manual tuning on a map-by-map basis
+        gaussian_blur = cv2.GaussianBlur(src=img_erosion, ksize=(3,3),sigmaX=0, sigmaY=0)
+        flipped = np.flipud(gaussian_blur)
+        inverted = cv2.bitwise_not(flipped)
+        norm_image = cv2.normalize(inverted, None, alpha=0, beta=100, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        dictOfPoints = self.pointMatrix
+        dataFromGridC = norm_image.flatten('C')
+        dataFromGridF = norm_image.flatten('F')
+        dataC = tuple(np.array(dataFromGridC, dtype = int)) # for visualizing the cspace. not necessary and for maximum performance keep it off
+        dataF = tuple(np.array(dataFromGridF, dtype = int))
+        cspaceDict = {k: v for k, v in zip(sorted(dictOfPoints.keys()), dataF)}
+        cspace.header.stamp = rospy.Time.now()
+        cspace.header.frame_id = 'map'
+        cspace.data = dataC
+        # print(cspace.data)
+        # print(sorted(cspaceDict.keys()))
+        # for key in cspaceDict.keys():
+        #     cell_index = PathPlanner.grid_to_index(mapdata, key[0], key[1])
+        #     cell_probability = cspace.data[cell_index]
+        #     print("Map       : ", cell_probability)
+        #     print("Dictionary: ", cspaceDict[key])
+        self.c_space_pub.publish(cspace)
+        print("Calculating filter_map took: ", rospy.get_time() - timeInit)
+        return cspaceDict
 
     def distance_to_nearest_obstacle(self, obstacleList, x, y):
             timeInit = rospy.get_time()
@@ -382,7 +318,7 @@ class PathPlanner:
             # print("Calculating distance_to_nearest_obstacle took: ", rospy.get_time() - timeInit)
             return dist[index]
 
-    def a_star(self, mapdata, start, goal):
+    def a_star(self, mapdata, cspaceDict, start, goal):
         timeInit = rospy.get_time()
         # REQUIRED CREDIT
         rospy.loginfo("Executing A* from (%d,%d) to (%d,%d)" %
@@ -391,61 +327,57 @@ class PathPlanner:
         frontierGrid = GridCells()
         frontierGrid.cell_height = mapdata.info.resolution
         frontierGrid.cell_width = mapdata.info.resolution
-        simpleFrontier = GridCells()
-        simpleFrontier.cell_height = mapdata.info.resolution
-        simpleFrontier.cell_width = mapdata.info.resolution
         frontier.put(start, 0)
+        goal_np = np.array(goal)
         came_from = dict()
         cost_so_far = dict()
+        # point = Point()
+        # point.z = 0.0
         came_from[start] = None
         cost_so_far[start] = 0
-        # print(mapdata)
-        # print("Frontier: ", frontier.elements)
-        # print("Frontier is empty? ", frontier.empty())
+        # conX = mapdata.info.origin.position.x + (mapdata.info.resolution/2)
+        # conY = mapdata.info.origin.position.y + (mapdata.info.resolution/2)
         while not frontier.empty():
             current = frontier.get()
             if current == goal:
                 print("Goal Found!")
                 break
-            print("Current is: ", current)
-            # print(cost_so_far[current])
-            neighbors = PathPlanner.neighbors_of_8(mapdata, current[0], current[1])
-            # orthogonals = PathPlanner.neighbors_of_4(mapdata, current[0], current[1])
-            print("Neighbors: ", neighbors)
-            for next in neighbors:
-                rospy.sleep(0.0125)
+            x = current[0]
+            y = current[1]
+            cell_neighbors = [(x + 1, y + 1), (x + 1, y), (x + 1, y - 1), (x, y + 1),
+                              (x, y - 1), (x - 1, y + 1), (x - 1, y), (x - 1, y - 1)]
+            # just a simple list composition to speed things up
+            valid_neighbors = [cell for cell in cell_neighbors if ((cell[0] > 0) and (cell[0] < mapdata.info.width) and (cell[1] > 0) and (cell[1] < mapdata.info.height) and (cspaceDict[cell] < 90))]
+            # orthogonals = [cell for index, cell in enumerate(cell_neighbors) if ((index % 2 == 0) and (cell[0] > 0) and (cell[0] < mapdata.info.width) and (cell[1] > 0) and (cell[1] < mapdata.info.height) and (cspaceDict[cell] < 90))]
+            # print("Neighbors: ", neighbors)
+            for next in valid_neighbors:
+                # # rospy.sleep(0.0125)
                 # turningCost = 0.0
                 # if next not in orthogonals:
                 #     turningCost = 1
                 # kinodynamicCost = 0.0
                 # if next not in self.neighbors_of_6(mapdata, current):
-                #     kinodynamicCost = 100
+                #     kinodynamicCost = 3
                 # elif next not in self.neighbors_of_3(mapdata, current):
-                #         kinodynamicCost = 50
-                new_cost = cost_so_far[current] + mapdata.data[self.grid_to_index(mapdata, next[0], next[1])]# + turningCost + kinodynamicCost
+                #         kinodynamicCost = 2
+                new_cost = cost_so_far[current] + cspaceDict[(next[0], next[1])]# + turningCost + kinodynamicCost
                 # print("New cost: ", new_cost)
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost
-                    priority = new_cost + PathPlanner.euclidean_distance(goal[0], goal[1], next[0], next[1])
-                    # point, ctheta = self.whichCellAmIFacing(mapdata, current)
+                    next_np = np.array(next)
+                    priority = new_cost + distance.euclidean(goal_np, next_np)
+                    # unused, ctheta = self.whichCellAmIFacing(mapdata, current)
                     # priority = new_cost + PathPlanner.arc_length(goal[0], goal[1], next[0], next[1], ctheta)
                     frontier.put(next, priority)
+                    # point.x = (x * mapdata.info.resolution) + conX
+                    # point.y = (y * mapdata.info.resolution) + conY
                     frontierGrid.cells.append(self.grid_to_world(mapdata, current[0], current[1]))
-                    simpleFrontier.cells = frontierGrid.cells
-                    simpleFrontier.cells.reverse()
-                    simpleFrontier.header.frame_id = "map"
-                    simpleFrontier.header.stamp = rospy.Time.now()
-                    self.frontier_pub.publish(simpleFrontier)
                     came_from[next] = current
-        # print(came_from)
-        # print(cost_so_far)
         frontierGrid.cells.reverse()
         frontierGrid.header.frame_id = "map"
         frontierGrid.header.stamp = rospy.Time.now()
-        # print(frontierGrid)
-        # self.frontier_pub.publish(frontierGrid)
+        self.frontier_pub.publish(frontierGrid)
         path = self.reconstruct_path(came_from, start, goal)
-        # print(path)
         print("Calculating a_star took: ", rospy.get_time() - timeInit)
         return path
 
@@ -514,22 +446,29 @@ class PathPlanner:
         mapdata = PathPlanner.request_map()
         if mapdata is None:
             return Path()
+        # print(mapdata)
         if self.firstMap: # only form the array of points once (this means the map has a fixed size)
-            idx = np.ndindex(mapdata.info.width, mapdata.info.height)
-            p = np.array(tuple(idx)).reshape(mapdata.info.width, mapdata.info.height, 2)
-            p = p.reshape((-1, 2))
-            self.points = self.to_tuple(p.tolist())
-            # print(self.points)
+            begin = time.time()
+            N = mapdata.info.width
+            M = mapdata.info.height
+            self.pointMatrix = {(x,y):0 for x in range(N) for y in range(M)}
+            # initializes a point:probability dictionary for very fast lookups
+            # this also implies that the map size remains static
             self.firstMap = False
-            print("Finished first map")
+            end = time.time()
+            # print(self.pointMatrix)
+            print("Generating points from map size took: ", end - begin)
         # Calculate the C-space and publish it
-        cspacedata = self.calc_cspace(mapdata, 1)
+        # cspacedata = self.calc_cspace(mapdata, 2)
+        cspaceDict = self.filter_map(mapdata, 3)
+        # print(cspaceDict)
         # print("I made it!")
-        self.c_space_pub.publish(cspacedata)
+        # self.c_space_pub.publish(cspace)
         # Execute A*
         start = PathPlanner.world_to_grid(mapdata, msg.start.pose.position)
         goal = PathPlanner.world_to_grid(mapdata, msg.goal.pose.position)
-        path = self.a_star(cspacedata, start, goal)
+        # path = self.a_star(cspace, start, goal) # takes in the cspace as an occupancy grid
+        path = self.a_star(mapdata, cspaceDict, start, goal) # takes in the cspace as a dictionary
         # Optimize waypoints
         waypoints = PathPlanner.optimize_path(path)
         # Return a Path message
