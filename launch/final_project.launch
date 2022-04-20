@@ -1,29 +1,66 @@
 <launch>
-  <arg name="map_file" default="$(find rbe3002)/maps/simple_map.yaml"/>
+  <!-- <arg name="map_file" default="$(find rbe3002)/maps/maze1.yaml"/> -->
+  <arg name="sim" default="1"/>
+  <arg name="mapping" default="1"/>
+  <param name="sim" value="$(arg sim)"/>
 
   <!-- Turtlebot3 -->
-  <include file="$(find turtlebot3_bringup)/launch/turtlebot3_remote.launch">
+  <include if="$(arg sim)" file="$(find turtlebot3_bringup)/launch/turtlebot3_remote.launch">
     <arg name="model" value="burger" />
   </include>
 
   <!-- Map server -->
-  <node pkg="map_server" name="map_server" type="map_server" args="$(arg map_file)"/>
+  <!-- <node pkg="map_server" name="map_server" type="map_server"/> -->
 
   <!-- Gazebo -->
-  <include file="$(find turtlebot3_gazebo)/launch/turtlebot3_empty_world.launch"/>
-    <arg name="x_pos" default="0.0"/>
-    <arg name="y_pos" default="0.0"/>
-    <arg name="z_pos" default="0.0"/>
+  <arg name="x_pos" default="0.40"/>
+  <arg name="y_pos" default="0.4"/>
+  <arg name="z_pos" default="0.05"/>
+  <arg name="maze"  default="maze2" />
+  <env name="GAZEBO_MODEL_PATH" value="$(find RBE3002_template)/models:$(optenv GAZEBO_MODEL_PATH"/>
+  <include if="$(arg sim)" file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find RBE3002_template)/worlds/$(arg maze).world"/>  
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="false"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+  </include>
+  <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_burger.urdf.xacro" />
+  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-urdf -model turtlebot3_burger -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description" />
 
+  <!-- Gmapping -->
+  <!-- <arg name="configuration_basename" default="turtlebot3_lds_2d_gazebo.lua"/>
+  <node pkg="gmapping" type="slam_gmapping" name="turtlebot3_slam_gmapping" output="screen">
+    <param name="base_frame" value="base_footprint"/>
+    <param name="odom_frame" value="odom"/>
+    <param name="map_frame"  value="map"/>
+    <rosparam command="load" file="$(find turtlebot3_slam)/config/gmapping_params.yaml" />
+  </node> -->
+
+  <!-- RTabMap -->
+  <include file="$(find rbe3002)/launch/rtab_map.launch"/>
+  
   <!-- AMCL -->
-  <include file="$(find rbe3002)/launch/amcl.launch"/>
+  <!-- <include file="$(find rbe3002)/launch/amcl.launch"/> -->
 
-  <!-- rviz -->
-    <node pkg="rviz" type="rviz" name="rviz" required="true"
-          args="-d $(find rbe3002)/rviz/rbe3002_final_demo.rviz"/>
+  <!-- Riz -->
+  <node pkg="rviz" type="rviz" name="rviz" required="true" args="-d $(find rbe3002)/rviz/rbe3002_final_demo.rviz"/>
 
-  <!-- Planners and Handlers -->
-  <node name="path_planner" pkg="rbe3002" type="path_planner.py" output="screen"/>
-  <node name="nav_handler" pkg="rbe3002" type="nav_handler.py" output="screen"/>
+  <!-- Mapping, Navigation, Controller and Localizer -->
+  <node name="MNCLGlobalController" pkg="rbe3002" type="mncl_global_controller.py" output="screen"/>
+  <rosparam file="$(find rbe3002)/param/mncl_global_controller_params.yaml" command="load"/>
+  <node name="MNCLGlobalCostmap" pkg="rbe3002" type="mncl_global_costmap.py" output="screen"/>
+  <rosparam file="$(find rbe3002)/param/mncl_global_costmap_params.yaml" command="load"/>
+  <node name="MNCLGlobalPlanner" pkg="rbe3002" type="mncl_global_planner.py" output="screen"/>
+  <node name="FrontierDetector" pkg="rbe3002" type="frontier_detector.py" output="screen"/>
+  <node name="FrontierFilter" pkg="rbe3002" type="frontier_filter.py" output="screen"/>
+  <rosparam file="$(find rbe3002)/param/mncl_frontier_filter_params.yaml" command="load"/>
+  <node name="FrontierAssigner" pkg="rbe3002" type="frontier_assigner.py" output="screen"/>
+  <rosparam file="$(find rbe3002)/param/mncl_frontier_assigner_params.yaml" command="load"/>
+
+
+  <!-- Auto-SSH -->
+  <node unless="$(arg sim)" name="autoSSH" pkg="rbe3002" type="autoSSH.sh" output="screen"/>
 
 </launch>

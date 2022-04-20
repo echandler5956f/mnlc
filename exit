@@ -1,0 +1,91 @@
+[33mcommit 42c703297128fe6f5227ddeddcff226ca18a4886[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m
+Merge: bc20238 6f0b6c8
+Author: quant <ethanchandler5956f@gmail.com>
+Date:   Tue Apr 12 09:38:33 2022 -0400
+
+    Merge branch 'main' of https://github.com/RBE300X-Lab/RBE3002_D22_Team06 into main
+
+[33mcommit bc20238d5e4eeb51b69fe57eb2d3d71008999344[m
+Author: quant <ethanchandler5956f@gmail.com>
+Date:   Tue Apr 12 09:34:57 2022 -0400
+
+    Optimizing C-Space calculations (wip)
+
+[33mcommit 6f0b6c81da7b6137ffc96a2132e43c3d1b44c533[m[33m ([m[1;31morigin/main[m[33m)[m
+Author: Ethan Chandler <93096172+echandler5956f@users.noreply.github.com>
+Date:   Mon Apr 11 14:40:58 2022 -0400
+
+    Another copy oops
+
+[33mcommit 8fb306b3d0c8746dc91e26193a53ee179e4be69b[m
+Author: Ethan Chandler <93096172+echandler5956f@users.noreply.github.com>
+Date:   Mon Apr 11 14:39:14 2022 -0400
+
+    Forgot to get rid of the copy
+
+[33mcommit 2d83295cd982ddea861148960269e134e2601786[m
+Author: quant <ethanchandler5956f@gmail.com>
+Date:   Mon Apr 11 14:36:22 2022 -0400
+
+    Implemented A*, got AMCL working, fixed autoSSH, implemented pure persuit, and generated costmaps
+
+[33mcommit b6415d6465dab6ec9a5e94480fa7557a7e0c9396[m
+Author: quant <ethanchandler5956f@gmail.com>
+Date:   Sat Apr 9 17:47:50 2022 -0400
+
+    catching things up
+
+[33mcommit 194f760d1782442ff1e5fa723825037d178fffb5[m
+Merge: c38199d b340f68
+Author: echandler5956f <ethanchandler5956f@gmail.com>
+Date:   Sat Apr 9 17:43:35 2022 -0400
+
+    Merge branch 'main' of https://github.com/RBE300X-Lab/RBE3002_D22_Team06 into main
+
+[33mcommit c38199dff620791047b4d4dfa3ba0c6a5313e265[m
+Author: echandler5956f <ethanchandler5956f@gmail.com>
+Date:   Sat Apr 9 17:41:14 2022 -0400
+
+    Implemented Auto-SSH and improved the launch file
+
+[33mcommit b340f683ed0490b8e0c78fda312d92b75a9c2189[m
+Author: quant <ethanchandler5956f@gmail.com>
+Date:   Wed Apr 6 21:28:06 2022 -0400
+
+    All caught up!
+
+[33mcommit 3d146bd8019a4b006fd2b970fc77bd6352bda5c1[m
+Author: echandler5956f <ethanchandler5956f@gmail.com>
+Date:   Wed Apr 6 14:42:45 2022 -0400
+
+    Finished Lab2
+
+[33mcommit f3c9335351478e18dfeb76070045eb4ad5bcf182[m
+Author: quant <ethanchandler5956f@gmail.com>
+Date:   Wed Apr 6 08:03:55 2022 -0400
+
+    Arcs work
+
+[33mcommit f1eb11bfd80a4e2a58b1ec317b87359c23e9182c[m
+Author: quant <ethanchandler5956f@gmail.com>
+Date:   Wed Mar 30 07:05:36 2022 -0400
+
+    combined launch files and improved motion algroithms
+
+[33mcommit 1f29b4f0448fac9f052e313e92c708ce6ad06f89[m
+Author: Ethan Chandler <ethanchandler5956f@gmail.com>
+Date:   Tue Mar 29 19:00:02 2022 -0400
+
+    .
+
+[33mcommit 500c2986f9f84bf38d87152047696156d55e187f[m
+Author: quant <ethanchandler5956f@gmail.com>
+Date:   Tue Mar 29 17:53:26 2022 -0400
+
+    hopefully it pushes this time
+
+[33mcommit 2e9c0275d454a930841cd8f2383f3b541c29d1cb[m
+Author: quant <ethanchandler5956f@gmail.com>
+Date:   Mon Mar 28 17:08:55 2022 -0400
+
+    first commit

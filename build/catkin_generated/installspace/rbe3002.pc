@@ -1,0 +1,8 @@
+prefix=/usr/local
+
+Name: rbe3002
+Description: Description of rbe3002
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

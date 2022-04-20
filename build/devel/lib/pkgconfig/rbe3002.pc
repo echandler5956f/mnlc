@@ -1,0 +1,8 @@
+prefix=/home/quant/rbe3002_ws/src/rbe3002/build/devel
+
+Name: rbe3002
+Description: Description of rbe3002
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

@@ -8,8 +8,14 @@ project(rbe3002)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  geometry_msgs
+  nav_msgs
   roscpp
   rospy
+  std_msgs
+  tf
+  visualization_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -45,19 +51,20 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * uncomment the generate_messages entry below
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
-## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+# Generate messages in the 'msg' folder
+add_message_files(
+  FILES
+  PointArray.msg
+  # Pose2d.msg
+)
+
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  cspace.srv
+  # Service2.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -67,10 +74,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -101,11 +109,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES rbe3002_lab2
-#  CATKIN_DEPENDS roscpp rospy
-#  DEPENDS system_lib
+catkin_package( 
+
+CATKIN_DEPENDS message_runtime
 )
 
 ###########
