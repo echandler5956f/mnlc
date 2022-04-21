@@ -3,14 +3,12 @@
   <arg name="sim" default="1"/>
   <arg name="mapping" default="1"/>
   <param name="sim" value="$(arg sim)"/>
+  <param name="ctrl_invl" value="0.01"/>
 
   <!-- Turtlebot3 -->
-  <include if="$(arg sim)" file="$(find turtlebot3_bringup)/launch/turtlebot3_remote.launch">
+  <include file="$(find turtlebot3_bringup)/launch/turtlebot3_remote.launch">
     <arg name="model" value="burger" />
   </include>
-
-  <!-- Map server -->
-  <!-- <node pkg="map_server" name="map_server" type="map_server"/> -->
 
   <!-- Gazebo -->
   <arg name="x_pos" default="0.40"/>
@@ -29,6 +27,9 @@
   <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_burger.urdf.xacro" />
   <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-urdf -model turtlebot3_burger -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description" />
 
+  <!-- RTabMap -->
+  <include file="$(find rbe3002)/launch/rtab_map.launch"/>
+
   <!-- Gmapping -->
   <!-- <arg name="configuration_basename" default="turtlebot3_lds_2d_gazebo.lua"/>
   <node pkg="gmapping" type="slam_gmapping" name="turtlebot3_slam_gmapping" output="screen">
@@ -38,8 +39,8 @@
     <rosparam command="load" file="$(find turtlebot3_slam)/config/gmapping_params.yaml" />
   </node> -->
 
-  <!-- RTabMap -->
-  <include file="$(find rbe3002)/launch/rtab_map.launch"/>
+  <!-- Map server -->
+  <!-- <node pkg="map_server" name="map_server" type="map_server"/> -->
   
   <!-- AMCL -->
   <!-- <include file="$(find rbe3002)/launch/amcl.launch"/> -->
@@ -58,7 +59,6 @@
   <rosparam file="$(find rbe3002)/param/mncl_frontier_filter_params.yaml" command="load"/>
   <node name="FrontierAssigner" pkg="rbe3002" type="frontier_assigner.py" output="screen"/>
   <rosparam file="$(find rbe3002)/param/mncl_frontier_assigner_params.yaml" command="load"/>
-
 
   <!-- Auto-SSH -->
   <node unless="$(arg sim)" name="autoSSH" pkg="rbe3002" type="autoSSH.sh" output="screen"/>

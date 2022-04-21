@@ -74,7 +74,7 @@ class MapFrontierAssigner(FrontierAssigner):
     def map_frontier_assigner(self):
         while not rospy.is_shutdown(): # and not self.loc_or_map_mode:
             if len(self.filtered_frontiers.points) > 0:
-                print(self.filtered_frontiers.points)
+                # print(self.filtered_frontiers.points)
                 centroids = self.filtered_frontiers.points
                 info_gain = []
                 for i in range(len(centroids)):

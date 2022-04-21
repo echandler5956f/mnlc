@@ -2,10 +2,14 @@ lad: 0.225  # [m] look-ahead distance
 w_radius: 0.0352  # [m] wheel radius
 w_base: 0.23  # [m] wheel base
 tolerance: 0.0625 # [m] tolerance
-target_speed: 0.05 # [m/s] velocity target
-target_acc: 0.05 # [m/s^2] acceleration target
-ctrl_invl: 0.0025  # [s] control loop interval
+target_speed: 0.0375 # [m/s] velocity target
+target_acc: 0.0375 # [m/s^2] acceleration target
+# ctrl_invl: 0.0025  # [s] control loop interval
 desired_map_completion: 0.9 # percentage as a decimal (i.e. 0.9 for 90% completion)
-lfg: 250.0  # look forward gain
+lfg: 0.005 # look forward gain
 kv: 4.5454 # velocity constant
 ka: 0.0375 # acceleration constant
+spacing: 0.01 # space between injected points
+rad_tolerance: 0.0125 # radius fidelity of the smoothing
+alpha: 0.5001 # curve constant
+beta: 0.4999 # curve constant

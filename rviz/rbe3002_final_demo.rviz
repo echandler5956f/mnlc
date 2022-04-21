@@ -162,15 +162,16 @@ Visualization Manager:
       Unreliable: false
       Value: false
       Visibility:
-        "": true
         Axes: true
         DepthCloud: true
         Grid: true
         GridCells: true
         LaserScan: true
         Map: true
+        Marker: true
         Odometry: true
         Path: true
+        PointStamped: true
         PoseWithCovariance: true
         RobotModel: true
         TF: true
@@ -249,10 +250,10 @@ Visualization Manager:
     - Alpha: 1
       Class: rviz/GridCells
       Color: 170; 0; 0
-      Enabled: true
+      Enabled: false
       Name: GridCells
       Topic: /a_star/frontier
-      Value: true
+      Value: false
     - Alpha: 0.699999988079071
       Class: rviz/Map
       Color Scheme: costmap
@@ -267,12 +268,12 @@ Visualization Manager:
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic: /rtabmap/grid_map
       Unreliable: false
       Use Timestamp: false
-      Value: true
+      Value: false
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -387,7 +388,7 @@ Visualization Manager:
       Marker Topic: /OpenCVFrontierDetector/shapes
       Name: Marker
       Namespaces:
-        {}
+        markers: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -427,11 +428,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 423.1933898925781
+      Scale: 693.6372680664062
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 2.460266590118408
-      Y: -0.7940124869346619
+      X: 1.461011528968811
+      Y: -0.4551713466644287
     Saved: ~
 Window Geometry:
   Camera:

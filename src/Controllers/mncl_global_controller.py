@@ -10,7 +10,7 @@ from nav_msgs.srv import GetPlan
 import pid_controller
 import std_msgs.msg
 import std_srvs.srv
-import numpy
+import numpy as np
 import rospy
 import time
 import math
@@ -22,19 +22,23 @@ class MNCLGlobalController(object):
     def __init__(self):
         rospy.loginfo("Initializing MNCLGlobalController.")
         rospy.init_node("MNCLGlobalController")
-        rospy.wait_for_service('/rtabmap/set_mode_mapping')
-        try:
-            self.rtab_map_srv = rospy.ServiceProxy(
-                '/rtabmap/set_mode_mapping', std_srvs.srv.Empty)
-        except rospy.ServiceException as e:
-            print("RTabMap Mappping service call failed: %s" % e)
+        # rospy.wait_for_service('/rtabmap/set_mode_mapping')
+        # try:
+        #     self.rtab_map_srv = rospy.ServiceProxy(
+        #         '/rtabmap/set_mode_mapping', std_srvs.srv.Empty)
+        # except rospy.ServiceException as e:
+        #     print("RTabMap Mappping service call failed: %s" % e)
         self.sim = rospy.get_param('sim')
+        self.rad_tolerance = rospy.get_param('rad_tolerance')
         self.tolerance = rospy.get_param('tolerance')
+        self.alpha = rospy.get_param('alpha')
+        self.beta = rospy.get_param('beta')
         self.w_base = rospy.get_param('w_base')  # [m] wheel base
         self.ctrl_invl = rospy.get_param(
             'ctrl_invl')  # [s] control loop interval
         # percentage as a decimal (i.e. 0.9 for 90% completion)
         self.desired_map_completion = rospy.get_param('desired_map_completion')
+        self.spacing = rospy.get_param('spacing')
         self.cmd_vel_pub = rospy.Publisher(
             '/cmd_vel', Twist, None, queue_size=5)
         self.odom_sub = rospy.Subscriber(
@@ -42,7 +46,7 @@ class MNCLGlobalController(object):
         self.imu_sub = rospy.Subscriber(
             '/imu', Imu, self.update_imu)
         self.new_commands_sub = rospy.Subscriber(
-            'move_base_simple/goal', PoseStamped, self.commands, queue_size=3)
+            'move_base_simple/goal', PoseStamped, self.commands, queue_size=1)
         self.new_commands_recieved_pub = rospy.Publisher(
             "new_commands", std_msgs.msg.Bool, queue_size=3)
         self.rtab_map_sub = rospy.Subscriber(
@@ -56,7 +60,7 @@ class MNCLGlobalController(object):
         self.pose2d_pub = rospy.Publisher(
             '/MNCLGlobalController/pose2d', Pose2d, queue_size=1)
         self.filtered_frontiers_sub = rospy.Subscriber(
-            '/frontier_filter/filtered_points', PointArray, self.update_filtered_frontiers, queue_size=10)
+            '/frontier_filter/filtered_points', PointArray, self.update_filtered_frontiers, queue_size=1)
         self.loc_or_map_mode_pub = rospy.Publisher(
             '/MNCLGlobalController/loc_or_map_mode', std_msgs.msg.Bool, queue_size=3)
         # if localizing send True. If mapping send False
@@ -86,32 +90,38 @@ class MNCLGlobalController(object):
         rospy.loginfo("MNCLGlobalController node ready.")
 
     def commands(self, flag):
+        time_init = rospy.get_time()
         self.stop()
         self.new_commands = not self.new_commands
         self.new_commands_recieved_pub.publish(True)
 
     def compare_commands(self):
+        time_init = rospy.get_time()
         # if self.new_commands != self.old_commands:
         #     self.old_commands= self.new_commands
         #     return False
         return True
 
     def check_visited(self, visited):
+        time_init = rospy.get_time()
         self.visited = visited
-        if self.rtabmap.header.seq > 1 and len(self.rtabmap.data) > 1:
-            if self.visited.cells.count() > (self.desired_map_completion * self.rtabmap.info.width * self.rtabmap.info.height):
-                rospy.wait_for_service('/rtabmap/set_mode_localization')
-                try:
-                    self.rtab_map_srv = rospy.ServiceProxy(
-                        '/rtabmap/set_mode_mapping ', std_srvs.srv.Empty)
-                except rospy.ServiceException as e:
-                    print("RTabMap Mappping service call failed: %s" % e)
-                self.loc_or_map_mode_pub.publish(True)
-                rospy.loginfo("Switching RTabMap to Localization mode!!!")
-            else:
-                self.loc_or_map_mode_pub.publish(False)
+        # if self.rtabmap.header.seq > 1 and len(self.rtabmap.data) > 1:
+        if self.visited.cells.count() > (self.desired_map_completion * self.rtabmap.info.width * self.rtabmap.info.height):
+            rospy.wait_for_service('/rtabmap/set_mode_localization')
+            try:
+                self.rtab_map_srv = rospy.ServiceProxy(
+                    '/rtabmap/set_mode_mapping ', std_srvs.srv.Empty)
+            except rospy.ServiceException as e:
+                print("RTabMap Mappping service call failed: %s" % e)
+            self.loc_or_map_mode_pub.publish(True)
+            rospy.loginfo("Switching RTabMap to Localization mode!!!")
+        else:
+            self.loc_or_map_mode_pub.publish(False)
 
     def update_odometry(self, msg):
+        time_init = rospy.get_time()
+        # rospy.sleep(self.ctrl_invl)
+        # if self.rtabmap.info.resolution > 0.0:
         # rospy.loginfo("Updating odometry.")
         self.c_pose.pose = msg.pose.pose
         self.c_pose.header.stamp = rospy.Time.now()
@@ -133,8 +143,6 @@ class MNCLGlobalController(object):
             (self.cx - self.rtabmap.info.origin.position.x) / 0.05))
         point.y = int(math.floor(
             (self.cy - self.rtabmap.info.origin.position.y) / 0.05))
-        # point.x = self.cx
-        # point.y = self.cy
         self.send_current_cell.publish(point)
         pose2d = Pose2d()
         pose2d.cx = self.cx
@@ -144,6 +152,7 @@ class MNCLGlobalController(object):
         # rospy.loginfo("Odometry updated.")
 
     def update_imu(self, msg):
+        time_init = rospy.get_time()
         # rospy.loginfo("Updating IMU.")
         self.acc = distance.euclidean(
             msg.linear_acceleration.x, msg.linear_acceleration.y)
@@ -152,12 +161,15 @@ class MNCLGlobalController(object):
         # rospy.loginfo("IMU updated.")
 
     def update_rtabmap(self, map):
+        time_init = rospy.get_time()
         self.rtabmap = map
 
     def update_filtered_frontiers(self, filtered_frontiers):
+        time_init = rospy.get_time()
         self.filtered_frontiers = filtered_frontiers
 
     def send_speed(self, linear_speed, angular_speed):
+        time_init = rospy.get_time()
         # rospy.loginfo("Sending velocity targets to the Turtlebot.")
         msg_cmd_vel = Twist()
         msg_cmd_vel.linear.x = linear_speed
@@ -166,9 +178,9 @@ class MNCLGlobalController(object):
         # rospy.loginfo("Velocity targets published.")
 
     def turnTo(self, orientation):
+        time_init = rospy.get_time()
         # uses a simple PID control loop to turn in place to a desired heading
         self.turningController.reset()
-        # print(orientation)
         roll, pitch, yaw = euler_from_quaternion(orientation, 'rxyz')
         reachedHeading = False
         while (not reachedHeading and not rospy.is_shutdown()):
@@ -183,6 +195,7 @@ class MNCLGlobalController(object):
             rospy.sleep(self.ctrl_invl)
 
     def stop(self):
+        time_init = rospy.get_time()
         rospy.loginfo("Sending zero-velocity target to the Turtlebot.")
         self.send_speed(0.0, 0.0)
         rospy.loginfo("Zero-velocity sent.")
@@ -201,16 +214,18 @@ class PurePersuit(MNCLGlobalController):
         self.lfg = rospy.get_param('lfg')
         self.target_speed = rospy.get_param('target_speed')
         self.target_acc = rospy.get_param('target_acc')
-        # self.target_speed = 0.05
-        # self.target_acc = 0.05
         self.goal_sub = rospy.Subscriber(
-            '/move_base_simple/goal', PoseStamped, self.handle_goal_pose, queue_size=3)
+            '/move_base_simple/goal', PoseStamped, self.handle_goal_pose, queue_size=1)
         self.smoothed_pth_pub = rospy.Publisher(
-            '/pure_persuit/smoothed_path', Path, queue_size=1)
+            '/pure_persuit/smoothed_path', Path, queue_size=5)
+        # rospy.sleep(2)
+        # while self.rtabmap.header.seq > 1 and len(self.rtabmap.data) > 1:
+        #     rospy.sleep(self.ctrl_invl)
         rospy.loginfo("Pure Persuit ready.")
 
     def handle_goal_pose(self, msg):
         rospy.loginfo("Handling goal pose.")
+        time_init = rospy.get_time()
         rospy.wait_for_service('plan_path')
         self.is_busy_pub.publish(True)
         self.goal_pose = msg
@@ -220,39 +235,117 @@ class PurePersuit(MNCLGlobalController):
             start_pose.pose.position.x = self.cx
             start_pose.pose.position.y = self.cy
             goal_pose = msg
-            path = path_srv(start_pose, goal_pose, 0.5)
+            path = path_srv(start_pose, goal_pose, 1.0)
         except rospy.ServiceException as e:
             print("PurePersuit service call failed: %s." % e)
         rospy.loginfo("PurePersuit service call successful.")
-        b = 0.25
-        a = 1.0 - b
-        smoothed_path = self.path_smoothing(path.plan, a, b, 0.75)
+        if len(path.plan.poses) - 1 > 1:
+            injected_path = self.inject_waypoints(path.plan)
+            smoothed_path = self.path_smoothing(injected_path)
         self.smoothed_pth_pub.publish(smoothed_path)
         self.execute_path(smoothed_path)
         self.is_busy_pub.publish(False)
         rospy.loginfo("Pure Persuit has reached its target.")
 
-    def path_smoothing(self, path, a, b, radius_tolerance):
-        rospy.loginfo("Smoothing path.")
-        new_path = path
-        change = radius_tolerance
-        while change >= radius_tolerance and self.compare_commands():
-            change = 0.0
-            for i in range(1, len(path.poses) - 1):
-                aux = new_path.poses[i].pose.position.x
-                new_path.poses[i].pose.position.x += a * (path.poses[i].pose.position.x - new_path.poses[i].pose.position.x) + b * (
-                    new_path.poses[i - 1].pose.position.x + new_path.poses[i + 1].pose.position.x - (2.0 * new_path.poses[i].pose.position.x))
-                auy = new_path.poses[i].pose.position.y
-                new_path.poses[i].pose.position.y += a * (path.poses[i].pose.position.y - new_path.poses[i].pose.position.y) + b * (
-                    new_path.poses[i - 1].pose.position.y + new_path.poses[i + 1].pose.position.y - (2.0 * new_path.poses[i].pose.position.y))
-        change += distance.euclidean(
-            aux - new_path.poses[i].pose.position.x, auy - new_path.poses[i].pose.position.y)
+    def inject_waypoints(self, path):
+        rospy.loginfo("Injecting waypoints.")
+        time_init = rospy.get_time()
+        new_path = Path()
+        for i in range(0, len(path.poses) - 1):
+            vector = np.array([path.poses[i + 1].pose.position.x - path.poses[i].pose.position.x,
+                              path.poses[i + 1].pose.position.y - path.poses[i].pose.position.y])
+            mag = math.sqrt(math.pow(vector[0], 2) + math.pow(vector[1], 2))
+            num_points = math.ceil(mag / self.spacing)
+            vector = np.array(
+                [vector[0] / mag, vector[1] / mag]) * self.spacing
+            for j in range(int(num_points)):
+                pose = PoseStamped()
+                pose.header.frame_id = 'map'
+                pose.header.stamp = rospy.Time.now()
+                pose.pose.position.x = path.poses[i].pose.position.x + (
+                    vector[0] * j)
+                pose.pose.position.y = path.poses[i].pose.position.y + (
+                    vector[1] * j)
+                new_path.poses.append(pose)
+        last_pose = PoseStamped()
+        last_pose.header.frame_id = 'map'
+        last_pose.header.stamp = rospy.Time.now()
+        last_pose.pose.position.x = path.poses[len(
+            path.poses) - 1].pose.position.x
+        last_pose.pose.position.y = path.poses[len(
+            path.poses) - 1].pose.position.y
+        new_path.poses.append(last_pose)
+        new_path.header.frame_id = 'map'
         new_path.header.stamp = rospy.Time.now()
-        rospy.loginfo("Path smoothed.")
+        print("Injecting waypoints took: ", rospy.get_time() - time_init, ".")
+        rospy.loginfo("Finished injecting waypoints.")
         return new_path
+
+    def path_smoothing(self, path):
+        time_init = rospy.get_time()
+        npath = []
+        for pose in path.poses:
+            npath.append([pose.pose.position.x, pose.pose.position.y])
+        pth = npath
+        change = self.rad_tolerance
+        while change >= self.rad_tolerance:
+            change = 0.0
+            for i in range(1, len(npath) - 1):
+                for j in range(0, len(npath[i])):
+                    aux = npath[i][j]
+                    npath[i][j] += self.alpha * (pth[i][j] - npath[i][j]) + self.beta * (
+                        npath[i - 1][j] + npath[i + 1][j] - (2.0 * npath[i][j]))
+                    change += abs(aux - npath[i][j])
+        smoothed_path = Path()
+        for arr in npath:
+            pose = PoseStamped()
+            pose.header.frame_id = 'map'
+            pose.header.stamp = rospy.Time.now()
+            pose.pose.position.x = arr[0]
+            pose.pose.position.y = arr[1]
+            smoothed_path.poses.append(pose)
+        smoothed_path.header.frame_id = 'map'
+        smoothed_path.header.stamp = rospy.Time.now()
+        print("Smoothing path took: ", rospy.get_time() - time_init, ".")
+        return smoothed_path
+
+    # def path_smoothing(self, path):
+    #     rospy.loginfo("Smoothing path.")
+    #     time_init = rospy.get_time()
+    #     npath = path
+    #     smoothed_path = Path()
+    #     smoothed_path.header.frame_id = 'map'
+    #     alpha = self.alpha
+    #     beta = self.beta
+    #     rad_tolerance = self.rad_tolerance
+    #     change = rad_tolerance
+    #     while change >= rad_tolerance:
+    #         del smoothed_path.poses[0:len(smoothed_path.poses) - 2]
+    #         change = 0.0
+    #         for i in range(1, len(npath.poses) - 1):
+    #             aux = npath.poses[i].pose.position.x
+    #             npath.poses[i].pose.position.x += alpha * (path.poses[i].pose.position.x - npath.poses[i].pose.position.x) + beta * (
+    #                 npath.poses[i - 1].pose.position.x + npath.poses[i + 1].pose.position.x - (2.0 * npath.poses[i].pose.position.x))
+    #             auy = npath.poses[i].pose.position.y
+    #             npath.poses[i].pose.position.y += alpha * (path.poses[i].pose.position.y - npath.poses[i].pose.position.y) + beta * (
+    #                 npath.poses[i - 1].pose.position.y + npath.poses[i + 1].pose.position.y - (2.0 * npath.poses[i].pose.position.y))
+    #             dx = abs(aux - npath.poses[i].pose.position.x)
+    #             dy = abs(auy - npath.poses[i].pose.position.y)
+    #             change += distance.euclidean(dy, dx)
+    #             pose = PoseStamped()
+    #             pose.header.frame_id = 'map'
+    #             pose.header.stamp = rospy.Time.now()
+    #             pose.pose.position.x = npath.poses[i].pose.position.x
+    #             pose.pose.position.y = npath.poses[i].pose.position.y
+    #             smoothed_path.poses.append(pose)
+    #     smoothed_path.header.stamp = rospy.Time.now()
+    #     print("Smoothing path took: ", rospy.get_time() - time_init, ".")
+    #     rospy.loginfo("Smoothing path.")
+    #     return smoothed_path
 
     def execute_path(self, path):
         rospy.loginfo("Executing Pure Persuit path following.")
+        time_init = rospy.get_time()
         dx = path.poses[5].pose.position.x - self.cx
         dy = path.poses[5].pose.position.y - self.cy
         it = math.atan2(dy, dx)
@@ -260,12 +353,13 @@ class PurePersuit(MNCLGlobalController):
         self.turnTo(iq)
         last_index = len(path.poses) - 1
         t_index, lf = self.search_target(path)
+        # print("t_index is: ", t_index, " and last_index is: ", last_index)
         next_path_time = time.time()
-        # while last_index > t_index and self.compare_commands():
-        while (distance.euclidean(self.goal_pose.pose.position.x - self.cx, self.goal_pose.pose.position.y - self.cy) > self.tolerance) and self.compare_commands():
+        while last_index > t_index and self.compare_commands():
             if time.time() > next_path_time:
                 lin_v = self.kv * self.target_speed + self.ka * self.target_acc
                 ang_v, t_index = self.pp_steering(path, t_index)
+                # print("t_index is: ", t_index)
                 self.send_speed(lin_v, ang_v)
                 next_path_time = time.time() + self.ctrl_invl
         self.old_nearest = None
@@ -274,11 +368,12 @@ class PurePersuit(MNCLGlobalController):
 
     def search_target(self, path):
         # rospy.loginfo("Searching for target via-point indices.")
+        time_init = rospy.get_time()
         if self.old_nearest is None:
             dx = [self.rx - ip.pose.position.x for ip in path.poses]
             dy = [self.ry - ip.pose.position.y for ip in path.poses]
-            dist = numpy.hypot(dx, dy)
-            index = numpy.argmin(dist)
+            dist = np.hypot(dx, dy)
+            index = np.argmin(dist)
             self.old_nearest = index
         else:
             index = self.old_nearest
@@ -304,6 +399,7 @@ class PurePersuit(MNCLGlobalController):
 
     def pp_steering(self, path, prev_index):
         # rospy.loginfo("Steering to index.")
+        time_init = rospy.get_time()
         (index, lf) = self.search_target(path)
         if prev_index >= index:
             index = prev_index

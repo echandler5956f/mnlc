@@ -145,7 +145,7 @@ class OpenCVCostmap(MNCLGlobalCostmap):
                 img_dilate = cv2.dilate(img, kernel=kernel1, iterations=1)
                 # cv2.imwrite('/home/quant/.ros/dilated.pgm', img_dilate)
                 gaussian_blur = cv2.GaussianBlur(
-                    src=img_dilate, ksize=(9, 9), sigmaX=0, sigmaY=0)
+                    src=img_dilate, ksize=(9, 9), sigmaX=2, sigmaY=2)
                 # flipped = np.flipud(gaussian_blur)
                 # inverted = cv2.bitwise_not(gaussian_blur)
                 norm_image = cv2.normalize(
