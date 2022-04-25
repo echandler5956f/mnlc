@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
+from geometry_msgs.msg import PoseStamped, PointStamped
 from rbe3002.msg import PointArray, Pose2d
-from geometry_msgs.msg import PoseStamped
+from visualization_msgs.msg import Marker
 from nav_msgs.msg import OccupancyGrid
 import std_msgs.msg
 import numpy as np
 import rospy
-import math
 import copy
+import math
 
 
 class FrontierAssigner(object):
@@ -20,9 +21,9 @@ class FrontierAssigner(object):
         self.hysteresis_radius = rospy.get_param('hysteresis_radius')
         self.hysteresis_gain = rospy.get_param('hysteresis_gain')
         self.rtab_map_sub = rospy.Subscriber(
-            '/MNCLGlobalCostmap/map', OccupancyGrid, self.update_rtabmap, queue_size=1)
+            '/MNCLGlobalCostmap/cspace', OccupancyGrid, self.update_rtabmap, queue_size=1)
         self.filtered_frontiers_sub = rospy.Subscriber(
-            '/frontier_filter/filtered_points', PointArray, self.update_filtered_frontiers, queue_size=1)
+            '/frontier_filter/filtered_points', PointArray, self.update_filtered_frontiers, queue_size=10)
         self.pose2d_sub = rospy.Subscriber(
             '/MNCLGlobalController/pose2d', Pose2d, self.update_pose2d, queue_size=1)
         self.assigned_goal = rospy.Publisher(
@@ -30,19 +31,36 @@ class FrontierAssigner(object):
         self.is_busy_sub = rospy.Subscriber(
             "/MNCLGlobalCostmap/is_busy", std_msgs.msg.Bool, self.update_is_busy, queue_size=1)
         self.loc_or_map_mode_sub = rospy.Subscriber(
-            '/MNCLGlobalController/loc_or_map_mode', std_msgs.msg.Bool, self.update_loc_or_map, queue_size=3)
+            '/MNCLGlobalController/loc_or_map_mode', std_msgs.msg.Bool, self.update_loc_or_map, queue_size=1)
+        self.assigned_points_pub = rospy.Publisher(
+            'OpenCVFrontierAssigner/goal_points', Marker, queue_size=1)
         # Start by mapping until frontier search algorithm visits a certain percentage of cells
         self.is_busy = False
+        self.first_map = True
         self.loc_or_map_mode = False
         self.pose2d = Pose2d()
-        self.filtered_frontiers = PointArray()
+        self.filtered_frontiers = []
         self.rtabmap = OccupancyGrid()
+        self.points = Marker()
         rospy.sleep(1)
         rospy.loginfo("Frontier Assigner node ready.")
 
     def update_rtabmap(self, map):
         # if not self.loc_or_map_mode:
-            self.rtabmap = map
+        if self.first_map:
+            self.points.header.frame_id = map.header.frame_id
+            self.points.header.stamp = rospy.Time.now()
+            self.points.ns = "goal_markers"
+            self.points.id = 0
+            self.points.type = Marker.POINTS
+            self.points.action = Marker.ADD
+            self.points.pose.orientation.w = 1.0
+            self.points.scale.x = self.points.scale.y = 0.3
+            (self.points.color.r, self.points.color.g, self.points.color.b,
+            self.points.color.a) = (0.0/255.0, 255.0/255.0, 0.0/255.0, 1)
+            self.points.lifetime == rospy.Duration()
+            self.first_map = False
+        self.rtabmap = map
 
     def update_pose2d(self, pose2d):
         # if not self.loc_or_map_mode:
@@ -51,10 +69,12 @@ class FrontierAssigner(object):
     def update_is_busy(self, is_busy):
         self.is_busy = is_busy
 
-    def update_filtered_frontiers(self, filtered_frontiers):
+    def update_filtered_frontiers(self, point_array):
         # if not self.loc_or_map_mode:
-            self.filtered_frontiers = filtered_frontiers
+            # self.filtered_frontiers = filtered_frontiers
             # print(self.filtered_frontiers)
+        for point in point_array.points:
+            self.filtered_frontiers.append(np.array([point.point.x, point.point.y]))
 
     def update_loc_or_map(self, loc_or_map):
         self.loc_or_map_mode = loc_or_map
@@ -72,39 +92,46 @@ class MapFrontierAssigner(FrontierAssigner):
         self.map_frontier_assigner()
 
     def map_frontier_assigner(self):
+        exploration_goal = PointStamped()
+        exploration_goal.header.frame_id = self.points.header.frame_id
+        exploration_goal.point.z = 0
         while not rospy.is_shutdown(): # and not self.loc_or_map_mode:
-            if len(self.filtered_frontiers.points) > 0:
+            # if len(self.filtered_frontiers.points) > 0:
                 # print(self.filtered_frontiers.points)
-                centroids = self.filtered_frontiers.points
+                centroids = copy.copy(self.filtered_frontiers)
                 info_gain = []
                 for i in range(len(centroids)):
                     info_gain.append(self.informationGain(
-                        [centroids[i].point.x, centroids[i].point.y]))
+                        [centroids[i][0], centroids[i][1]]))
                 info_gain = self.discount([self.pose2d.cx, self.pose2d.cy], centroids, info_gain)
                 rev_rec = []
                 centroid_rec = []
-                count = 0
                 for i in range(len(centroids)):
-                    cost = np.linalg.norm([self.pose2d.cx -centroids[i].point.x, self.pose2d.cy - centroids[i].point.y])
-                    information_gain = info_gain[count]
-                    if np.linalg.norm([self.pose2d.cx - centroids[i].point.x, self.pose2d.cy -  centroids[i].point.y]) <= self.hysteresis_radius:
+                    cost = np.linalg.norm([self.pose2d.cx -centroids[i][0], self.pose2d.cy - centroids[i][1]])
+                    information_gain = info_gain[i]
+                    if np.linalg.norm([self.pose2d.cx - centroids[i][0], self.pose2d.cy -  centroids[i][1]]) <= self.hysteresis_radius:
                         information_gain *= self.hysteresis_gain
                     rev = information_gain * self.info_multiplier - cost
                     rev_rec.append(rev)
                     centroid_rec.append(centroids[i])
-                    count =+ 1
                 # print(rev_rec)
-                best_frontier = centroid_rec[rev_rec.index(max(rev_rec))]
-                goal_pose = PoseStamped()
-                goal_pose.header.frame_id = '/map'
-                goal_pose.header.stamp = rospy.Time.now()
-                goal_pose.pose.position.x = best_frontier.point.x
-                goal_pose.pose.position.y = best_frontier.point.y
-                self.assigned_goal.publish(goal_pose)
-                # print(goal_pose)
-                # wait for the path to finish before calculating the next goal frontier
-                # while self.is_busy:
-                #     pass
+                if len(rev_rec) >= 1:
+                    best_frontier = centroid_rec[rev_rec.index(max(rev_rec))]
+                    goal_pose = PoseStamped()
+                    goal_pose.header.frame_id = '/map'
+                    goal_pose.header.stamp = rospy.Time.now()
+                    goal_pose.pose.position.x = best_frontier[0]
+                    goal_pose.pose.position.y = best_frontier[1]
+                    # self.assigned_goal.publish(goal_pose)
+                    exploration_goal.header.stamp = rospy.Time(0)
+                    exploration_goal.point.x =  goal_pose.pose.position.x
+                    exploration_goal.point.y = goal_pose.pose.position.y
+                    self.points.points = [exploration_goal.point]
+                    self.assigned_points_pub.publish(self.points)
+                    # print(goal_pose)
+                    # wait for the path to finish before calculating the next goal frontier
+                    # while self.is_busy:
+                    #     pass
 
     def informationGain(self, point):
         mapdata = self.rtabmap
@@ -141,7 +168,7 @@ class MapFrontierAssigner(FrontierAssigner):
                         current_pt = centroids[j]
                         if(mapdata.data[i] == -1 and np.linalg.norm(np.array([mapdata.info.origin.position.x +
                                                                               (i - (i//mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution, mapdata.info.origin.position.y +
-                                                                              (i//mapdata.info.width) * mapdata.info.resolution])-np.array([current_pt.point.x, current_pt.point.y])) <= self.info_radius and np.linalg.norm(np.array([mapdata.info.origin.position.x +
+                                                                              (i//mapdata.info.width) * mapdata.info.resolution])-np.array([current_pt[0], current_pt[1]])) <= self.info_radius and np.linalg.norm(np.array([mapdata.info.origin.position.x +
                                                                                                                                                                                                (i - (i//mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution, mapdata.info.origin.position.y +
                                                                                                                                                                                                (i//mapdata.info.width) * mapdata.info.resolution])-point) <= self.info_radius):
                             info_gain[j] -= (mapdata.info.resolution *

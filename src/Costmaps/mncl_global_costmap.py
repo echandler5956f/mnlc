@@ -1,16 +1,19 @@
 #!/usr/bin/env python
 
 from nav_msgs.msg import OccupancyGrid
+from geometry_msgs.msg import Point
 from nav_msgs.srv import GetMap
 import std_msgs.msg
 import numpy as np
+import bisect
 import rospy
 import time
+import math
 import cv2
 
 
 class MNCLGlobalCostmap(object):
-# always generate costmap, regardless of whether we are mapping or navigating
+    # always generate costmap, regardless of whether we are mapping or navigating
     def __init__(self):
         rospy.init_node("MNCLGlobalCostmap")
         rospy.loginfo("Initializing Global Costmap Compute node.")
@@ -24,12 +27,15 @@ class MNCLGlobalCostmap(object):
             '/MNCLGlobalCostmap/map', OccupancyGrid, queue_size=1)
         self.new_map_written_pub = rospy.Publisher(
             '/MNCLGlobalCostmap/new_map_written', std_msgs.msg.String, queue_size=1)
-        self.old_height, self.old_width, self.new_height, self.new_width = 0, 0, 0, 0
+        self.current_cell = rospy.Subscriber(
+            'MNCLGlobalController/current_cell', Point, self.update_immediate_vincinity, queue_size=1)
+        self.old_height = self.new_height =self.old_width = self.new_width = 0
         self.first_map = True
         self.point_matrix = None
         self.counter = 0
         self.new_commands = False
         self.old_commands = self.new_commands
+        self.unkown_indices = []
         rospy.sleep(1)
         rospy.loginfo("Global Costmap Compute node ready.")
 
@@ -52,38 +58,62 @@ class MNCLGlobalCostmap(object):
             f.close()
         self.new_map_written_pub.publish(filename)
 
-    # def pgmawrite(self, img, filename, maxVal=255, magicNum='P2'):
-    #       """  This function writes a numpy array to a Portable GrayMap (PGM)
-    #       image file. By default, header number P2 and max gray level 255 are
-    #       written. Width and height are same as the size of the given list.
-    #       Line1 : MagicNum
-    #       Line2 : Width Height
-    #       Line3 : Max Gray level
-    #       Image Row 1
-    #       Image Row 2 etc. """
-    #       img = np.int32(img).tolist()
-    #       f = open(filename,'w')
-    #       width = 0
-    #       height = 0
-    #       for row in img:
-    #         height = height + 1
-    #         width = len(row)
-    #       f.write(magicNum + '\n')
-    #       f.write(str(width) + ' ' + str(height) + '\n')
-    #       f.write(str(maxVal) + '\n')
-    #       for i in range(height):
-    #         count = 1
-    #         for j in range(width):
-    #           f.write(str(img[i][j]) + ' ')
-    #           if count >= 17:
-    #             # No line should contain gt 70 chars (17*4=68)
-    #             # Max three chars for pixel plus one space
-    #             count = 1
-    #             f.write('\n')
-    #           else:
-    #             count = count + 1
-    #         f.write('\n')
-    #       f.close()
+    def pgmawrite(self, img, filename, maxVal=255, magicNum='P2'):
+          """  This function writes a numpy array to a Portable GrayMap (PGM)
+          image file. By default, header number P2 and max gray level 255 are
+          written. Width and height are same as the size of the given list.
+          Line1 : MagicNum
+          Line2 : Width Height
+          Line3 : Max Gray level
+          Image Row 1
+          Image Row 2 etc. """
+          img = np.int32(img).tolist()
+          f = open(filename,'w')
+          width = 0
+          height = 0
+          for row in img:
+            height = height + 1
+            width = len(row)
+          f.write(magicNum + '\n')
+          f.write(str(width) + ' ' + str(height) + '\n')
+          f.write(str(maxVal) + '\n')
+          for i in range(height):
+            count = 1
+            for j in range(width):
+              f.write(str(img[i][j]) + ' ')
+              if count >= 17:
+                # No line should contain gt 70 chars (17*4=68)
+                # Max three chars for pixel plus one space
+                count = 1
+                f.write('\n')
+              else:
+                count = count + 1
+            f.write('\n')
+          f.close()
+
+    def rowmajorindexfromcolumnmajorindex(self, columnmajorindex, width, height):
+        row = int(columnmajorindex % height)
+        column = int(math.floor(columnmajorindex / height))
+        return int(math.floor(row * width) + column)
+
+    def columnmajorindexfromrowmajorindex(self, rowmajorindex, width, height):
+        return self.rowmajorindexfromcolumnmajorindex(rowmajorindex, height, width)
+
+    def update_immediate_vincinity(self, current_cell):
+        x = current_cell.y
+        y = current_cell.x
+        # print(x, y)
+        vincinity_width = 100
+        vincinity_height = 100
+        map_width = self.new_width
+        immediate_vincinity = []
+        for i in range(int(x) - int(math.floor(vincinity_width/2)), int(x) + int(math.floor(vincinity_width/2))):
+            for j in range(int(y) - int(math.floor(vincinity_height/2)), int(y) + int(math.floor(vincinity_height/2))):
+                # print(i, j)
+                index = j + (i * map_width)
+                immediate_vincinity.append(index)
+        self.immediate_vincinity = immediate_vincinity
+        # print(self.immediate_vincinity)
 
     def request_map(self):
         # rospy.loginfo(
@@ -101,6 +131,15 @@ class MNCLGlobalCostmap(object):
         self.new_width = map.map.info.width
         # rospy.loginfo("Map retrieved.")
         current_mapdata = map.map
+        unkown_indices = []
+        if not self.first_map:
+            immediate_vincinity = self.immediate_vincinity
+            for i in range(len(immediate_vincinity) - 1):
+                if current_mapdata.data[immediate_vincinity[i]] == -1: #and i in self.immediate_vincinity:
+                    unkown_indices.append(self.columnmajorindexfromrowmajorindex(immediate_vincinity[i], self.new_width, self.new_height))
+        else:
+            self.first_map = False
+        self.unkown_indices = unkown_indices
         self.rtab_map_pub.publish(current_mapdata)
         mapdata_asarray = np.array(current_mapdata.data)
         self.pgmbwrite(mapdata_asarray, 'rtabmap.pgm',
@@ -130,38 +169,43 @@ class OpenCVCostmap(MNCLGlobalCostmap):
         self.mncl_global_costmap()
 
     def mncl_global_costmap(self):
-        next_time = time.time()
+        # next_time = time.time()
         while 1:
-            if time.time() > next_time:
-                # rospy.loginfo("Beginning OpenCV cspace compute.")
-                current_mapdata = self.request_map()
-                # current_mapdata = self.current_mapdata
-                cspace = current_mapdata
-                time_init = rospy.get_time()
-                path = r'/home/quant/.ros/rtabmap.pgm'
-                img = cv2.imread(path, -1)
-                kernel1 = np.ones((self.padding, self.padding), np.float)
-                # img_erosion = cv2.erode(img, kernel=kernel1, iterations=1)
-                img_dilate = cv2.dilate(img, kernel=kernel1, iterations=1)
-                # cv2.imwrite('/home/quant/.ros/dilated.pgm', img_dilate)
-                gaussian_blur = cv2.GaussianBlur(
-                    src=img_dilate, ksize=(9, 9), sigmaX=2, sigmaY=2)
-                # flipped = np.flipud(gaussian_blur)
-                # inverted = cv2.bitwise_not(gaussian_blur)
-                norm_image = cv2.normalize(
-                    gaussian_blur, None, alpha=0, beta=100, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-                # cv2.imshow("Final Map", norm_image)
-                # cv2.waitKey()
-                dataFromGridC = norm_image.flatten('C')
-                dataC = tuple(np.array(dataFromGridC, dtype=int))
-                cspace.header.stamp = rospy.Time.now()
-                cspace.header.frame_id = 'map'
-                cspace.data = dataC
-                self.c_space_pub.publish(cspace)
-                # rospy.loginfo("Finished OpenCV cspace compute.")
-                # print("Calculating MNCLGlobalCostmap took: ",
-                #       rospy.get_time() - time_init)
-                next_time = time.time() + self.desired_map_rate
+            # if time.time() > next_time:
+            # time_init = rospy.get_time()
+            # rospy.loginfo("Beginning OpenCV cspace compute.")
+            current_mapdata = self.request_map()
+            # current_mapdata = self.current_mapdata
+            cspace = current_mapdata
+            path = r'/home/quant/.ros/rtabmap.pgm'
+            img = cv2.imread(path, -1)
+            kernel1 = np.ones((self.padding, self.padding), np.float)
+            # img_erosion = cv2.erode(img, kernel=kernel1, iterations=1)
+            img_dilate = cv2.dilate(img, kernel=kernel1, iterations=1)
+            # cv2.imwrite('/home/quant/.ros/dilated.pgm', img_dilate)
+            gaussian_blur = cv2.GaussianBlur(
+                src=img_dilate, ksize=(9, 9), sigmaX=2, sigmaY=2)
+            # flipped = np.flipud(gaussian_blur)
+            # inverted = cv2.bitwise_not(gaussian_blur)
+            norm_image = cv2.normalize(
+                gaussian_blur, None, alpha=0, beta=100, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+            # cv2.imshow("Final Map", norm_image)
+            # cv2.waitKey()
+            dataFromGridC = norm_image.flatten('C')
+            if not self.first_map:
+                unkown_indices = self.unkown_indices
+                for i in range(len(unkown_indices) - 1):
+                    dataFromGridC[self.columnmajorindexfromrowmajorindex(self.unkown_indices[i], self.new_width, self.new_height)] = -1
+                # print("I AM HEREEEE")
+            dataC = tuple(np.array(dataFromGridC, dtype=int))
+            cspace.header.stamp = rospy.Time.now()
+            cspace.header.frame_id = 'map'
+            cspace.data = dataC
+            self.c_space_pub.publish(cspace)
+            # rospy.loginfo("Finished OpenCV cspace compute.")
+            # print("Calculating MNCLGlobalCostmap took: ",
+                #   rospy.get_time() - time_init)
+            # next_time = time.time() + self.desired_map_rate
 
     def run(self):
         rospy.spin()

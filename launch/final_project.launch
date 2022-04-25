@@ -49,18 +49,19 @@
   <node pkg="rviz" type="rviz" name="rviz" required="true" args="-d $(find rbe3002)/rviz/rbe3002_final_demo.rviz"/>
 
   <!-- Mapping, Navigation, Controller and Localizer -->
-  <node name="MNCLGlobalController" pkg="rbe3002" type="mncl_global_controller.py" output="screen"/>
+  <!-- <node name="MNCLGlobalController" pkg="rbe3002" type="mncl_global_controller.py" output="screen"/>
   <rosparam file="$(find rbe3002)/param/mncl_global_controller_params.yaml" command="load"/>
   <node name="MNCLGlobalCostmap" pkg="rbe3002" type="mncl_global_costmap.py" output="screen"/>
   <rosparam file="$(find rbe3002)/param/mncl_global_costmap_params.yaml" command="load"/>
   <node name="MNCLGlobalPlanner" pkg="rbe3002" type="mncl_global_planner.py" output="screen"/>
   <node name="FrontierDetector" pkg="rbe3002" type="frontier_detector.py" output="screen"/>
+  <rosparam file="$(find rbe3002)/param/mncl_frontier_detector_params.yaml" command="load"/>
   <node name="FrontierFilter" pkg="rbe3002" type="frontier_filter.py" output="screen"/>
   <rosparam file="$(find rbe3002)/param/mncl_frontier_filter_params.yaml" command="load"/>
   <node name="FrontierAssigner" pkg="rbe3002" type="frontier_assigner.py" output="screen"/>
-  <rosparam file="$(find rbe3002)/param/mncl_frontier_assigner_params.yaml" command="load"/>
+  <rosparam file="$(find rbe3002)/param/mncl_frontier_assigner_params.yaml" command="load"/> -->
 
   <!-- Auto-SSH -->
-  <node unless="$(arg sim)" name="autoSSH" pkg="rbe3002" type="autoSSH.sh" output="screen"/>
+  <!-- <node unless="$(arg sim)" name="autoSSH" pkg="rbe3002" type="autoSSH.sh" output="screen"/> -->
 
 </launch>

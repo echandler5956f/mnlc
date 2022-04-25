@@ -40,7 +40,7 @@ class MNCLGlobalController(object):
         self.desired_map_completion = rospy.get_param('desired_map_completion')
         self.spacing = rospy.get_param('spacing')
         self.cmd_vel_pub = rospy.Publisher(
-            '/cmd_vel', Twist, None, queue_size=5)
+            '/cmd_vel', Twist, None, queue_size=1)
         self.odom_sub = rospy.Subscriber(
             '/odom', Odometry, self.update_odometry)
         self.imu_sub = rospy.Subscriber(
@@ -48,7 +48,7 @@ class MNCLGlobalController(object):
         self.new_commands_sub = rospy.Subscriber(
             'move_base_simple/goal', PoseStamped, self.commands, queue_size=1)
         self.new_commands_recieved_pub = rospy.Publisher(
-            "new_commands", std_msgs.msg.Bool, queue_size=3)
+            "new_commands", std_msgs.msg.Bool, queue_size=1)
         self.rtab_map_sub = rospy.Subscriber(
             '/MNCLGlobalCostmap/map', OccupancyGrid, self.update_rtabmap, queue_size=1)
         self.send_current_cell = rospy.Publisher(
@@ -62,10 +62,11 @@ class MNCLGlobalController(object):
         self.filtered_frontiers_sub = rospy.Subscriber(
             '/frontier_filter/filtered_points', PointArray, self.update_filtered_frontiers, queue_size=1)
         self.loc_or_map_mode_pub = rospy.Publisher(
-            '/MNCLGlobalController/loc_or_map_mode', std_msgs.msg.Bool, queue_size=3)
+            '/MNCLGlobalController/loc_or_map_mode', std_msgs.msg.Bool, queue_size=1)
         # if localizing send True. If mapping send False
         # Start by mapping until frontier search algorithm visits a certain percentage of cells
         self.loc_or_map_mode = False
+        self.busy = False
         self.filtered_frontiers = PointArray()
         self.visited = GridCells()
         self.rtabmap = OccupancyGrid()
@@ -217,35 +218,41 @@ class PurePersuit(MNCLGlobalController):
         self.goal_sub = rospy.Subscriber(
             '/move_base_simple/goal', PoseStamped, self.handle_goal_pose, queue_size=1)
         self.smoothed_pth_pub = rospy.Publisher(
-            '/pure_persuit/smoothed_path', Path, queue_size=5)
+            '/pure_persuit/smoothed_path', Path, queue_size=1)
         # rospy.sleep(2)
         # while self.rtabmap.header.seq > 1 and len(self.rtabmap.data) > 1:
         #     rospy.sleep(self.ctrl_invl)
         rospy.loginfo("Pure Persuit ready.")
 
     def handle_goal_pose(self, msg):
-        rospy.loginfo("Handling goal pose.")
-        time_init = rospy.get_time()
-        rospy.wait_for_service('plan_path')
-        self.is_busy_pub.publish(True)
-        self.goal_pose = msg
-        try:
-            path_srv = rospy.ServiceProxy('plan_path', GetPlan)
-            start_pose = PoseStamped()
-            start_pose.pose.position.x = self.cx
-            start_pose.pose.position.y = self.cy
-            goal_pose = msg
-            path = path_srv(start_pose, goal_pose, 1.0)
-        except rospy.ServiceException as e:
-            print("PurePersuit service call failed: %s." % e)
-        rospy.loginfo("PurePersuit service call successful.")
-        if len(path.plan.poses) - 1 > 1:
-            injected_path = self.inject_waypoints(path.plan)
-            smoothed_path = self.path_smoothing(injected_path)
-        self.smoothed_pth_pub.publish(smoothed_path)
-        self.execute_path(smoothed_path)
-        self.is_busy_pub.publish(False)
-        rospy.loginfo("Pure Persuit has reached its target.")
+        # print("recieved a message")
+        # if not self.busy and msg.header.stamp.secs + 0.125 >= rospy.Time.now().secs:
+            rospy.loginfo("Handling goal pose.")
+            time_init = rospy.get_time()
+            rospy.wait_for_service('plan_path')
+            self.is_busy_pub.publish(True)
+            self.busy = True
+            self.goal_pos = msg
+            try:
+                path_srv = rospy.ServiceProxy('plan_path', GetPlan)
+                start_pose = PoseStamped()
+                start_pose.pose.position.x = self.cx
+                start_pose.pose.position.y = self.cy
+                goal_pose = msg
+                path = path_srv(start_pose, goal_pose, 1.0)
+            except rospy.ServiceException as e:
+                print("PurePersuit service call failed: %s." % e)
+            rospy.loginfo("PurePersuit service call successful.")
+            if len(path.plan.poses) - 1 > 1:
+                injected_path = self.inject_waypoints(path.plan)
+                smoothed_path = self.path_smoothing(injected_path)
+            self.smoothed_pth_pub.publish(smoothed_path)
+            self.execute_path(smoothed_path)
+            self.is_busy_pub.publish(False)
+            self.busy = False
+            rospy.loginfo("Pure Persuit has reached its target.")
+        # else:
+        #     rospy.spin()
 
     def inject_waypoints(self, path):
         rospy.loginfo("Injecting waypoints.")

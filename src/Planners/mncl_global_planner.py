@@ -16,7 +16,7 @@ OBSTACLE_COST = 90
 
 
 class MNCLGlobalPlanner(object):
-    # always generate a plan, regardless of whether we are mapping or navigating 
+    # always generate a plan, regardless of whether we are mapping or navigating
     # (we use the global plan to navigate to frontiers while mapping)
     def __init__(self):
         rospy.init_node("MNCLGlobalPlanner")
@@ -127,7 +127,8 @@ class a_star(MNCLGlobalPlanner):
             cell_neighbors = [(x + 1, y + 1), (x + 1, y), (x + 1, y - 1), (x, y + 1),
                               (x, y - 1), (x - 1, y + 1), (x - 1, y), (x - 1, y - 1)]
             valid_neighbors = [cell for cell in cell_neighbors if ((cell[0] > 0) and (cell[0] < width) and (
-                cell[1] > 0) and (cell[1] < height) and (data[cell[0] + (cell[1] * width)] < OBSTACLE_COST))]
+                                # cell[1] > 0) and (cell[1] < height) and (data[cell[0] + (cell[1] * width)] < OBSTACLE_COST))]
+                cell[1] > 0) and (cell[1] < height) and ((data[cell[0] + (cell[1] * width)] == -1) or (data[cell[0] + (cell[1] * width)] < OBSTACLE_COST)))]
             for next in valid_neighbors:
                 new_cost = cost_so_far[current] + \
                     data[next[0] + (next[1] * width)]
