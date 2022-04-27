@@ -2,7 +2,7 @@ prefix=/usr/local
 
 Name: rbe3002
 Description: Description of rbe3002
-Version: 0.0.0
-Cflags: 
+Version: 1.0.0
+Cflags: -I${prefix}/include
 Libs: -L${prefix}/lib 
-Requires: 
+Requires: message_runtime

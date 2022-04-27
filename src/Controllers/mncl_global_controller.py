@@ -316,40 +316,6 @@ class PurePersuit(MNCLGlobalController):
         print("Smoothing path took: ", rospy.get_time() - time_init, ".")
         return smoothed_path
 
-    # def path_smoothing(self, path):
-    #     rospy.loginfo("Smoothing path.")
-    #     time_init = rospy.get_time()
-    #     npath = path
-    #     smoothed_path = Path()
-    #     smoothed_path.header.frame_id = 'map'
-    #     alpha = self.alpha
-    #     beta = self.beta
-    #     rad_tolerance = self.rad_tolerance
-    #     change = rad_tolerance
-    #     while change >= rad_tolerance:
-    #         del smoothed_path.poses[0:len(smoothed_path.poses) - 2]
-    #         change = 0.0
-    #         for i in range(1, len(npath.poses) - 1):
-    #             aux = npath.poses[i].pose.position.x
-    #             npath.poses[i].pose.position.x += alpha * (path.poses[i].pose.position.x - npath.poses[i].pose.position.x) + beta * (
-    #                 npath.poses[i - 1].pose.position.x + npath.poses[i + 1].pose.position.x - (2.0 * npath.poses[i].pose.position.x))
-    #             auy = npath.poses[i].pose.position.y
-    #             npath.poses[i].pose.position.y += alpha * (path.poses[i].pose.position.y - npath.poses[i].pose.position.y) + beta * (
-    #                 npath.poses[i - 1].pose.position.y + npath.poses[i + 1].pose.position.y - (2.0 * npath.poses[i].pose.position.y))
-    #             dx = abs(aux - npath.poses[i].pose.position.x)
-    #             dy = abs(auy - npath.poses[i].pose.position.y)
-    #             change += distance.euclidean(dy, dx)
-    #             pose = PoseStamped()
-    #             pose.header.frame_id = 'map'
-    #             pose.header.stamp = rospy.Time.now()
-    #             pose.pose.position.x = npath.poses[i].pose.position.x
-    #             pose.pose.position.y = npath.poses[i].pose.position.y
-    #             smoothed_path.poses.append(pose)
-    #     smoothed_path.header.stamp = rospy.Time.now()
-    #     print("Smoothing path took: ", rospy.get_time() - time_init, ".")
-    #     rospy.loginfo("Smoothing path.")
-    #     return smoothed_path
-
     def execute_path(self, path):
         rospy.loginfo("Executing Pure Persuit path following.")
         time_init = rospy.get_time()

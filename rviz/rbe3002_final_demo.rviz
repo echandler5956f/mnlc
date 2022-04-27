@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /DepthCloud1/Auto Size1
-        - /Marker3
       Splitter Ratio: 0.6029411554336548
     Tree Height: 1764
   - Class: rviz/Selection
@@ -260,7 +259,7 @@ Visualization Manager:
       Draw Behind: false
       Enabled: true
       Name: Map
-      Topic: /MNCLGlobalCostmap/cspace
+      Topic: /mnlc_local_costmap_opencv/cspace
       Unreliable: false
       Use Timestamp: false
       Value: true
@@ -268,12 +267,12 @@ Visualization Manager:
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: false
+      Enabled: true
       Name: Map
-      Topic: /rtabmap/grid_map
+      Topic: /map
       Unreliable: false
       Use Timestamp: false
-      Value: false
+      Value: true
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -388,7 +387,7 @@ Visualization Manager:
       Marker Topic: /OpenCVFrontierDetector/shapes
       Name: Marker
       Namespaces:
-        markers: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -396,12 +395,50 @@ Visualization Manager:
       Marker Topic: /OpenCVFrontierAssigner/goal_points
       Name: Marker
       Namespaces:
-        goal_markers: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /frontier_filter/filtered_points_markers
+      Name: Marker
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Alpha: 1
+      Class: rviz/PointStamped
+      Color: 204; 41; 204
+      Enabled: true
+      History Length: 10
+      Name: PointStamped
+      Radius: 0.20000000298023224
+      Topic: /bp
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Class: rviz/PointStamped
+      Color: 170; 170; 0
+      Enabled: true
+      History Length: 100
+      Name: PointStamped
+      Radius: 0.20000000298023224
+      Topic: /OpenCVFrontierDetector/detected_points
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Class: rviz/PointStamped
+      Color: 0; 170; 127
+      Enabled: true
+      History Length: 100
+      Name: PointStamped
+      Radius: 0.20000000298023224
+      Topic: /mnlc_global_rrt_detector/detected_points
+      Unreliable: false
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /mnlc_global_rrt_detector/shapes
       Name: Marker
       Namespaces:
         {}
@@ -444,11 +481,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 452.566650390625
+      Scale: 514.5372314453125
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 1.4619946479797363
-      Y: -0.5718481540679932
+      X: 0.9909754395484924
+      Y: -0.30074575543403625
     Saved: ~
 Window Geometry:
   Camera:

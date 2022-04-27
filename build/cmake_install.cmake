@@ -129,7 +129,69 @@ file(INSTALL DESTINATION "/usr/local" TYPE FILE FILES "/home/quant/rbe3002_ws/sr
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/rbe3002/msg" TYPE FILE FILES
+    "/home/quant/rbe3002_ws/src/rbe3002/msg/PointArray.msg"
+    "/home/quant/rbe3002_ws/src/rbe3002/msg/Pose2d.msg"
+    )
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/rbe3002/srv" TYPE FILE FILES
+    "/home/quant/rbe3002_ws/src/rbe3002/srv/cspace.srv"
+    "/home/quant/rbe3002_ws/src/rbe3002/srv/bounding_points.srv"
+    )
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/rbe3002/action" TYPE FILE FILES "/home/quant/rbe3002_ws/src/rbe3002/action/exploration.action")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/rbe3002/msg" TYPE FILE FILES
+    "/home/quant/rbe3002_ws/src/rbe3002/build/devel/share/rbe3002/msg/explorationAction.msg"
+    "/home/quant/rbe3002_ws/src/rbe3002/build/devel/share/rbe3002/msg/explorationActionGoal.msg"
+    "/home/quant/rbe3002_ws/src/rbe3002/build/devel/share/rbe3002/msg/explorationActionResult.msg"
+    "/home/quant/rbe3002_ws/src/rbe3002/build/devel/share/rbe3002/msg/explorationActionFeedback.msg"
+    "/home/quant/rbe3002_ws/src/rbe3002/build/devel/share/rbe3002/msg/explorationGoal.msg"
+    "/home/quant/rbe3002_ws/src/rbe3002/build/devel/share/rbe3002/msg/explorationResult.msg"
+    "/home/quant/rbe3002_ws/src/rbe3002/build/devel/share/rbe3002/msg/explorationFeedback.msg"
+    )
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/rbe3002/cmake" TYPE FILE FILES "/home/quant/rbe3002_ws/src/rbe3002/build/catkin_generated/installspace/rbe3002-msg-paths.cmake")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include" TYPE DIRECTORY FILES "/home/quant/rbe3002_ws/src/rbe3002/build/devel/include/rbe3002")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/roseus/ros" TYPE DIRECTORY FILES "/home/quant/rbe3002_ws/src/rbe3002/build/devel/share/roseus/ros/rbe3002")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/common-lisp/ros" TYPE DIRECTORY FILES "/home/quant/rbe3002_ws/src/rbe3002/build/devel/share/common-lisp/ros/rbe3002")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/gennodejs/ros" TYPE DIRECTORY FILES "/home/quant/rbe3002_ws/src/rbe3002/build/devel/share/gennodejs/ros/rbe3002")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  execute_process(COMMAND "/usr/bin/python2" -m compileall "/home/quant/rbe3002_ws/src/rbe3002/build/devel/lib/python2.7/dist-packages/rbe3002")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python2.7/dist-packages" TYPE DIRECTORY FILES "/home/quant/rbe3002_ws/src/rbe3002/build/devel/lib/python2.7/dist-packages/rbe3002")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" TYPE FILE FILES "/home/quant/rbe3002_ws/src/rbe3002/build/catkin_generated/installspace/rbe3002.pc")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/rbe3002/cmake" TYPE FILE FILES "/home/quant/rbe3002_ws/src/rbe3002/build/catkin_generated/installspace/rbe3002-msg-extras.cmake")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)

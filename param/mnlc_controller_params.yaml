@@ -1,0 +1,6 @@
+ctrl_invl: 0.01  # [s] control loop interval
+obstacle_cost: 90 # grid cost to be considered an obstacle
+nodes_launched: 8 # how many nodes were launched at the start
+non_exploring_nodes: 4 # number of non-essential nodes
+timeout: 1.0 # [s] standard service timeout limit
+exploration_scale_factor: 0.25 # factor to multiply the exploring bounds by with respect to the base map area
