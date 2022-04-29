@@ -56,7 +56,7 @@ class mnlc_global_opencv_frontier_detector():
         self.cspace = None
         # t = rospy.Timer(self.ctrl_invl, self.update_map())
         self.latest_map = OccupancyGrid()
-        rtab_map_pub = rospy.Subscriber('/latest_map', OccupancyGrid, self.update_map, queue_size=1)
+        rtab_map_sub = rospy.Subscriber('/latest_map', OccupancyGrid, self.update_map, queue_size=1)
 
 
     def initialize_marker(self, map):
