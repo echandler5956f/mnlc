@@ -122,6 +122,7 @@ class mnlc_local_costmap_opencv():
                     rospy.logerr("Tf exception")
                     self.error_handler()
                     return
+            time_init = rospy.get_time()
             x = int(math.floor((trans[0] - gox) / global_resolution))
             y = int(math.floor((trans[1] - goy) / global_resolution))
             immediate_vincinity = []
@@ -159,9 +160,9 @@ class mnlc_local_costmap_opencv():
             cspace.header.stamp = rospy.Time.now()
             cspace.data = dataC
             self.c_space_pub.publish(cspace)
-            ctrl_rate.sleep()
+            # ctrl_rate.sleep()
             time_end = rospy.get_time()
-            # print("Calculating CSpace took: ", time_end - time_init, ".")
+            # print("Calculating Local CSpace took: ", time_end - time_init, ".")
 
     def error_handler(self):
         self.error = True

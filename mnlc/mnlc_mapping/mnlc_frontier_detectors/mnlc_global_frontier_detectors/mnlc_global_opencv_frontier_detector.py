@@ -30,9 +30,9 @@ class mnlc_global_opencv_frontier_detector():
         rospy.init_node("mnlc_global_opencv_frontier_detector",
                         disable_signals=True)
         self.initialize_params()
-        rospy.sleep(self.timeout * 5)
-        self.safe_start()
+        rospy.sleep(self.timeout * 7)
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
+        self.safe_start()
         rospy.loginfo("mnlc_global_opencv_frontier_detector node ready.")
 
     def initialize_params(self):
@@ -54,6 +54,10 @@ class mnlc_global_opencv_frontier_detector():
         self.visited = []
         self.points = Marker()
         self.cspace = None
+        # t = rospy.Timer(self.ctrl_invl, self.update_map())
+        self.latest_map = OccupancyGrid()
+        rtab_map_pub = rospy.Subscriber('/latest_map', OccupancyGrid, self.update_map, queue_size=1)
+
 
     def initialize_marker(self, map):
         self.points.header.frame_id = map.header.frame_id
@@ -112,6 +116,7 @@ class mnlc_global_opencv_frontier_detector():
             '/OpenCVFrontierDetector/detected_points', PointStamped, queue_size=10)
         self.shapes_pub = rospy.Publisher(
             'OpenCVFrontierDetector/shapes', Marker, queue_size=1)
+        self.detect_frontiers()
 
     def detect_frontiers(self):
         exploration_goal = PointStamped()
@@ -191,8 +196,9 @@ class mnlc_global_opencv_frontier_detector():
             "Mapping complete. Node is now uneeded. Shutting down mnlc_global_opencv_frontier_detector.")
         sys.exit(0)
 
-    def update_map(self):
-        self.latest_map = cv2.imread(r'/home/quant/.ros/rtabmap.pgm', -1)
+    def update_map(self, map):
+        self.latest_map = map
+        # self.latest_map = cv2.imread(r'/home/quant/.ros/global_costmap.pgm', -1)
 
     def error_handler(self):
         self.error = True
