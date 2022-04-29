@@ -1,0 +1,4 @@
+obstacle_cost: 90 # grid cost to be considered an obstacle
+ctrl_invl: 0.01  # [s] control loop interval
+timeout: 1.0 # [s] standard service timeout limit
+eta: 1.0 # how greedy the search is

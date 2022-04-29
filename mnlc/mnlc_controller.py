@@ -34,8 +34,8 @@ class mnlc_controller(sme.GraphMachine):
         rospy.sleep(self.timeout * 5)
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
         rospy.loginfo("mnlc_controller node ready.")
-        first_goal = self.safe_start_phase_1()
-        self.set_phase_1_goal(first_goal)
+        self.safe_start_phase_1()
+        self.set_phase_1_goal()
         self.explore_map()
 
     def initialize_params(self):
@@ -48,7 +48,7 @@ class mnlc_controller(sme.GraphMachine):
             'non_exploring_nodes', 5) - 1  # again don't count this node
         self.timeout = rospy.get_param('timeout', 1.0)  # seconds
         self.exploration_scale_factor = rospy.get_param(
-            'exploration_scale_factor', 0.25)
+            'exploration_scale_factor', 1.0)
         self.machine = sme.GraphMachine.__init__(self, states=self.states, transitions=self.transitions,
                                                  initial=self.states[0], send_event=True, queued=True, ignore_invalid_triggers=True)
         self.initial_map_metadata = OccupancyGrid()
@@ -57,8 +57,10 @@ class mnlc_controller(sme.GraphMachine):
         self.odom_br = tf.TransformBroadcaster()
         self.odom_sub = rospy.Subscriber(
             '/odom', Odometry, self.update_odom_tf)
-        self.state_machine = rospy.Publisher('/mnlc_state_machine', std_msgs.msg.Int8, queue_size=1)
-        self.b_points = rospy.Publisher(name='/bp', data_class=PointStamped, latch=True, queue_size=50)
+        self.state_machine = rospy.Publisher(
+            '/mnlc_state_machine', std_msgs.msg.Int8, queue_size=1)
+        self.bounding_points_pub = rospy.Publisher(
+            name='/bounding_points', data_class=PointStamped, latch=False, queue_size=5)
         self.nodes_responded = 0
 
     def safe_start_phase_1(self):
@@ -90,26 +92,26 @@ class mnlc_controller(sme.GraphMachine):
             '/mnlc_local_costmap_opencv/cspace', OccupancyGrid, self.update_local_costmap, queue_size=1)
         self.global_c_space_sub = rospy.Subscriber(
             '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_global_costmap, queue_size=1)
-        cmap = self.initial_map_metadata  # placeholder
-        if cmap.info.resolution == 0:
-            rospy.logerr(
-                "Local CSpace map has zero resolution. Exiting...")
-            self.error_handler()
-            return
-        cdata = cmap
-        np_data = np.array(cdata.data)
-        lowest_cost_indices = filter(lambda data: (
-            data != -1 and data < self.obstacle_cost / 2.5), np_data)
-        if len(lowest_cost_indices) > 1:
-            lowest_cost_index = random.choice(lowest_cost_indices)
-        # randomly choose a point that is within a certain range away from the obstacle cost to start our RRT search from
-        else:
-            rospy.logerr(
-                "The lowest cost grid in the local costmap is greater than the obstacle cost! Exiting...")
-            self.error_handler()
-            return
-        y = (int)(lowest_cost_index / cdata.info.width)
-        x = lowest_cost_index - (y * cdata.info.width)
+        # cmap = self.initial_map_metadata  # placeholder
+        # if cmap.info.resolution == 0:
+        #     rospy.logerr(
+        #         "Local CSpace map has zero resolution. Exiting...")
+        #     self.error_handler()
+        #     return
+        # cdata = cmap
+        # np_data = np.array(cdata.data)
+        # lowest_cost_indices = filter(lambda data: (
+        #     data != -1 and data < self.obstacle_cost / 2.5), np_data)
+        # if len(lowest_cost_indices) > 1:
+        #     lowest_cost_index = random.choice(lowest_cost_indices)
+        # # randomly choose a point that is within a certain range away from the obstacle cost to start our RRT search from
+        # else:
+        #     rospy.logerr(
+        #         "The lowest cost grid in the local costmap is greater than the obstacle cost! Exiting...")
+        #     self.error_handler()
+        #     return
+        # y = (int)(lowest_cost_index / cdata.info.width)
+        # x = lowest_cost_index - (y * cdata.info.width)
         rospy.Service('/begin_phase1', std_srvs.srv.Empty,
                       self.count_operational_nodes)
         timeout_s = rospy.get_time()
@@ -124,54 +126,49 @@ class mnlc_controller(sme.GraphMachine):
         self.exploring_state()
         self.state_machine.publish(1)
         rospy.loginfo("Error checks complete. Getting goal for Phase 1.")
-        return (x, y)
+        # return (x, y)
 
-    def set_phase_1_goal(self, first_goal):
+    def set_phase_1_goal(self):
         self.phase1_client = actionlib.SimpleActionClient(
             '/phase1', rbem.explorationAction)
         self.phase1_client.wait_for_server(
             timeout=rospy.Duration(self.timeout))
         rest = Twist()
         map = self.initial_map_metadata
-        p1, p2, p3, p4, p5 = PointStamped(), PointStamped(
+        # print(map.info)
+        p0, p1, p2, p3, p4 = PointStamped(), PointStamped(
         ), PointStamped(), PointStamped(), PointStamped()
-        p1.header.frame_id = p2.header.frame_id = p3.header.frame_id = p4.header.frame_id = p5.header.frame_id = '/map'
-        p1.header.stamp = p2.header.stamp = p3.header.stamp = p4.header.stamp = p4.header.stamp = rospy.Time.now()
-        p1.point.x = -(((map.info.width/2) * map.info.resolution) +
-                       map.info.origin.position.x + (map.info.resolution/2)) * self.exploration_scale_factor
-        p1.point.y = (((map.info.height/2) * map.info.resolution) +
-                      map.info.origin.position.y + (map.info.resolution/2)) * self.exploration_scale_factor
-        p2.point.x = (((map.info.width/2) * map.info.resolution) + map.info.origin.position.x +
-                      (map.info.resolution/2)) * self.exploration_scale_factor
-        p2.point.y = (((map.info.height/2) * map.info.resolution) +
-                      map.info.origin.position.y + (map.info.resolution/2)) * self.exploration_scale_factor
-        p3.point.x = (((map.info.width/2) * map.info.resolution) + map.info.origin.position.x +
-                      (map.info.resolution/2)) * self.exploration_scale_factor
-        p3.point.y = -(((map.info.height/2) * map.info.resolution) +
-                       map.info.origin.position.y + (map.info.resolution/2)) * self.exploration_scale_factor
-        p4.point.x = -(((map.info.width/2) * map.info.resolution) +
-                       map.info.origin.position.x + (map.info.resolution/2)) * self.exploration_scale_factor
-        p4.point.y = -(((map.info.height/2) * map.info.resolution) +
-                       map.info.origin.position.y + (map.info.resolution/2)) * self.exploration_scale_factor
-        p5.point.x = first_goal[0]
-        p5.point.y = first_goal[1]
+        p0.header.frame_id = p1.header.frame_id = p2.header.frame_id = p3.header.frame_id = p4.header.frame_id = '/map'
+        p0.header.stamp = p1.header.stamp = p2.header.stamp = p3.header.stamp = p4.header.stamp = rospy.Time.now()
+        p0.point.x = -(((map.info.width) * map.info.resolution) + map.info.origin.position.x + (map.info.resolution/2)) * self.exploration_scale_factor
+        p0.point.y = (((map.info.height) * map.info.resolution) + map.info.origin.position.y + (map.info.resolution/2)) * self.exploration_scale_factor
+        p1.point.x = (((map.info.width) * map.info.resolution) + map.info.origin.position.x + (map.info.resolution/2)) * self.exploration_scale_factor
+        p1.point.y = (((map.info.height) * map.info.resolution) + map.info.origin.position.y + (map.info.resolution/2)) * self.exploration_scale_factor
+        p2.point.x = (((map.info.width) * map.info.resolution) + map.info.origin.position.x + (map.info.resolution/2)) * self.exploration_scale_factor
+        p2.point.y = -(((map.info.height) * map.info.resolution) + map.info.origin.position.y + (map.info.resolution/2)) * self.exploration_scale_factor
+        p3.point.x = -(((map.info.width) * map.info.resolution) + map.info.origin.position.x + (map.info.resolution/2)) * self.exploration_scale_factor
+        p3.point.y = -(((map.info.height) * map.info.resolution) + map.info.origin.position.y + (map.info.resolution/2)) * self.exploration_scale_factor
+        p4.point.x = self.cx
+        p4.point.y = self.cy
         bounding_points = PointArray()
-        bounding_points.points.append(p5)
         bounding_points.points.append(p4)
         bounding_points.points.append(p3)
         bounding_points.points.append(p2)
         bounding_points.points.append(p1)
-        # bounding_points.points = [p1, p2, p3, p4, p5]
+        bounding_points.points.append(p0)
         self.phase1_goal = rbem.explorationGoal()
         self.phase1_goal.velocity = rest
         self.phase1_goal.points = bounding_points
-        # b = rospy.Publisher('/bounding_points', PointArray, queue_size=10)
-        self.b_points.publish(p5)
-        self.b_points.publish(p4)
-        self.b_points.publish(p3)
-        self.b_points.publish(p2)
-        self.b_points.publish(p1)
-        # print("these are the bounding points being SENT:", bounding_points.points)
+        self.bounding_points_pub.publish(p0)
+        # print(p4)
+        self.bounding_points_pub.publish(p1)
+        # print(p3)
+        self.bounding_points_pub.publish(p2)
+        # print(p2)
+        self.bounding_points_pub.publish(p3)
+        # print(p1)
+        self.bounding_points_pub.publish(p4)
+        # print(p0)
         self.phase1_client.send_goal(
             goal=self.phase1_goal, done_cb=self.re_init, active_cb=self.recovery_alert)
 
@@ -188,6 +185,8 @@ class mnlc_controller(sme.GraphMachine):
             rospy.logwarn("Receiving a local costmap with 0 resolution!")
 
     def update_odom_tf(self, msg):
+        self.cx = msg.pose.pose.position.x
+        self.cy = msg.pose.pose.position.y
         self.odom_br.sendTransform(
             (msg.pose.pose.position.x, msg.pose.pose.position.y,
              msg.pose.pose.position.z),

@@ -345,10 +345,10 @@ class mnlc_pure_pursuit():
         while cond == 0:
             try:
                 (trans, rot) = self.listener.lookupTransform(
-                    "odom", "base_footprint", rospy.Time(0))
+                    '/odom', '/base_footprint', rospy.Time(0))
                 cond = 1
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                cond == 0
+                cond = 0
         self.position = np.array([trans[0], trans[1]])
         return self.position
 

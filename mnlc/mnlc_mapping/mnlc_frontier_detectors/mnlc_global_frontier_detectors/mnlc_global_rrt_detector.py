@@ -1,22 +1,17 @@
 #!/usr/bin/env python
 
 from geometry_msgs.msg import PointStamped, Point
-from nav_msgs.msg import OccupancyGrid, GridCells
 from visualization_msgs.msg import Marker
-from rbe3002.msg import PointArray
+from nav_msgs.msg import OccupancyGrid
 from nav_msgs.srv import GetMap
-import move_base_msgs.msg as mb
 import std_srvs.srv
 import std_msgs.msg
 import numpy as np
-import actionlib
 import roslib
 import rospy
 import math
 import copy
 import sys
-import cv2
-import tf
 
 roslib.load_manifest('rbe3002')
 
@@ -24,9 +19,10 @@ roslib.load_manifest('rbe3002')
 class mnlc_global_rrt_detector():
 
     def __init__(self):
+        self.state = 1
         self.error = False
         rospy.loginfo("Initializing mnlc_global_rrt_detector.")
-        rospy.init_node("mnlc_global_rrt_detector")
+        rospy.init_node("mnlc_global_rrt_detector", anonymous=True)
         self.initialize_params()
         rospy.sleep(self.timeout * 5)
         self.safe_start()
@@ -38,8 +34,7 @@ class mnlc_global_rrt_detector():
     def initialize_params(self):
         self.bounding_points = []
         self.bounding_point_sub = rospy.Subscriber(
-            name='/bp', data_class=PointStamped, callback=self.set_bounding_points, queue_size=50)
-        print('hello')
+            name='/bounding_points', data_class=PointStamped, callback=self.set_bounding_points, queue_size=5)
         # grid cost to be considered an obstacle
         self.obstacle_cost = rospy.get_param('obstacle_cost', 90)
         self.ctrl_invl = rospy.get_param(
@@ -47,7 +42,7 @@ class mnlc_global_rrt_detector():
         self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
         # [s] standard service timeout limit
         self.timeout = rospy.get_param('timeout', 1.0)
-        self.eta = rospy.get_param('eta', 0.5)  # how greedy the search is
+        self.eta = rospy.get_param('eta', 15.0)  # how greedy the search is
         self.latest_map = OccupancyGrid()
 
     def safe_start(self):
@@ -80,189 +75,134 @@ class mnlc_global_rrt_detector():
         self.rtab_map_sub = rospy.Subscriber(
             '/latest_map', OccupancyGrid, self.update_map, queue_size=1)
         self.detected_points_pub = rospy.Publisher(
-            '/mnlc_global_rrt_detector/detected_points', PointStamped, queue_size=100)
+            '/mnlc_global_rrt_detector/detected_points', PointStamped, queue_size=10)
         self.shapes_pub = rospy.Publisher(
-            'mnlc_global_rrt_detector/shapes', Marker, queue_size=50)
+            'mnlc_global_rrt_detector/shapes', Marker, queue_size=10)
         self.state_machine = rospy.Subscriber(
             'mnlc_state_machine', std_msgs.msg.Int8, self.update_state_machine, queue_size=1)
 
     def detect_frontiers(self):
-        points = Marker()
-        points.points.append(self.bounding_points[4].point)
-        points.points.append(self.bounding_points[3].point)
-        points.points.append(self.bounding_points[2].point)
-        points.points.append(self.bounding_points[1].point)
-        points.points.append(self.bounding_points[0].point)
-        line = Marker()
-        points.header.frame_id = self.map_metadata.header.frame_id
-        line.header.frame_id = self.map_metadata.header.frame_id
-        points.header.stamp = rospy.Time(0)
-        line.header.stamp = rospy.Time(0)
+        points, line = Marker(), Marker()
+        points.points = self.bounding_points
+        points.header.frame_id, line.header.frame_id = self.map_metadata.header.frame_id, self.map_metadata.header.frame_id
+        points.header.stamp, line.header.stamp = rospy.Time(0), rospy.Time(0)
         points.ns = line.ns = "markers"
-        points.id = 0
-        line.id = 1
-        points.type = points.POINTS
-        line.type = line.LINE_LIST
-        points.action = points.ADD
-        line.action = line.ADD
-        points.pose.orientation.w = 1.0
-        line.pose.orientation.w = 1.0
-        line.scale.x = 0.03
-        line.scale.y = 0.03
-        points.scale.x = 0.3
-        points.scale.y = 0.3
-        line.color.r = 9.0/255.0
-        line.color.g = 91.0/255.0
-        line.color.b = 236.0/255.0
-        points.color.r = 255.0/255.0
-        points.color.g = 0.0/255.0
-        points.color.b = 0.0/255.0
-        points.color.a = 1.0
-        line.color.a = 1.0
-        points.lifetime = rospy.Duration()
-        line.lifetime = rospy.Duration()
-        temp1 = []
-        temp1.append(points.points[0].x)
-        temp1.append(points.points[0].y)
-        temp2 = []
-        temp2.append(points.points[2].x)
-        temp2.append(points.points[0].y)
-        ix = math.sqrt(pow(temp1[0] - temp2[0], 2) +
-                       pow(temp1[1] - temp2[1], 2))
-        temp1 = []
-        temp2 = []
-        temp1.append(points.points[0].x)
-        temp1.append(points.points[0].y)
-        temp2.append(points.points[0].x)
-        temp2.append(points.points[2].y)
-        iy = math.sqrt(pow(temp1[0] - temp2[0], 2) +
-                       pow(temp1[1] - temp2[1], 2))
-        temp1 = []
-        temp2 = []
-        self.sx = (points.points[0].x + points.points[2].x) / 2
-        self.sy = (points.points[0].y + points.points[2].y) / 2
+        points.id, line.id = 0, 1
+        points.type, line.type = points.POINTS, line.LINE_LIST
+        points.action, line.action = points.ADD, line.ADD
+        points.pose.orientation.w, line.pose.orientation.w = 1.0, 1.0
+        line.scale.x, line.scale.y = 0.01, 0.01
+        points.scale.x, points.scale.y = 0.1, 0.1
+        points.color.r, points.color.g, points.color.b, points.color.a = 153.0 / \
+            255.0, 0.0/255.0, 0.0/255.0, 1.0
+        line.color.r, line.color.g, line.color.b, line.color.a = 163.0 / \
+            255.0, 124.0/255.0, 193.0/255.0, 1.0
+        points.lifetime, line.lifetime = rospy.Duration(), rospy.Duration()
+        ix = math.sqrt(pow(points.points[0].x - points.points[2].x, 2) +
+                       pow(points.points[0].y - points.points[0].y, 2))
+        iy = math.sqrt(pow(points.points[0].x - points.points[0].x, 2) +
+                       pow(points.points[0].y - points.points[2].y, 2))
+        sx = (points.points[0].x + points.points[2].x) * 0.5
+        sy = (points.points[0].y + points.points[2].y) * 0.5
         tr = Point()
         tr = points.points[4]
-        u = []
-        cx = []
-        cx.append(tr.x)
-        cx.append(tr.y)
-        u.append(cx)
-        self.xn = []
+        v = [[tr.x, tr.y]]
         points.points = []
-        self.shapes_pub.publish(points)
+        rnew = []
         eta = self.eta
-        while 1:
-            point = PointStamped()
-            point.header.frame_id = '/map'
-            point.header.stamp = rospy.Time.now()
-            _rand = []
-            xrt = (np.random.random() * ix) - (ix * 0.5) + self.sx
-            yrt = (np.random.random() * iy) - (iy * 0.5) + self.sy
-            _rand.append(xrt)
-            _rand.append(yrt)
-            x_nearest = self.find_nearest(u, _rand)
-            # if math.sqrt(pow(x_nearest[1] - _rand[1], 2) + pow(x_nearest[0] - _rand[0], 2)) <= self.eta:
-            #     self.xn = _rand
-            # else:
-            #     m = (_rand[1] - x_nearest[1]) / (_rand[0] - x_nearest[0])
-            #     if _rand[0] - x_nearest[0] < 0.0:
-            #         sign = -1.0
-            #     else:
-            #         sign = 1.0
-            #     self.xn.append(
-            #         sign * (math.sqrt(pow(self.eta, 2) / (pow(m, 2) + 1))) + x_nearest[0])
-            #     self.xn.append(m * (self.xn[0] - x_nearest[0]) + x_nearest[1])
-            #     if _rand[0] == x_nearest[0]:
-            #         self.xn[0] = x_nearest[0]
-            #         self.xn[1] = x_nearest[1] + self.eta
-            self.xn = self.clear(x_nearest, _rand, eta)
-            obs_free = self.check_obs(self.latest_map, x_nearest, self.xn)
+        point = PointStamped()
+        point.header.frame_id = self.latest_map.header.frame_id
+        p = Point()
+        res = self.latest_map.info.resolution
+        ox = self.latest_map.info.origin.position.x
+        obstacle_cost = self.obstacle_cost
+        while self.state != 2 and not rospy.is_shutdown() and self.error == False:
+            data = self.latest_map.data
+            width = self.latest_map.info.width
+            rand = [(np.random.random() * ix) - (ix * 0.5) + sx,
+                    (np.random.random() * iy) - (iy * 0.5) + sy]
+            voi = v[0]
+            min = math.sqrt(pow(voi[1] - rand[1], 2) +
+                            pow(voi[0] - rand[0], 2))
+            min_index = 0
+            temp = 0.0
+            for i in range(len(v)):
+                vi = v[i]
+                temp = math.sqrt(pow(vi[1] - rand[1], 2) +
+                                 pow(vi[0] - rand[0], 2))
+                if temp <= min:
+                    min = temp
+                    min_index = i
+            near = v[min_index]
+            new = []
+            if math.sqrt(pow(near[1] - rand[1], 2) + pow(near[0] - rand[0], 2)) <= eta:
+                new = rand
+            else:
+                m = (rand[1] - near[1]) / (rand[0] - near[0])
+                sign = -1.0 if rand[0] - near[0] < 0.0 else 1.0
+                new.append(
+                    (sign * (math.sqrt(pow(eta, 2)) / ((pow(m, 2)) + 1))) + near[0])
+                new.append(m * (new[0] - near[0]) + near[1])
+                if rand[0] == near[0]:
+                    new[0] = near[0]
+                    new[1] = near[1] + eta
+            rnew = new
+            rez = res * 0.2
+            norm = math.sqrt(pow(rnew[1] - near[1], 2) +
+                             pow(rnew[0] - near[0], 2))
+            steps = int(math.ceil(norm) / rez)
+            xi = near
+            obstacle = 0
+            unkown = 0
+            for step in range(steps):
+                xn = rnew
+                new = []
+                if math.sqrt(pow(xi[1] - xn[1], 2) + pow(xi[0] - xn[0], 2)) <= rez:
+                    new = xn
+                else:
+                    m = (xn[1] - xi[1]) / (xn[0] - xi[0])
+                    sign = -1.0 if xn[0] - xi[0] < 0.0 else 1.0
+                    new.append(
+                        (sign * (math.sqrt(pow(rez, 2)) / ((pow(m, 2)) + 1))) + xi[0])
+                    new.append(m * (new[0] - xi[0]) + xi[1])
+                    if xn[0] == xi[0]:
+                        new[0] = xi[0]
+                        new[1] = xi[1] + rez
+                xi = new
+                c_data = data[int(
+                    (math.floor((xi[1] - ox) / res) * width) + (math.floor((xi[0] - ox) / res)))]
+                if c_data >= obstacle_cost:
+                    obstacle = 1
+                if c_data == -1:
+                    unkown = 1
+                    break
+            rnew = xi
+            obs_free = 1 if obstacle != 1 and unkown != 1 else 0 if obstacle == 1 else - \
+                1 if unkown == 1 else 0
             if obs_free == -1:
-                point.point.x = self.xn[0]
-                point.point.y = self.xn[1]
-                point.point.z = 0.0
+                point.header.stamp = rospy.Time(0)
+                point.point.x, point.point.y, point.point.z = rnew[0], rnew[1], 0.0
                 points.points.append(point.point)
                 self.shapes_pub.publish(points)
                 self.detected_points_pub.publish(point)
                 points.points = []
             elif obs_free == 1:
-                u.append(self.xn)
-                point.point.x = self.xn[0]
-                point.point.y = self.xn[1]
-                point.point.z = 0.0
-                line.points.append(point.point)
-                point.point.x = x_nearest[0]
-                point.point.y = x_nearest[1]
-                point.point.z = 0
-                line.points.append(point.point)
+                v.append(copy.copy(rnew))
+                p.x, p.y, p.z = rnew[0], rnew[1], 0.0
+                line.points.append(copy.copy(p))
+                p.x, p.y, p.z = near[0], near[1], 0.0
+                line.points.append(copy.copy(p))
             self.shapes_pub.publish(line)
-            self.ctrl_rate.sleep()
-
-    def find_nearest(self, u, x):
-        min = math.sqrt(pow(u[0][1] - x[1], 2) + pow(u[0][0] - x[0], 2))
-        min_index = 0
-        for i in range(len(u)):
-            temp = math.sqrt(pow(u[i][1] - x[1], 2) +
-                             pow(u[i][0] - x[0], 2))
-            if temp <= min:
-                min = temp
-                min_index = i
-        return u[min_index]
-
-    def clear(self, x_nearest, _rand, eta):
-        x_new = []
-        if math.sqrt(pow(x_nearest[1] - _rand[1], 2) + pow(x_nearest[0] - _rand[0], 2)) <= eta:
-            x_new = _rand
-        else:
-            m = (_rand[1] - x_nearest[1]) / (_rand[0] - x_nearest[0])
-            if _rand[0] - x_nearest[0] < 0.0:
-                sign = -1.0
-            else:
-                sign = 1.0
-            x_new.append(
-            sign * (math.sqrt(pow(eta, 2) / (pow(m, 2) + 1)) + x_nearest[0]))
-            x_new.append(m * (x_new[0] - x_nearest[0]) + x_nearest[1])
-            if _rand[0] == x_nearest[0]:
-                x_new[0] = x_nearest[0]
-                x_new[1] = x_nearest[1] + eta
-        return x_new
-
-    def check_obs(self, latest_map, x_near, x_new):
-        eta = self.map_metadata.info.resolution * 0.2
-        steps = int(math.ceil(math.sqrt(pow(x_new[1] - x_near[1], 2) +
-                                        pow(x_new[0] - x_near[0], 2)) / (eta)))
-        xi = x_near
-        obstacle = 0
-        unkown = 0
-        for i in range(steps):
-            xi = self.clear(xi, x_new, eta)
-            data = latest_map.data[int(math.floor(((xi[1]-self.sy)/latest_map.info.resolution) *
-                                       latest_map.info.width)+(math.floor((xi[0]-self.sx)/latest_map.info.resolution)))]
-            if data == 100:
-                obstacle = 1
-            if data == -1:
-                unkown = 1
-                break
-        out = 0
-        self.xn = xi
-        if (unkown == 1):
-          out = -1
-        if (obstacle == 1):
-          out = 0
-        if (obstacle != 1 and unkown != 1):
-          out = 1
-        return out
-        # return -1 if unkown == 1 else 0 if obstacle == 1 else 1 if obstacle != 1 and unkown != 1 else 0
 
     def update_state_machine(self, state):
+        self.state = state
         if state == 2:
             rospy.signal_shutdown(
                 "Mapping complete. Node is now uneeded. Shutting down mnlc_global_rrt_detector.")
             sys.exit(0)
 
     def set_bounding_points(self, msg):
-        self.bounding_points.append(msg)
+        self.bounding_points.append(copy.copy(msg.point))
 
     def update_map(self, map):
         self.latest_map = map
