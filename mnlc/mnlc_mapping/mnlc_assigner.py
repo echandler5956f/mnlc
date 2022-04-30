@@ -17,10 +17,11 @@ roslib.load_manifest('rbe3002')
 class mnlc_assigner():
 
     def __init__(self):
+        self.error = False
         rospy.loginfo("Initializing mnlc_assigner.")
         rospy.init_node("mnlc_assigner")
         self.initialize_params()
-        rospy.sleep(self.timeout * 7)
+        rospy.sleep(self.timeout * 15)
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
         rospy.loginfo("mnlc_assigner node ready.")
         self.safe_start()
@@ -33,26 +34,29 @@ class mnlc_assigner():
         self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
         # [s] standard service timeout limit
         self.timeout = rospy.get_param('timeout', 1.0)
-        self.info_radius = rospy.get_param('info_radius', 7.0)
+        self.info_radius = rospy.get_param('info_radius', 3.5)
         self.info_multiplier = rospy.get_param('info_multiplier', 3.0)
-        self.hysteresis_radius = rospy.get_param('hysteresis_radius', 7.0)
-        self.hysteresis_gain = rospy.get_param('hysteresis_gain', 3.0)
+        self.hysteresis_radius = rospy.get_param('hysteresis_radius', 3.5)
+        self.hysteresis_gain = rospy.get_param('hysteresis_gain', 2.0)
+        self.filter_clear = rospy.get_param('filter_clear', 0.01)
+        self.filter_limit = rospy.get_param('filter_limit', 10)
         self.marker = Marker()
         self.latest_map = OccupancyGrid()
         self.filtered_frontiers = []
         self.pose2d = Pose2d()
         self.points = Marker()
+        self.next_time = rospy.get_time()
         self.filtered_frontiers_sub = rospy.Subscriber(
             '/frontier_filter/filtered_points', PointArray, self.update_filtered_frontiers, queue_size=10)
         self.rtab_map_sub = rospy.Subscriber('/latest_map', OccupancyGrid, self.update_map, queue_size=1)
         self.assigned_points_pub = rospy.Publisher(
-            '/assigned_frontiers', Marker, queue_size=1)
+            '/assigned_frontiers', Marker, queue_size=10)
 
     def initialize_marker(self, map):
         self.points.header.frame_id = map.header.frame_id
         self.points.header.stamp = rospy.Time.now()
         self.points.ns = "goal_markers"
-        self.points.id = 0
+        self.points.id = 6
         self.points.type = Marker.POINTS
         self.points.action = Marker.ADD
         self.points.pose.orientation.w = 1.0
@@ -60,7 +64,6 @@ class mnlc_assigner():
         (self.points.color.r, self.points.color.g, self.points.color.b,
         self.points.color.a) = (0.0/255.0, 255.0/255.0, 136.0/255.0, 1)
         self.points.lifetime == rospy.Duration()
-        self.first_map = False
 
     def safe_start(self):
         rospy.wait_for_service(
@@ -127,6 +130,7 @@ class mnlc_assigner():
                 exploration_goal.point.y = goal_pose.pose.position.y
                 self.points.points = [exploration_goal.point]
                 self.assigned_points_pub.publish(self.points)
+            self.ctrl_rate.sleep()
             print("Calculating mnlc Assigner took: ", rospy.get_time() - time_init, ".")
 
 
@@ -173,8 +177,15 @@ class mnlc_assigner():
         return info_gain
 
     def update_filtered_frontiers(self, point_array):
+        if rospy.get_time() > self.next_time:
+            self.filtered_frontiers = []
+            self.next_time = rospy.get_time() + self.filter_clear
+        i = 0
         for point in point_array.points:
+            if i > self.filter_limit:
+                break
             self.filtered_frontiers.append(np.array([point.point.x, point.point.y]))
+            i = i + 1
 
     def update_map(self, map):
         self.latest_map = map
@@ -184,9 +195,11 @@ class mnlc_assigner():
         self.error = True
         
     def run(self):
-        rospy.spin()
-
+        while not rospy.is_shutdown() and self.error == False:
+            rospy.spin()
 
 if __name__ == '__main__':
-    mnlc_assigner().run()
-
+    try:
+        mnlc_assigner().run()
+    except rospy.ROSInterruptException:
+        pass

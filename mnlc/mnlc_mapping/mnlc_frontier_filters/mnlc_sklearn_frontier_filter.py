@@ -20,10 +20,11 @@ roslib.load_manifest('rbe3002')
 class mnlc_sklearn_frontier_filter():
 
     def __init__(self):
+        self.error = False
         rospy.loginfo("Initializing mnlc_sklearn_frontier_filter.")
         rospy.init_node("mnlc_sklearn_frontier_filter")
         self.initialize_params()
-        rospy.sleep(self.timeout * 5)
+        rospy.sleep(self.timeout * 12)
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
         rospy.loginfo("mnlc_sklearn_frontier_filter node ready.")
         self.safe_start()
@@ -36,7 +37,7 @@ class mnlc_sklearn_frontier_filter():
         self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
         # [s] standard service timeout limit
         self.timeout = rospy.get_param('timeout', 1.0)
-        self.filter_clear = rospy.get_param('filter_clear', 0.0)
+        self.filter_clear = rospy.get_param('filter_clear', 0.01)
         self.info_radius = rospy.get_param('info_radius', 1.0)
         self.threshold = rospy.get_param('threshold', 70)
         self.marker = Marker()
@@ -122,9 +123,11 @@ class mnlc_sklearn_frontier_filter():
                 point.point.y = centroids[i][1]
                 x = np.array([point.point.x,
                               point.point.y])
-                cond = (mapdata.data[int((math.floor((x[1] - mapdata.info.origin.position.y)/mapdata.info.resolution) *
-                                          mapdata.info.width) + (math.floor((x[0] - mapdata.info.origin.position.x)/mapdata.info.resolution)))] > self.threshold) or cond
-                if (cond or (self.informationGain([centroids[i][0], centroids[i][1]], self.info_radius * 0.5)) < 0.2):
+                grid = np.array([int(math.floor(x[0] - mapdata.info.origin.position.x) /
+                mapdata.info.resolution), int(math.floor((x[1] - mapdata.info.origin.position.y) /
+                mapdata.info.resolution))])
+                cond = (mapdata.data[grid[0] + (grid[1] * mapdata.info.width)] > self.threshold) or cond
+                if (cond or (self.informationGain(mapdata, [centroids[i][0], centroids[i][1]], self.info_radius * 0.5)) < 0.2):
                     centroids = np.delete(centroids, (i), axis=0)
                     i = i - 1
                 i += 1
@@ -136,6 +139,7 @@ class mnlc_sklearn_frontier_filter():
                     self.marker.points=[point.point]
                 self.filter_pub.publish(point_array)
                 self.assigned_points_pub.publish(self.marker)
+            self.ctrl_rate.sleep()
             print("Calculating mnlc Filter took: ", rospy.get_time() - time_init, ".")
 
     def update_frontiers(self, frontier):
@@ -147,8 +151,7 @@ class mnlc_sklearn_frontier_filter():
         else:
             self.frontiers = [np.array([frontier.point.x, frontier.point.y])]
 
-    def informationGain(self, point, radius):
-        mapdata = self.latest_map
+    def informationGain(self, mapdata, point, radius):
         infoGain = 0
         index = int((math.floor((point[1] - mapdata.info.origin.position.y)/mapdata.info.resolution) *
                      mapdata.info.width) + (math.floor((point[0] - mapdata.info.origin.position.x)/mapdata.info.resolution)))
@@ -160,9 +163,9 @@ class mnlc_sklearn_frontier_filter():
             limit = ((start/mapdata.info.width) + 2) * mapdata.info.width
             for i in range(start, end + 1):
                 if (i >= 0 and i < limit and i < len(mapdata.data)):
-                    if(mapdata.data[i] == -1 and np.linalg.norm(np.array(point)-np.array([mapdata.info.origin.position.x +
-                                                                                          (i - (i//mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution, mapdata.info.origin.position.y +
-                                                                                          (i//mapdata.info.width) * mapdata.info.resolution])) <= radius):
+                    if(mapdata.data[i] == -1 and (np.linalg.norm(np.array(point)-np.array([mapdata.info.origin.position.x +
+                                                                                          (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution, mapdata.info.origin.position.y +
+                                                                                          (i/mapdata.info.width) * mapdata.info.resolution]))) <= radius):
                         infoGain += 1
         return infoGain * (mapdata.info.resolution ** 2)
 
@@ -173,9 +176,12 @@ class mnlc_sklearn_frontier_filter():
         self.error = True
         
     def run(self):
-        rospy.spin()
+        while not rospy.is_shutdown() and self.error == False:
+            rospy.spin()
 
 
 if __name__ == '__main__':
-    mnlc_sklearn_frontier_filter().run()
-
+    try:
+        mnlc_sklearn_frontier_filter().run()
+    except rospy.ROSInterruptException:
+        pass
