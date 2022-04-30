@@ -160,6 +160,7 @@ Visualization Manager:
       Unreliable: false
       Value: false
       Visibility:
+        "": true
         Axes: true
         DepthCloud: true
         Grid: true
@@ -396,7 +397,7 @@ Visualization Manager:
       Marker Topic: /OpenCVFrontierDetector/shapes
       Name: Marker
       Namespaces:
-        {}
+        markers: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -412,7 +413,7 @@ Visualization Manager:
       Marker Topic: /frontier_filter/filtered_points_markers
       Name: Marker
       Namespaces:
-        {}
+        filtered_markers: true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -525,6 +526,14 @@ Visualization Manager:
         markers: true
       Queue Size: 100
       Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /assigned_frontiers
+      Name: Marker
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -562,7 +571,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 294.9106750488281
+      Scale: 302.7698669433594
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
       X: 1.3617898225784302

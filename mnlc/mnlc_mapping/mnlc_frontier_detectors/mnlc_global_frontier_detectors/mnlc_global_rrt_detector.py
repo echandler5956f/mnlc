@@ -75,7 +75,7 @@ class mnlc_global_rrt_detector():
         self.rtab_map_sub = rospy.Subscriber(
             '/latest_map', OccupancyGrid, self.update_map, queue_size=1)
         self.detected_points_pub = rospy.Publisher(
-            '/mnlc_global_rrt_detector/detected_points', PointStamped, queue_size=10)
+            '/detected_points', PointStamped, queue_size=10)
         self.shapes_pub = rospy.Publisher(
             'mnlc_global_rrt_detector/shapes', Marker, queue_size=10)
         self.state_machine = rospy.Subscriber(

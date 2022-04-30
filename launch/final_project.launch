@@ -79,6 +79,8 @@
   <rosparam file="$(find rbe3002)/param/mnlc_local_costmap_opencv_params.yaml" command="load"/>
   <node name="mnlc_global_costmap_opencv" pkg="rbe3002" type="mnlc_global_costmap_opencv.py" output="screen"/>
   <rosparam file="$(find rbe3002)/param/mnlc_global_costmap_opencv_params.yaml" command="load"/>
+  <node name="mnlc_assigner" pkg="rbe3002" type="mnlc_assigner.py" output="screen"/>
+  <rosparam file="$(find rbe3002)/param/mnlc_assigner_params.yaml" command="load"/>
   
   <!-- Auto-SSH -->
   <!-- <node unless="$(arg sim)" name="autoSSH" pkg="rbe3002" type="autoSSH.sh" output="screen"/> -->

@@ -113,7 +113,7 @@ class mnlc_global_opencv_frontier_detector():
                 self.error_handler()
                 return
         self.detected_points_pub = rospy.Publisher(
-            '/OpenCVFrontierDetector/detected_points', PointStamped, queue_size=10)
+            '/detected_points', PointStamped, queue_size=10)
         self.shapes_pub = rospy.Publisher(
             'OpenCVFrontierDetector/shapes', Marker, queue_size=1)
         self.detect_frontiers()

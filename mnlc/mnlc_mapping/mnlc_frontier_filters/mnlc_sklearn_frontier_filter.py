@@ -36,15 +36,18 @@ class mnlc_sklearn_frontier_filter():
         self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
         # [s] standard service timeout limit
         self.timeout = rospy.get_param('timeout', 1.0)
-        # number of grid cells to pad the c_scpace with
-        self.info_radius = rospy.get_param('info_radius', 3.5)
-        self.threshold = rospy.get_param('threshold', 1)
+        self.filter_clear = rospy.get_param('filter_clear', 0.0)
+        self.info_radius = rospy.get_param('info_radius', 1.0)
+        self.threshold = rospy.get_param('threshold', 70)
         self.marker = Marker()
         self.latest_map = OccupancyGrid()
         self.frontiers = []
+        self.next_time = rospy.get_time()
+        self.detected_points_sub = rospy.Subscriber(
+            '/detected_points', PointStamped, self.update_frontiers, queue_size=10)
         rtab_map_sub = rospy.Subscriber('/latest_map', OccupancyGrid, self.update_map, queue_size=1)
         self.assigned_points_pub = rospy.Publisher(
-            'frontier_filter/filtered_points_markers', Marker, queue_size=1)
+            '/frontier_filter/filtered_points_markers', Marker, queue_size=10)
         self.filter_pub = rospy.Publisher(
             '/frontier_filter/filtered_points', PointArray, queue_size=10)
 
@@ -52,13 +55,13 @@ class mnlc_sklearn_frontier_filter():
         self.marker.header.frame_id = map.header.frame_id
         self.marker.header.stamp = rospy.Time.now()
         self.marker.ns = "filtered_markers"
-        self.marker.id = 0
+        self.marker.id = 4
         self.marker.type = Marker.POINTS
         self.marker.action = Marker.ADD
         self.marker.pose.orientation.w = 1.0
         self.marker.scale.x = self.marker.scale.y = 0.3
         (self.marker.color.r, self.marker.color.g, self.marker.color.b,
-        self.marker.color.a) = (0.0/255.0, 255.0/255.0, 0.0/255.0, 1)
+        self.marker.color.a) = (255.0/255.0, 255.0/255.0, 0.0/255.0, 1)
         self.marker.lifetime == rospy.Duration()
 
     def safe_start(self):
@@ -90,7 +93,7 @@ class mnlc_sklearn_frontier_filter():
         rospy.loginfo("Begin phase1 service call successful.")
         temp = tmp()
         self.detected_points_pub = rospy.Subscriber(
-            '/OpenCVFrontierDetector/detected_points', PointStamped, queue_size=100)
+            '/OpenCVFrontierDetector/detected_points', PointStamped, queue_size=10)
         self.shapes_pub = rospy.Publisher(
             'OpenCVFrontierDetector/shapes', Marker, queue_size=10)
         self.filter_potential_frontiers()
@@ -99,9 +102,9 @@ class mnlc_sklearn_frontier_filter():
         point = PointStamped()
         point.header.frame_id = 'map'
         point_array = PointArray()
-        while not rospy.is_shutdown(): #and not self.loc_or_map_mode:
-            print('hi')
-            self.marker.points = []
+        self.marker.points = []
+        while not rospy.is_shutdown():
+            time_init = rospy.get_time()
             centroids = []
             front = copy.copy(self.frontiers)
             if len(front) > 1:
@@ -133,11 +136,12 @@ class mnlc_sklearn_frontier_filter():
                     self.marker.points=[point.point]
                 self.filter_pub.publish(point_array)
                 self.assigned_points_pub.publish(self.marker)
-                print('hi')
-                rospy.sleep(0.01)
-
+            print("Calculating mnlc Filter took: ", rospy.get_time() - time_init, ".")
 
     def update_frontiers(self, frontier):
+        if rospy.get_time() > self.next_time:
+            self.frontiers = []
+            self.next_time = rospy.get_time() + self.filter_clear
         if len(self.frontiers) > 0:
             self.frontiers = np.vstack((self.frontiers, [np.array([frontier.point.x, frontier.point.y])]))
         else:
@@ -164,7 +168,6 @@ class mnlc_sklearn_frontier_filter():
 
     def update_map(self, map):
         self.latest_map = map
-        # self.latest_map = cv2.imread(r'/home/quant/.ros/global_costmap.pgm', -1)
 
     def error_handler(self):
         self.error = True
