@@ -29,7 +29,8 @@ class mnlc_sklearn_frontier_filter():
 
     def initialize_params(self):
         # grid cost to be considered an obstacle
-        self.obstacle_cost = rospy.get_param('obstacle_cost', 70)
+        # self.obstacle_cost = rospy.get_param('obstacle_cost', -999)
+        self.obstacle_cost = 1
         self.ctrl_invl = rospy.get_param(
             'ctrl_invl', 0.01)  # [s] control loop interval
         self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
@@ -126,7 +127,8 @@ class mnlc_sklearn_frontier_filter():
                 grid = np.array([int(math.floor(x[0] - mapdata.info.origin.position.x) /
                 mapdata.info.resolution), int(math.floor((x[1] - mapdata.info.origin.position.y) /
                 mapdata.info.resolution))])
-                cond = (mapdata.data[grid[0] + (grid[1] * mapdata.info.width)] > self.obstacle_cost) or cond
+                data = int(mapdata.data[grid[0] + (grid[1] * mapdata.info.width)])
+                cond = data >= int(self.obstacle_cost) or data == -1
                 centroid = np.array([centroids[i][0], centroids[i][1]])
                 if (cond or (self.informationGain(mapdata, centroid, self.info_radius * 0.5) < 0.2)):
                     centroids = np.delete(centroids, (i), axis=0)
@@ -134,6 +136,7 @@ class mnlc_sklearn_frontier_filter():
                 i += 1
                 point_array.points = []
                 self.marker.points = []
+            if len(centroids != 0):
                 for cent in centroids:
                     point.point.x = cent[0]
                     point.point.y = cent[1]

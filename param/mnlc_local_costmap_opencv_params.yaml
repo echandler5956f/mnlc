@@ -2,5 +2,5 @@ obstacle_cost: 90 # grid cost to be considered an obstacle
 ctrl_invl: 0.01  # [s] control loop interval
 timeout: 1.0 # [s] standard service timeout limit
 padding: 4 # number of grid cells to pad the c_scpace with
-local_width: 1.0 # width in meters of the local costmap
-local_height: 1.0 # height in meters of the local costmap
+local_width: 2.0 # width in meters of the local costmap
+local_height: 2.0 # height in meters of the local costmap

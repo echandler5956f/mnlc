@@ -36,7 +36,8 @@ class mnlc_global_costmap_opencv():
         # [s] standard service timeout limit
         self.timeout = rospy.get_param('timeout', 1.0)
         # number of grid cells to pad the c_scpace with
-        self.padding = rospy.get_param('padding', 4)
+        # self.padding = rospy.get_param('padding', 4)
+        self.padding = 8
         self.first_map = True
         self.map = OccupancyGrid()
         self.listener = tf.TransformListener()
@@ -118,19 +119,20 @@ class mnlc_global_costmap_opencv():
                 return
             current_mapdata = map.map
             rtab_map_pub.publish(current_mapdata)
-            mapdata_asarray = np.array(current_mapdata.data)
             time_init = rospy.get_time()
             immediate_vincinity = []
             unkown_indices = []
-            for i in range(x - int(math.floor(200/2)), x + int(math.floor(200/2))):
-                for j in range(y - int(math.floor(200/2)), y + int(math.floor(200/2))):
+            mapdata_asarray = np.array(current_mapdata.data)
+            for i in range(x - int(math.floor(416/2)), x + int(math.floor(416/2))):
+                for j in range(y - int(math.floor(416/2)), y + int(math.floor(416/2))):
                     index = j + (i * global_grid_width)
                     immediate_vincinity.append(index)
             for t in range(len(immediate_vincinity) - 1):
-                if current_mapdata.data[immediate_vincinity[t]] == -1:
+                if mapdata_asarray[immediate_vincinity[t]] == -1:
                     row = int(immediate_vincinity[t] % global_grid_width)
                     column = int(math.floor(immediate_vincinity[t] / global_grid_width))
                     unkown_indices.append(int(math.floor(row * global_grid_height) + column))
+                    mapdata_asarray[immediate_vincinity[t]] = 0
             ba = bytearray(np.uint8(mapdata_asarray).tolist())
             with open('global_costmap.pgm', 'wb') as f:
                 f.write('P5' + '\n')
@@ -142,7 +144,7 @@ class mnlc_global_costmap_opencv():
             img = cv2.imread(path, -1)
             img_dilate = cv2.dilate(img, kernel=kernel1, iterations=1)
             gaussian_blur = cv2.GaussianBlur(
-                src=img_dilate, ksize=(9, 9), sigmaX=2, sigmaY=2)
+                src=img_dilate, ksize=(3, 3), sigmaX=0, sigmaY=0)
             norm_image = cv2.normalize(
                 gaussian_blur, None, alpha=0, beta=100, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
             dataFromGridC = norm_image.flatten('C')
@@ -152,9 +154,10 @@ class mnlc_global_costmap_opencv():
                     unkown_indices[k] / global_grid_width))
                 dataFromGridC[int(math.floor(
                     row * global_grid_height) + column)] = -1
-            dataC = tuple(np.array(dataFromGridC, dtype=int))
+            # dataC = tuple(np.array(dataFromGridC, dtype=int))
             cspace.header.stamp = rospy.Time.now()
-            cspace.data = dataC
+            cspace.data = dataFromGridC
+            # print(cspace.data)
             self.c_space_pub.publish(cspace)
             # ctrl_rate.sleep()
             time_end = rospy.get_time()
