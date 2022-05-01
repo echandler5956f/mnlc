@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
+from sklearn.cluster import MeanShift, estimate_bandwidth
 from geometry_msgs.msg import PointStamped
 from visualization_msgs.msg import Marker
 from nav_msgs.msg import OccupancyGrid
-from sklearn.cluster import MeanShift, estimate_bandwidth
 from rbe3002.msg import PointArray
 from nav_msgs.srv import GetMap
 import std_srvs.srv
@@ -30,7 +30,7 @@ class mnlc_sklearn_frontier_filter():
     def initialize_params(self):
         # grid cost to be considered an obstacle
         # self.obstacle_cost = rospy.get_param('obstacle_cost', -999)
-        self.obstacle_cost = 1
+        self.obstacle_cost = 25
         self.ctrl_invl = rospy.get_param(
             'ctrl_invl', 0.01)  # [s] control loop interval
         self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
@@ -38,6 +38,7 @@ class mnlc_sklearn_frontier_filter():
         self.timeout = rospy.get_param('timeout', 1.0)
         self.filter_clear = rospy.get_param('filter_clear', 0.1)
         self.info_radius = rospy.get_param('info_radius', 1.0)
+        self.info_radius = 10.0
         self.marker = Marker()
         self.latest_map = OccupancyGrid()
         self.frontiers = []
@@ -108,9 +109,9 @@ class mnlc_sklearn_frontier_filter():
             centroids = []
             front = copy.copy(self.frontiers)
             if len(front) > 1:
-                bandwidth =  estimate_bandwidth(front, quantile=0.2)
+                bandwidth =  estimate_bandwidth(front, quantile=0.4)
                 if bandwidth == 0.0:
-                    bandwidth = 0.225
+                    bandwidth = 0.1
                 ms = MeanShift(bandwidth = bandwidth, bin_seeding=True)
                 ms.fit(front)
                 centroids = ms.cluster_centers_

@@ -35,9 +35,10 @@ class mnlc_assigner():
         # [s] standard service timeout limit
         self.timeout = rospy.get_param('timeout', 1.0)
         self.info_radius = rospy.get_param('info_radius', 1.0)
+        self.info_radius = 3.5
         self.info_multiplier = rospy.get_param('info_multiplier', 3.0)
         self.hysteresis_radius = rospy.get_param('hysteresis_radius', 1.0)
-        self.hysteresis_gain = rospy.get_param('hysteresis_gain', 200000000.0)
+        self.hysteresis_gain = rospy.get_param('hysteresis_gain', 2.0)
         self.filter_clear = rospy.get_param('filter_clear', 0.05)
         self.filter_limit = rospy.get_param('filter_limit', 25)
         self.marker = Marker()
