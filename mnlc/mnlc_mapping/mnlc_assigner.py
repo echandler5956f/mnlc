@@ -34,12 +34,12 @@ class mnlc_assigner():
         self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
         # [s] standard service timeout limit
         self.timeout = rospy.get_param('timeout', 1.0)
-        self.info_radius = rospy.get_param('info_radius', 3.5)
+        self.info_radius = rospy.get_param('info_radius', 1.0)
         self.info_multiplier = rospy.get_param('info_multiplier', 3.0)
-        self.hysteresis_radius = rospy.get_param('hysteresis_radius', 3.5)
-        self.hysteresis_gain = rospy.get_param('hysteresis_gain', 2.0)
-        self.filter_clear = rospy.get_param('filter_clear', 0.01)
-        self.filter_limit = rospy.get_param('filter_limit', 10)
+        self.hysteresis_radius = rospy.get_param('hysteresis_radius', 1.0)
+        self.hysteresis_gain = rospy.get_param('hysteresis_gain', 200000000.0)
+        self.filter_clear = rospy.get_param('filter_clear', 0.05)
+        self.filter_limit = rospy.get_param('filter_limit', 25)
         self.marker = Marker()
         self.latest_map = OccupancyGrid()
         self.filtered_frontiers = []
@@ -48,7 +48,7 @@ class mnlc_assigner():
         self.next_time = rospy.get_time()
         self.filtered_frontiers_sub = rospy.Subscriber(
             '/frontier_filter/filtered_points', PointArray, self.update_filtered_frontiers, queue_size=10)
-        self.rtab_map_sub = rospy.Subscriber('/latest_map', OccupancyGrid, self.update_map, queue_size=1)
+        self.rtab_map_sub = rospy.Subscriber('/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_map, queue_size=1)
         self.assigned_points_pub = rospy.Publisher(
             '/assigned_frontiers', Marker, queue_size=10)
 
@@ -101,18 +101,23 @@ class mnlc_assigner():
         exploration_goal.point.z = 0
         while not rospy.is_shutdown():
             time_init = rospy.get_time()
+            mapdata = self.latest_map
             centroids = copy.copy(self.filtered_frontiers)
             info_gain = []
+            x = self.pose2d.cx
+            y = self.pose2d.cy
+            position = np.array([x, y])
+            radius = self.info_radius
             for i in range(len(centroids)):
-                info_gain.append(self.informationGain(
-                    [centroids[i][0], centroids[i][1]]))
-            info_gain = self.discount([self.pose2d.cx, self.pose2d.cy], centroids, info_gain)
+                centroid = np.array([centroids[i][0], centroids[i][1]])
+                info_gain.append(self.informationGain(mapdata, centroid, radius))
+            info_gain = self.discount(mapdata, [x, y], centroids, info_gain, radius)
             rev_rec = []
             centroid_rec = []
             for i in range(len(centroids)):
-                cost = np.linalg.norm([self.pose2d.cx -centroids[i][0], self.pose2d.cy - centroids[i][1]])
+                cost = np.linalg.norm(position - centroids[i])
                 information_gain = info_gain[i]
-                if np.linalg.norm([self.pose2d.cx - centroids[i][0], self.pose2d.cy -  centroids[i][1]]) <= self.hysteresis_radius:
+                if np.linalg.norm(position - centroids[i]) <= self.hysteresis_radius:
                     information_gain *= self.hysteresis_gain
                 rev = information_gain * self.info_multiplier - cost
                 rev_rec.append(rev)
@@ -130,16 +135,14 @@ class mnlc_assigner():
                 exploration_goal.point.y = goal_pose.pose.position.y
                 self.points.points = [exploration_goal.point]
                 self.assigned_points_pub.publish(self.points)
-            self.ctrl_rate.sleep()
             print("Calculating mnlc Assigner took: ", rospy.get_time() - time_init, ".")
 
 
-    def informationGain(self, point):
-        mapdata = self.latest_map
-        info_gain = 0
+    def informationGain(self, mapdata, point, radius):
+        infoGain = 0
         index = int((math.floor((point[1] - mapdata.info.origin.position.y)/mapdata.info.resolution) *
                      mapdata.info.width) + (math.floor((point[0] - mapdata.info.origin.position.x)/mapdata.info.resolution)))
-        r_region = int(self.info_radius/mapdata.info.resolution)
+        r_region = int(radius/mapdata.info.resolution)
         init_index = index-r_region * (mapdata.info.width + 1)
         for n in range(0, 2 * r_region + 1):
             start = n * mapdata.info.width + init_index
@@ -147,17 +150,16 @@ class mnlc_assigner():
             limit = ((start/mapdata.info.width) + 2) * mapdata.info.width
             for i in range(start, end + 1):
                 if (i >= 0 and i < limit and i < len(mapdata.data)):
-                    if(mapdata.data[i] == -1 and np.linalg.norm(np.array(point)-np.array([mapdata.info.origin.position.x +
-                                                                                          (i - (i//mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution, mapdata.info.origin.position.y +
-                                                                                          (i//mapdata.info.width) * mapdata.info.resolution])) <= self.info_radius):
-                        info_gain += 1
-        return info_gain * (mapdata.info.resolution ** 2)
+                    p = np.array([mapdata.info.origin.position.x + (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution, 
+                                  mapdata.info.origin.position.y + (i/mapdata.info.width) * mapdata.info.resolution])
+                    if (mapdata.data[i] == -1 and np.linalg.norm(point-p) <= radius):
+                        infoGain += 1
+        return infoGain * (mapdata.info.resolution ** 2)
 
-    def discount(self, point, centroids, info_gain):
-        mapdata = self.latest_map
+    def discount(self, mapdata, point, centroids, info_gain, r):
         index = int((math.floor((point[1] - mapdata.info.origin.position.y)/mapdata.info.resolution) *
                      mapdata.info.width) + (math.floor((point[0] - mapdata.info.origin.position.x)/mapdata.info.resolution)))
-        r_region = int(self.info_radius/mapdata.info.resolution)
+        r_region = int(r/mapdata.info.resolution)
         init_index = index-r_region*(mapdata.info.width + 1)
         for n in range(0, 2 * r_region + 1):
             start = n * mapdata.info.width + init_index
@@ -167,11 +169,10 @@ class mnlc_assigner():
                 if (i >= 0 and i < limit and i < len(mapdata.data)):
                     for j in range(0, len(centroids)):
                         current_pt = centroids[j]
-                        if(mapdata.data[i] == -1 and np.linalg.norm(np.array([mapdata.info.origin.position.x +
-                                                                              (i - (i//mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution, mapdata.info.origin.position.y +
-                                                                              (i//mapdata.info.width) * mapdata.info.resolution])-np.array([current_pt[0], current_pt[1]])) <= self.info_radius and np.linalg.norm(np.array([mapdata.info.origin.position.x +
-                                                                                                                                                                                               (i - (i//mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution, mapdata.info.origin.position.y +
-                                                                                                                                                                                               (i//mapdata.info.width) * mapdata.info.resolution])-point) <= self.info_radius):
+                        p = np.array([mapdata.info.origin.position.x + (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution, 
+                                      mapdata.info.origin.position.y + (i/mapdata.info.width) * mapdata.info.resolution])
+                        if (mapdata.data[i] == -1 and np.linalg.norm(p-current_pt) <= r and np.linalg.norm(p-point) <= r):
+                            # info_gain[j] -= 1
                             info_gain[j] -= (mapdata.info.resolution *
                                              mapdata.info.resolution)
         return info_gain

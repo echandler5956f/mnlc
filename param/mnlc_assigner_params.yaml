@@ -1,9 +1,8 @@
 ctrl_invl: 0.01  # [s] control loop interval
-obstacle_cost: 90 # grid cost to be considered an obstacle
 timeout: 1.0 # [s] standard service timeout limit
-info_radius: 7.0 # radius to consider laser readings from
+info_radius: 1.0 # radius to consider laser readings from
 info_multiplier: 3.0 # a modifier for the info gains
-hysteresis_radius: 7.0 # at least as much as the laser scanner range
-hysteresis_gain: 3.0 # bigger than one (bias the robot to continue exploring the current region)
-filter_clear: 0.001
-filter_limit: 5
+hysteresis_radius: 1.0 # at least as much as the laser scanner range
+hysteresis_gain: 2.0 # bigger than one (bias the robot to continue exploring the current region)
+filter_clear: 0.05
+filter_limit: 25

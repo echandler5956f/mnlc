@@ -104,8 +104,8 @@ class mnlc_global_costmap_opencv():
                 rospy.logerr("Tf exception")
                 self.error_handler()
                 return
-        x = int(math.floor((trans[0] - gox) / global_resolution))
-        y = int(math.floor((trans[1] - goy) / global_resolution))
+        x = int(math.floor((gox) / global_resolution))
+        y = int(math.floor((goy) / global_resolution))
         while 1:
             time_init = rospy.get_time()
             rospy.wait_for_service('/rtabmap/get_map')
@@ -122,8 +122,8 @@ class mnlc_global_costmap_opencv():
             time_init = rospy.get_time()
             immediate_vincinity = []
             unkown_indices = []
-            for i in range(x - int(math.floor(global_grid_width/2)), x + int(math.floor(global_grid_width/2))):
-                for j in range(y - int(math.floor(global_grid_height/2)), y + int(math.floor(global_grid_height/2))):
+            for i in range(x - int(math.floor(200/2)), x + int(math.floor(200/2))):
+                for j in range(y - int(math.floor(200/2)), y + int(math.floor(200/2))):
                     index = j + (i * global_grid_width)
                     immediate_vincinity.append(index)
             for t in range(len(immediate_vincinity) - 1):
