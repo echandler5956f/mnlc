@@ -123,7 +123,7 @@ class mnlc_sklearn_frontier_filter():
                                                                               mapdata.info.resolution))])
                 data = int(
                     mapdata.data[grid[0] + (grid[1] * mapdata.info.width)])
-                cond = data >= int(self.obstacle_cost) or data == -1
+                cond = data >= int(self.obstacle_cost)
                 centroid = np.array([centroids[i][0], centroids[i][1]])
                 radius = self.info_radius
                 info_gain = 0
@@ -143,7 +143,7 @@ class mnlc_sklearn_frontier_filter():
                             if (mapdata.data[j] == -1 and np.linalg.norm(centroid-p) <= radius):
                                 info_gain += 1
                 info_gain = info_gain * (mapdata.info.resolution ** 2)
-                if cond or info_gain < 0.2:
+                if cond or info_gain < 0.125:
                     centroids = np.delete(centroids, (i), axis=0)
                     i = i - 1
                 i += 1

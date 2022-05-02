@@ -91,7 +91,7 @@ class mnlc_global_costmap_opencv():
             unkown_indices = self.unkown_indices
             img_dilate = cv2.dilate(img, kernel=kernel1, iterations=1)
             gaussian_blur = cv2.GaussianBlur(
-                src=img_dilate, ksize=(7, 7), sigmaX=2, sigmaY=2)
+                src=img_dilate, ksize=(9, 9), sigmaX=2, sigmaY=2)
             norm_image = cv2.normalize(
                 gaussian_blur, None, alpha=0, beta=100, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
             dataFromGridC = norm_image.flatten('C')

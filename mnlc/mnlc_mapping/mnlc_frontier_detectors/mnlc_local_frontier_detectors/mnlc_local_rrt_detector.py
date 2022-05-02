@@ -149,7 +149,7 @@ class mnlc_local_rrt_detector():
                     new[0] = near[0]
                     new[1] = near[1] + eta
             rnew = new
-            rez = res * 0.2
+            rez = res * 0.1
             norm = math.sqrt(pow(rnew[1] - near[1], 2) +
                              pow(rnew[0] - near[0], 2))
             steps = int(math.ceil(norm) / rez)

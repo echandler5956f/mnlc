@@ -116,6 +116,7 @@ class mnlc_global_rrt_detector():
         res = self.latest_map.info.resolution
         ox = self.latest_map.info.origin.position.x
         obstacle_cost = self.obstacle_cost
+        next_time = rospy.get_time()
         while self.state != 2 and not rospy.is_shutdown() and self.error == False:
             data = self.latest_map.data
             width = self.latest_map.info.width
@@ -147,7 +148,7 @@ class mnlc_global_rrt_detector():
                     new[0] = near[0]
                     new[1] = near[1] + eta
             rnew = new
-            rez = res * 0.2
+            rez = res * 0.1
             norm = math.sqrt(pow(rnew[1] - near[1], 2) +
                              pow(rnew[0] - near[0], 2))
             steps = int(math.ceil(norm) / rez)
@@ -187,6 +188,9 @@ class mnlc_global_rrt_detector():
                 self.detected_points_pub.publish(point)
                 points.points = []
             elif obs_free == 1:
+                if rospy.get_time() > next_time + 30:
+                    next_time = rospy.get_time() + 30
+                    v = []
                 v.append(copy.copy(rnew))
                 p.x, p.y, p.z = rnew[0], rnew[1], 0.0
                 line.points.append(copy.copy(p))

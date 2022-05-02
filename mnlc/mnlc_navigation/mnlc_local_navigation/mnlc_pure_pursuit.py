@@ -214,7 +214,7 @@ class mnlc_pure_pursuit():
         # print("t_index is: ", t_index, " and last_index is: ", last_index)
         next_path_time = time.time()
         while last_index > t_index:
-            if rospy.get_time() > start_time + 20.0 and 0.00625 >= self.vel:
+            if rospy.get_time() > start_time + 30.0 and 0.00625 >= self.vel:
                 s_time = rospy.get_time()
                 while rospy.get_time() <= s_time + 1.0:
                     self.send_speed(-0.125, 0.0)

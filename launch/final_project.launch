@@ -1,6 +1,6 @@
 <launch>
   <!-- Globals -->
-  <arg name="sim" default="1"/>
+  <arg name="sim" default="0"/>
   <arg name="mapping" default="1"/>
   <param name="sim" value="$(arg sim)"/>
 
@@ -81,6 +81,6 @@
   <rosparam file="$(find rbe3002)/param/mnlc_local_costmap_opencv_params.yaml"            command="load"/>
 
   <!-- Auto-SSH -->
-  <node unless="$(arg sim)" name="autoSSH" pkg="rbe3002" type="autoSSH.sh" output="screen"/>
+  <!-- <node unless="$(arg sim)" name="autoSSH" pkg="rbe3002" type="autoSSH.sh" output="screen"/> -->
 
 </launch>

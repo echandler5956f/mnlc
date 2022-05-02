@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
-from geometry_msgs.msg import PointStamped, PoseStamped
+from geometry_msgs.msg import PointStamped, PoseStamped, Point
 from rbe3002.msg import PointArray, Pose2d
 from visualization_msgs.msg import Marker
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.srv import GetMap
 import std_srvs.srv
 import numpy as np
-import actionlib
 import roslib
 import rospy
 import math
@@ -31,7 +30,7 @@ class mnlc_assigner():
     def initialize_params(self):
         self.start_time = rospy.get_param('/frontier_assigner/start_time')
         # grid cost to be considered an obstacle
-        self.obstacle_cost = rospy.get_param('/controller/obstacle_cost')
+        self.obstacle_cost = rospy.get_param('/frontier_assigner/obstacle_cost')
         # [s] standard service timeout limit
         self.timeout = rospy.get_param('/controller/timeout')
         self.info_radius = rospy.get_param('/frontier_assigner/info_radius')
@@ -48,6 +47,7 @@ class mnlc_assigner():
         self.filtered_frontiers = []
         self.pose2d = Pose2d()
         self.points = Marker()
+        self.visited = dict()
         self.next_time = rospy.get_time()
         self.filtered_frontiers_sub = rospy.Subscriber(
             '/frontier_filter/filtered_points', PointArray, self.update_filtered_frontiers, queue_size=10)
@@ -55,7 +55,10 @@ class mnlc_assigner():
             '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_map, queue_size=1)
         self.assigned_points_pub = rospy.Publisher(
             '/assigned_frontiers', Marker, queue_size=10)
-        self.goal_publisher = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
+        self.goal_publisher = rospy.Publisher(
+            '/move_base_simple/goal', PoseStamped, queue_size=1)
+        self.get_currennt_cell = rospy.Subscriber(
+            'mncl_controller/current_cell', Point, self.update_visited, queue_size=1)
 
     def initialize_marker(self, map):
         self.points.header.frame_id = map.header.frame_id
@@ -163,6 +166,7 @@ class mnlc_assigner():
         return infoGain * (mapdata.info.resolution ** 2)
 
     def discount(self, mapdata, point, centroids, info_gain, r):
+        visited = self.visited
         index = int((math.floor((point[1] - mapdata.info.origin.position.y)/mapdata.info.resolution) *
                      mapdata.info.width) + (math.floor((point[0] - mapdata.info.origin.position.x)/mapdata.info.resolution)))
         r_region = int(r/mapdata.info.resolution)
@@ -178,11 +182,12 @@ class mnlc_assigner():
                         p = np.array([mapdata.info.origin.position.x + (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution,
                                       mapdata.info.origin.position.y + (i/mapdata.info.width) * mapdata.info.resolution])
                         if (mapdata.data[i] == -1 and np.linalg.norm(p-current_pt) <= r and np.linalg.norm(p-point) <= r):
-                            info_gain[j] -= 1
-                            # info_gain[j] -= (mapdata.info.resolution *
-                            #                  mapdata.info.resolution)
+                            info_gain[j] -= 1.0
+                        pp = (current_pt[0], current_pt[1])
+                        if pp in visited:
+                            info_gain[j] -= 0.25
                         if (mapdata.data[i] > self.obstacle_cost):
-                            info_gain[j] -= 1
+                            info_gain[j] -= 0.375
         return info_gain
 
     def update_filtered_frontiers(self, point_array):
@@ -196,6 +201,19 @@ class mnlc_assigner():
             self.filtered_frontiers.append(
                 np.array([point.point.x, point.point.y]))
             i = i + 1
+
+    def update_visited(self, visited):
+        x = visited.x
+        y = visited.y
+        visited_width = 5
+        visited_height = 5
+        xmin = int(x) - int(math.floor(visited_width / 2))
+        xmax = int(x) + int(math.floor(visited_width / 2))
+        ymin = int(y) - int(math.floor(visited_height / 2))
+        ymax = int(y) + int(math.floor(visited_height / 2))
+        visited = {(xs, ys): 0 for xs in range(xmin, xmax, 1)
+                   for ys in range(ymin, ymax, 1)}
+        self.visited.update(visited)
 
     def update_map(self, map):
         self.latest_map = map

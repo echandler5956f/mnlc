@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-from geometry_msgs.msg import Twist, PointStamped, PoseStamped
+from geometry_msgs.msg import Twist, PointStamped, PoseStamped, Point
 from nav_msgs.msg import OccupancyGrid, Odometry
 from nav_msgs.srv import GetMap, GetPlan
 import transitions.extensions as sme
-from rbe3002.msg import PointArray
 import move_base_msgs.msg as mb
 import rbe3002.msg as rbem
 import std_srvs.srv
@@ -12,6 +11,7 @@ import std_msgs.msg
 import actionlib
 import roslib
 import rospy
+import math
 import tf
 
 roslib.load_manifest('rbe3002')
@@ -54,14 +54,14 @@ class mnlc_controller(sme.GraphMachine):
         self.global_costmap = OccupancyGrid()
         self.odom_br = tf.TransformBroadcaster()
         self.poseL = tf.TransformListener()
-        self.odom_sub = rospy.Subscriber(
-            '/odom', Odometry, self.update_odom_tf)
         self.state_machine = rospy.Publisher(
             '/mnlc_state_machine', std_msgs.msg.Int8, queue_size=1)
         self.bounding_points_pub = rospy.Publisher(
             name='/bounding_points', data_class=PointStamped, latch=False, queue_size=5)
         self.goal_subscriber = rospy.Subscriber(
             '/move_base_simple/goal', PoseStamped, self.update_goal, queue_size=1)
+        self.send_current_cell = rospy.Publisher(
+            'mncl_controller/current_cell', Point, queue_size=1)
         self.nodes_responded = 0
 
     def safe_start_phase_1(self):
@@ -95,6 +95,18 @@ class mnlc_controller(sme.GraphMachine):
             '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_global_costmap, queue_size=1)
         rospy.Service('/begin_phase1', std_srvs.srv.Empty,
                       self.count_operational_nodes)
+        cond = 0
+        while cond == 0:
+            try:
+                (trans, rot) = self.poseL.lookupTransform(
+                    '/odom', '/base_footprint', rospy.Time(0))
+                cond = 1
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                cond = 0
+        self.cx = trans[0]
+        self.cy = trans[1]
+        self.odom_sub = rospy.Subscriber(
+            '/odom', Odometry, self.update_odom_tf)
         self.exploring_state()
         self.state_machine.publish(1)
         rospy.loginfo("Error checks complete. Beginning Phase 1.")
@@ -190,6 +202,13 @@ class mnlc_controller(sme.GraphMachine):
             "/odom", "/base_footprint", rospy.Time(0))
         self.cx = tr[0]
         self.cy = tr[1]
+        if self.initial_map_metadata.info.resolution != 0:
+            point = Point()
+            point.x = int(math.floor(
+                (self.cx - self.initial_map_metadata.info.origin.position.x) / self.initial_map_metadata.info.resolution))
+            point.y = int(math.floor(
+                (self.cy - self.initial_map_metadata.info.origin.position.y) /self.initial_map_metadata.info.resolution))
+            self.send_current_cell.publish(point)
 
     def re_init(self):
         rospy.loginfo(
