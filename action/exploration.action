@@ -1,10 +1,8 @@
 #goal definition
-geometry_msgs/Twist velocity # we only want to stop exploring when the robot has come to a complete stop
-rbe3002/PointArray points # bounding region for rrt to expand its search within
+geometry_msgs/PoseStamped[] path
 ---
 #result definition
-bool finished_exploring
+bool reached_frontier
 ---
 #feedback
-int32 frontiers_remaining
-geometry_msgs/PointStamped assigned_frontier
+int32 poses_left

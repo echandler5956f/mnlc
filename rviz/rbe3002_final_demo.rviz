@@ -160,7 +160,6 @@ Visualization Manager:
       Unreliable: false
       Value: false
       Visibility:
-        "": true
         Axes: true
         DepthCloud: true
         Grid: true
@@ -397,7 +396,7 @@ Visualization Manager:
       Marker Topic: /OpenCVFrontierDetector/shapes
       Name: Marker
       Namespaces:
-        markers: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -531,7 +530,7 @@ Visualization Manager:
       Marker Topic: /assigned_frontiers
       Name: Marker
       Namespaces:
-        {}
+        goal_markers: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -561,7 +560,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -1.5699998140335083
+      Angle: -1.5749998092651367
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -571,11 +570,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 302.7698669433594
+      Scale: 363.6225280761719
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 1.3617898225784302
-      Y: -0.35566246509552
+      X: 1.3793100118637085
+      Y: -0.17785203456878662
     Saved: ~
 Window Geometry:
   Camera:

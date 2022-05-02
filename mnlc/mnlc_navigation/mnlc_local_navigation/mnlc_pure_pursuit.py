@@ -3,11 +3,11 @@
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from nav_msgs.msg import Path, OccupancyGrid
 from geometry_msgs.msg import Twist, PoseStamped
-from nav_msgs.srv import GetPlan, GetMap
+from nav_msgs.srv import GetMap
 from sensor_msgs.msg._Imu import Imu
 from scipy.spatial import distance
 import move_base_msgs.msg as mb
-import rbe3002.msg as rbe
+import rbe3002.msg as rbem
 import std_srvs.srv
 import numpy as np
 import actionlib
@@ -67,41 +67,42 @@ class mnlc_pure_pursuit():
         rospy.loginfo("Initializing mnlc_pure_pursuit.")
         rospy.init_node("mnlc_pure_pursuit")
         self.initialize_params()
-        rospy.sleep(self.timeout * 5)
+        rospy.sleep(self.start_time)
         self.safe_start()
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
         rospy.loginfo("mnlc_pure_pursuit node ready.")
 
     def initialize_params(self):
-        # grid cost to be considered an obstacle
-        self.obstacle_cost = rospy.get_param('obstacle_cost', 90)
+        self.start_time = rospy.get_param('/pure_pursuit/start_time')
         self.ctrl_invl = rospy.get_param(
-            'ctrl_invl', 0.01)  # [s] control loop interval
+            '/controller/ctrl_invl')  # [s] control loop interval
         self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
         # [s] standard service timeout limit
-        self.timeout = rospy.get_param('timeout', 1.0)
+        self.timeout = rospy.get_param('/controller/timeout')
         # radius fidelity of the smoothing
-        self.rad_tolerance = rospy.get_param('rad_tolerance', 0.125)
-        self.tolerance = rospy.get_param('tolerance', 0.0625)  # [m] tolerance
-        self.alpha = rospy.get_param('alpha', 0.5001)  # curve constant
-        self.beta = rospy.get_param('beta', 0.4999)  # curve constant
-        self.w_base = rospy.get_param('w_base', 0.23)  # [m] wheel base
+        self.rad_tolerance = rospy.get_param('/pure_pursuit/rad_tolerance')
+        self.tolerance = rospy.get_param(
+            '/pure_pursuit/tolerance')  # [m] tolerance
+        self.alpha = rospy.get_param('/pure_pursuit/alpha')  # curve constant
+        self.beta = rospy.get_param('/pure_pursuit/beta')  # curve constant
+        self.w_base = rospy.get_param('/pure_pursuit/w_base')  # [m] wheel base
         # [m] space between injected points
-        self.spacing = rospy.get_param('spacing', 0.01)
+        self.spacing = rospy.get_param('/pure_pursuit/spacing')
         self.old_nearest = None
-        self.kv = rospy.get_param('kv', 4.5454)  # velocity constant
-        self.ka = rospy.get_param('ka', 0.0375)  # acceleration constant
-        self.lad = rospy.get_param('lad', 0.225)  # [m] look-ahead distance
-        self.lfg = rospy.get_param('lfg', 0.005)  # look forward gain
+        self.kv = rospy.get_param('/pure_pursuit/kv')  # velocity constant
+        self.ka = rospy.get_param('/pure_pursuit/ka')  # acceleration constant
+        # [m] look-ahead distance
+        self.lad = rospy.get_param('/pure_pursuit/lad')
+        self.lfg = rospy.get_param('/pure_pursuit/lfg')  # look forward gain
         self.target_speed = rospy.get_param(
-            'target_speed', 0.0375)  # [m/s] velocity target
+            '/pure_pursuit/target_speed')  # [m/s] velocity target
         self.target_acc = rospy.get_param(
-            'target_acc', 0.0375)  # [m/s^2] acceleration target
-        kp = rospy.get_param('kp', 0.5)  # pid proportional gain
-        ki = rospy.get_param('ki', 0.0)  # integral gain
-        kd = rospy.get_param('kd', 0.0)  # derivative gain
+            '/pure_pursuit/target_acc')  # [m/s^2] acceleration target
+        kp = rospy.get_param('/pure_pursuit/kp')  # pid proportional gain
+        ki = rospy.get_param('/pure_pursuit/ki')  # integral gain
+        kd = rospy.get_param('/pure_pursuit/kd')  # derivative gain
         # a hard cap on the pid error. if 0.0, no cap
-        error_bound = rospy.get_param('error_bound', 0.0)
+        error_bound = rospy.get_param('/pure_pursuit/error_bound')
         self.map_metadata = OccupancyGrid()
         self.listener = tf.TransformListener()
         self.turningController = PIDController()
@@ -154,6 +155,9 @@ class mnlc_pure_pursuit():
         rospy.Timer(rospy.Duration(self.ctrl_invl), self.odometry)
         self.cmd_vel_pub = rospy.Publisher(
             '/cmd_vel', Twist, None, queue_size=1)
+        self.phase1_server = actionlib.SimpleActionServer(
+            '/phase1', rbem.explorationAction, execute_cb=self.execute_path, auto_start=False)
+        self.phase1_server.start()
 
     def safe_start_phase_2(self):
         rospy.wait_for_service(
@@ -181,14 +185,13 @@ class mnlc_pure_pursuit():
         timeout_s = rospy.get_time()
         while not self.phase2_server.is_new_goal_available():
             if timeout_s + self.timeout < rospy.get_time():
-                            self.error_handler()
-                            break
+                self.error_handler()
+                break
             self.ctrl_rate.sleep()
 
         goal = self.phase2_server.current_goal.get_goal()
         self.phase2_server.start()
         self.phase2_server.register_goal_callback(self.final)
-        
 
     def final(self):
         self.phase3_client = actionlib.SimpleActionClient(
@@ -196,28 +199,44 @@ class mnlc_pure_pursuit():
         self.phase3_client.wait_for_server(
             timeout=rospy.Duration(self.timeout))
 
-    def execute_path(self, path):
+    def execute_path(self, goal):
+        start_time = rospy.get_time()
+        poses = goal.path
         rospy.loginfo("Executing Pure Persuit path following.")
         time_init = rospy.get_time()
-        dx = path.poses[5].pose.position.x - self.cx
-        dy = path.poses[5].pose.position.y - self.cy
+        dx = poses[5].pose.position.x - self.cx
+        dy = poses[5].pose.position.y - self.cy
         it = math.atan2(dy, dx)
         iq = quaternion_from_euler(0.0, 0.0, it, 'rxyz')
         self.turnTo(iq)
-        last_index = len(path.poses) - 1
-        t_index, lf = self.search_target(path)
+        last_index = len(poses) - 1
+        t_index, lf = self.search_target(poses)
         # print("t_index is: ", t_index, " and last_index is: ", last_index)
         next_path_time = time.time()
         while last_index > t_index:
+            if rospy.get_time() > start_time + 20.0 and 0.00625 >= self.vel:
+                s_time = rospy.get_time()
+                while rospy.get_time() <= s_time + 1.0:
+                    self.send_speed(-0.125, 0.0)
+                self.stop()
+                result = rbem.explorationResult()
+                result.reached_frontier = False
+                self.phase1_server.set_succeeded(result=result)
+                return
             if time.time() > next_path_time:
                 lin_v = self.kv * self.target_speed + self.ka * self.target_acc
-                ang_v, t_index = self.pp_steering(path, t_index)
-                # print("t_index is: ", t_index)
+                ang_v, t_index = self.pp_steering(poses, t_index)
                 self.send_speed(lin_v, ang_v)
                 next_path_time = time.time() + self.ctrl_invl
+                feedback = rbem.explorationFeedback()
+                feedback.poses_left = len(poses) - t_index
+                self.phase1_server.publish_feedback(feedback=feedback)
         self.old_nearest = None
         self.stop()
         rospy.loginfo("Pure Persuit is stopping the Turtlebot.")
+        result = rbem.explorationResult()
+        result.reached_frontier = True
+        self.phase1_server.set_succeeded(result=result)
 
     def inject_waypoints(self, path):
         new_path = Path()
@@ -275,45 +294,45 @@ class mnlc_pure_pursuit():
         smoothed_path.header.stamp = rospy.Time.now()
         return smoothed_path
 
-    def search_target(self, path):
+    def search_target(self, poses):
         if self.old_nearest is None:
-            dx = [self.rx - ip.pose.position.x for ip in path.poses]
-            dy = [self.ry - ip.pose.position.y for ip in path.poses]
+            dx = [self.rx - ip.pose.position.x for ip in poses]
+            dy = [self.ry - ip.pose.position.y for ip in poses]
             dist = np.hypot(dx, dy)
             index = np.argmin(dist)
             self.old_nearest = index
         else:
             index = self.old_nearest
-            dt_index = math.sqrt(pow(self.rx - path.poses[index].pose.position.x, 2) +
-                                 pow(self.ry - path.poses[index].pose.position.y, 2))
+            dt_index = math.sqrt(pow(self.rx - poses[index].pose.position.x, 2) +
+                                 pow(self.ry - poses[index].pose.position.y, 2))
             while 1:
-                dn_index = math.sqrt(pow(self.rx - path.poses[index + 1].pose.position.x, 2) +
-                                     pow(self.ry - path.poses[index + 1].pose.position.y, 2))
+                dn_index = math.sqrt(pow(self.rx - poses[index + 1].pose.position.x, 2) +
+                                     pow(self.ry - poses[index + 1].pose.position.y, 2))
                 if dt_index < dn_index:
                     break
                 index = index + \
-                    1 if (index + 1) < len(path.poses) else index
+                    1 if (index + 1) < len(poses) else index
                 dt_index = dn_index
             self.old_nearest = index
         lf = self.lfg * self.vel + self.lad
-        while lf > math.sqrt(pow(self.rx - path.poses[index].pose.position.x, 2) +
-                             pow(self.ry - path.poses[index].pose.position.y, 2)):
-            if index + 1 >= len(path.poses):
+        while lf > math.sqrt(pow(self.rx - poses[index].pose.position.x, 2) +
+                             pow(self.ry - poses[index].pose.position.y, 2)):
+            if index + 1 >= len(poses):
                 break
             index += 1
         return index, lf
 
-    def pp_steering(self, path, prev_index):
-        (index, lf) = self.search_target(path)
+    def pp_steering(self, poses, prev_index):
+        (index, lf) = self.search_target(poses)
         if prev_index >= index:
             index = prev_index
-        if index < len(path.poses):
-            tx = path.poses[index].pose.position.x
-            ty = path.poses[index].pose.position.y
+        if index < len(poses):
+            tx = poses[index].pose.position.x
+            ty = poses[index].pose.position.y
         else:
-            tx = path.poses[-1].pose.position.x
-            ty = path.poses[-1].pose.position.y
-            index = len(path.poses) - 1
+            tx = poses[-1].pose.position.x
+            ty = poses[-1].pose.position.y
+            index = len(poses) - 1
         sigma = math.atan2(2.0 * self.w_base * math.sin(math.atan2(ty -
                            self.ry, tx - self.rx) - self.ctheta) / lf, 1.0)
         return sigma, index
@@ -349,8 +368,11 @@ class mnlc_pure_pursuit():
                 cond = 1
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 cond = 0
-        self.position = np.array([trans[0], trans[1]])
-        return self.position
+        self.cx = trans[0]
+        self.cy = trans[1]
+        roll, pitch, self.ctheta = euler_from_quaternion(rot)
+        self.rx = self.cx - ((self.w_base / 2) * math.cos(self.ctheta))
+        self.ry = self.cy - ((self.w_base / 2) * math.sin(self.ctheta))
 
     def update_imu(self, msg):
         self.acc = distance.euclidean(

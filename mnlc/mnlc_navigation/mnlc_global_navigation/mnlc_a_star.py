@@ -6,7 +6,6 @@ from nav_msgs.srv import GetPlan, GetMap
 from queues import PriorityQueueDep
 from scipy.spatial import distance
 import move_base_msgs.msg as mb
-import rbe3002.msg as rbe
 import std_srvs.srv
 import numpy as np
 import actionlib
@@ -24,22 +23,23 @@ class mnlc_a_star():
         rospy.loginfo("Initializing mnlc_a_star.")
         rospy.init_node("mnlc_a_star")
         self.initialize_params()
-        rospy.sleep(self.timeout * 5)
+        rospy.sleep(self.start_time)
         self.safe_start()
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
         rospy.loginfo("mnlc_a_star node ready.")
 
     def initialize_params(self):
+        self.start_time = rospy.get_param('/a_star/start_time')
         # grid cost to be considered an obstacle
-        self.obstacle_cost = rospy.get_param('obstacle_cost', 90)
-        self.ctrl_invl = rospy.get_param(
-            'ctrl_invl', 0.01)  # [s] control loop interval
-        self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
+        self.obstacle_cost = rospy.get_param('/a_star/obstacle_cost')
         # [s] standard service timeout limit
-        self.timeout = rospy.get_param('timeout', 1.0)
-        self.frontier_nodes = GridCells()
+        self.timeout = rospy.get_param('/controller/timeout')
         self.local_costmap = OccupancyGrid()
         self.global_costmap = OccupancyGrid()
+        self.update_global_costmap_sub = rospy.Subscriber(
+            '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_global_costmap, queue_size=1)
+        self.frontier_pub = rospy.Publisher(
+            '/a_star/frontier', GridCells, queue_size=1)
 
     def safe_start(self):
         rospy.wait_for_service(
@@ -67,7 +67,7 @@ class mnlc_a_star():
             return
         rospy.loginfo("Begin phase1 service call successful.")
         temp = tmp()
-
+        rospy.Service('/plan_path', GetPlan, self.plan_path)
 
     def plan_path(self, msg):
         rospy.loginfo("A* is planning the path.")
@@ -82,6 +82,16 @@ class mnlc_a_star():
         goal = (x2, y2)
         path = self.a_star(start, goal)
         path_msg = Path()
+        path_msg.header.frame_id = '/map'
+        if path == -1:
+            empty_pose = PoseStamped()
+            empty_pose.header.frame_id = '/map'
+            empty_pose.header.stamp = rospy.Time.now()
+            path_msg.poses = [empty_pose]
+            path_msg.header.stamp = rospy.Time.now()
+            rospy.loginfo(
+                "A* has not found a path within the alotted time. Send a new goal point.")
+            return path_msg
         for point in path:
             pose = PoseStamped()
             point_ret = Point()
@@ -91,9 +101,9 @@ class mnlc_a_star():
             pose.pose.position.x = point_ret.x
             pose.pose.position.y = point_ret.y
             pose.header.stamp = rospy.Time.now()
-            pose.header.frame_id = "map"
+            pose.header.frame_id = '/map'
             path_msg.poses.append(pose)
-        path_msg.header.frame_id = "map"
+        path_msg.header.stamp = rospy.Time.now()
         rospy.loginfo("A* has computed the path.")
         return path_msg
 
@@ -102,6 +112,7 @@ class mnlc_a_star():
         time_init = rospy.get_time()
         rospy.loginfo("Executing A* from (%d,%d) to (%d,%d)." %
                       (start[0], start[1], goal[0], goal[1]))
+        frontier_nodes = GridCells()
         obstacle_cost = self.obstacle_cost
         frontier = PriorityQueueDep()
         frontier.put(start, 0)
@@ -116,37 +127,43 @@ class mnlc_a_star():
         res = self.global_costmap.info.resolution
         ox = self.global_costmap.info.origin.position.x
         oy = self.global_costmap.info.origin.position.y
-        self.frontier_nodes.cell_height = self.global_costmap.info.resolution
-        self.frontier_nodes.cell_width = self.global_costmap.info.resolution
+        frontier_nodes.cell_height = self.global_costmap.info.resolution
+        frontier_nodes.cell_width = self.global_costmap.info.resolution
+        start_time = rospy.get_time()
         while not frontier.empty():
             current = frontier.get()
             if current == goal:
                 rospy.loginfo("Path has been found.")
                 break
+            time = rospy.get_time()
+            if time >= start_time + 1.0:
+                rospy.logwarn("A* has not found a path in less than 1 second. Requesting new path...")
+                return -1
             x = current[0]
             y = current[1]
             cell_neighbors = [(x + 1, y + 1), (x + 1, y), (x + 1, y - 1), (x, y + 1),
                               (x, y - 1), (x - 1, y + 1), (x - 1, y), (x - 1, y - 1)]
             valid_neighbors = [cell for cell in cell_neighbors if ((cell[0] > 0) and (cell[0] < width) and (
-                # cell[1] > 0) and (cell[1] < height) and (data[cell[0] + (cell[1] * width)] < self.obstacle_cost))]
-                cell[1] > 0) and (cell[1] < height) and ((data[cell[0] + (cell[1] * width)] == -1) or (data[cell[0] + (cell[1] * width)] < obstacle_cost)))]
+                cell[1] > 0) and (cell[1] < height) and (data[cell[0] + (cell[1] * width)] < obstacle_cost))]
             for next in valid_neighbors:
-                new_cost = cost_so_far[current] + \
-                    data[next[0] + (next[1] * width)]
+                c = data[next[0] + (next[1] * width)]
+                if c == -1:
+                    c = 25
+                new_cost = cost_so_far[current] + c
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost
                     next_np = np.array(next)
-                    priority = new_cost + 3 * \
-                        distance.euclidean(goal_np, next_np)
+                    priority = new_cost + 10 * distance.euclidean(goal_np, next_np)
                     frontier.put(next, priority)
                     came_from[next] = current
                     point = Point()
                     point.x = (x * res) + ox + res/2
                     point.y = (y * res) + oy + res/2
-                    self.frontier_nodes.cells.append(point)
-        self.frontier_nodes.cells.reverse()
-        self.frontier_nodes.header.frame_id = "map"
-        self.frontier_nodes.header.stamp = rospy.Time.now()
+                    frontier_nodes.cells.append(point)
+        frontier_nodes.cells.reverse()
+        frontier_nodes.header.frame_id = "map"
+        frontier_nodes.header.stamp = rospy.Time.now()
+        self.frontier_pub.publish(frontier_nodes)
         path = self.reconstruct_path(came_from, start, goal)
         rospy.loginfo("A* has successfully found the optimal path.")
         print("Calculating A* took: ", rospy.get_time() - time_init, ".")
@@ -187,7 +204,6 @@ class mnlc_a_star():
         temp2 = tmp2()
         self.phase2_client = actionlib.SimpleActionClient(
             '/mnlc/navigate_to_origin', mb.MoveBaseAction)
-
 
     def final(self):
         self.phase3_client = actionlib.SimpleActionClient(

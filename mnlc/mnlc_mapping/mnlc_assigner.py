@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 
 from geometry_msgs.msg import PointStamped, PoseStamped
+from rbe3002.msg import PointArray, Pose2d
 from visualization_msgs.msg import Marker
 from nav_msgs.msg import OccupancyGrid
-from rbe3002.msg import PointArray, Pose2d
 from nav_msgs.srv import GetMap
 import std_srvs.srv
 import numpy as np
+import actionlib
 import roslib
 import rospy
 import math
 import copy
 
 roslib.load_manifest('rbe3002')
+
 
 class mnlc_assigner():
 
@@ -21,26 +23,26 @@ class mnlc_assigner():
         rospy.loginfo("Initializing mnlc_assigner.")
         rospy.init_node("mnlc_assigner")
         self.initialize_params()
-        rospy.sleep(self.timeout * 15)
+        rospy.sleep(self.start_time)
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
         rospy.loginfo("mnlc_assigner node ready.")
         self.safe_start()
 
     def initialize_params(self):
+        self.start_time = rospy.get_param('/frontier_assigner/start_time')
         # grid cost to be considered an obstacle
-        self.obstacle_cost = rospy.get_param('obstacle_cost', 90)
-        self.ctrl_invl = rospy.get_param(
-            'ctrl_invl', 0.01)  # [s] control loop interval
-        self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
+        self.obstacle_cost = rospy.get_param('/controller/obstacle_cost')
         # [s] standard service timeout limit
-        self.timeout = rospy.get_param('timeout', 1.0)
-        self.info_radius = rospy.get_param('info_radius', 1.0)
-        self.info_radius = 3.5
-        self.info_multiplier = rospy.get_param('info_multiplier', 3.0)
-        self.hysteresis_radius = rospy.get_param('hysteresis_radius', 1.0)
-        self.hysteresis_gain = rospy.get_param('hysteresis_gain', 2.0)
-        self.filter_clear = rospy.get_param('filter_clear', 0.05)
-        self.filter_limit = rospy.get_param('filter_limit', 25)
+        self.timeout = rospy.get_param('/controller/timeout')
+        self.info_radius = rospy.get_param('/frontier_assigner/info_radius')
+        self.info_multiplier = rospy.get_param(
+            '/frontier_assigner/info_multiplier')
+        self.hysteresis_radius = rospy.get_param(
+            '/frontier_assigner/hysteresis_radius')
+        self.hysteresis_gain = rospy.get_param(
+            '/frontier_assigner/hysteresis_gain')
+        self.filter_clear = rospy.get_param('/frontier_assigner/filter_clear')
+        self.filter_limit = rospy.get_param('/frontier_assigner/filter_limit')
         self.marker = Marker()
         self.latest_map = OccupancyGrid()
         self.filtered_frontiers = []
@@ -49,9 +51,11 @@ class mnlc_assigner():
         self.next_time = rospy.get_time()
         self.filtered_frontiers_sub = rospy.Subscriber(
             '/frontier_filter/filtered_points', PointArray, self.update_filtered_frontiers, queue_size=10)
-        self.rtab_map_sub = rospy.Subscriber('/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_map, queue_size=1)
+        self.rtab_map_sub = rospy.Subscriber(
+            '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_map, queue_size=1)
         self.assigned_points_pub = rospy.Publisher(
             '/assigned_frontiers', Marker, queue_size=10)
+        self.goal_publisher = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
 
     def initialize_marker(self, map):
         self.points.header.frame_id = map.header.frame_id
@@ -63,7 +67,7 @@ class mnlc_assigner():
         self.points.pose.orientation.w = 1.0
         self.points.scale.x = self.points.scale.y = 0.3
         (self.points.color.r, self.points.color.g, self.points.color.b,
-        self.points.color.a) = (0.0/255.0, 255.0/255.0, 136.0/255.0, 1)
+         self.points.color.a) = (0.0/255.0, 255.0/255.0, 136.0/255.0, 1)
         self.points.lifetime == rospy.Duration()
 
     def safe_start(self):
@@ -111,8 +115,10 @@ class mnlc_assigner():
             radius = self.info_radius
             for i in range(len(centroids)):
                 centroid = np.array([centroids[i][0], centroids[i][1]])
-                info_gain.append(self.informationGain(mapdata, centroid, radius))
-            info_gain = self.discount(mapdata, [x, y], centroids, info_gain, radius)
+                info_gain.append(self.informationGain(
+                    mapdata, centroid, radius))
+            info_gain = self.discount(
+                mapdata, [x, y], centroids, info_gain, radius)
             rev_rec = []
             centroid_rec = []
             for i in range(len(centroids)):
@@ -130,14 +136,13 @@ class mnlc_assigner():
                 goal_pose.header.stamp = rospy.Time.now()
                 goal_pose.pose.position.x = best_frontier[0]
                 goal_pose.pose.position.y = best_frontier[1]
-                # self.assigned_points_pub.publish(goal_pose)
+                self.goal_publisher.publish(goal_pose)
                 exploration_goal.header.stamp = rospy.Time(0)
-                exploration_goal.point.x =  goal_pose.pose.position.x
+                exploration_goal.point.x = goal_pose.pose.position.x
                 exploration_goal.point.y = goal_pose.pose.position.y
                 self.points.points = [exploration_goal.point]
                 self.assigned_points_pub.publish(self.points)
             # print("Calculating mnlc Assigner took: ", rospy.get_time() - time_init, ".")
-
 
     def informationGain(self, mapdata, point, radius):
         infoGain = 0
@@ -151,7 +156,7 @@ class mnlc_assigner():
             limit = ((start/mapdata.info.width) + 2) * mapdata.info.width
             for i in range(start, end + 1):
                 if (i >= 0 and i < limit and i < len(mapdata.data)):
-                    p = np.array([mapdata.info.origin.position.x + (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution, 
+                    p = np.array([mapdata.info.origin.position.x + (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution,
                                   mapdata.info.origin.position.y + (i/mapdata.info.width) * mapdata.info.resolution])
                     if (mapdata.data[i] == -1 and np.linalg.norm(point-p) <= radius):
                         infoGain += 1
@@ -170,12 +175,14 @@ class mnlc_assigner():
                 if (i >= 0 and i < limit and i < len(mapdata.data)):
                     for j in range(0, len(centroids)):
                         current_pt = centroids[j]
-                        p = np.array([mapdata.info.origin.position.x + (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution, 
+                        p = np.array([mapdata.info.origin.position.x + (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution,
                                       mapdata.info.origin.position.y + (i/mapdata.info.width) * mapdata.info.resolution])
                         if (mapdata.data[i] == -1 and np.linalg.norm(p-current_pt) <= r and np.linalg.norm(p-point) <= r):
-                            # info_gain[j] -= 1
-                            info_gain[j] -= (mapdata.info.resolution *
-                                             mapdata.info.resolution)
+                            info_gain[j] -= 1
+                            # info_gain[j] -= (mapdata.info.resolution *
+                            #                  mapdata.info.resolution)
+                        if (mapdata.data[i] > self.obstacle_cost):
+                            info_gain[j] -= 1
         return info_gain
 
     def update_filtered_frontiers(self, point_array):
@@ -186,7 +193,8 @@ class mnlc_assigner():
         for point in point_array.points:
             if i > self.filter_limit:
                 break
-            self.filtered_frontiers.append(np.array([point.point.x, point.point.y]))
+            self.filtered_frontiers.append(
+                np.array([point.point.x, point.point.y]))
             i = i + 1
 
     def update_map(self, map):
@@ -195,10 +203,11 @@ class mnlc_assigner():
 
     def error_handler(self):
         self.error = True
-        
+
     def run(self):
         while not rospy.is_shutdown() and self.error == False:
             rospy.spin()
+
 
 if __name__ == '__main__':
     try:

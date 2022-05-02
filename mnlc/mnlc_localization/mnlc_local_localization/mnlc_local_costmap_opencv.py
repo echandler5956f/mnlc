@@ -22,25 +22,21 @@ class mnlc_local_costmap_opencv():
         rospy.loginfo("Initializing mnlc_local_costmap_opencv.")
         rospy.init_node("mnlc_local_costmap_opencv")
         self.initialize_params()
-        rospy.sleep(self.timeout * 5)
+        rospy.sleep(self.start_time)
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
         rospy.loginfo("mnlc_local_costmap_opencv node ready.")
         self.safe_start()
 
     def initialize_params(self):
-        # grid cost to be considered an obstacle
-        self.obstacle_cost = rospy.get_param('obstacle_cost', 90)
-        self.ctrl_invl = rospy.get_param(
-            'ctrl_invl', 0.0025)  # [s] control loop interval
-        self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
+        self.start_time = rospy.get_param('/local_costmap/start_time')
         # [s] standard service timeout limit
-        self.timeout = rospy.get_param('timeout', 1.0)
+        self.timeout = rospy.get_param('/controller/timeout')
         # number of grid cells to pad the c_scpace with
-        self.padding = rospy.get_param('padding', 4)
+        self.padding = rospy.get_param('/local_costmap/padding', 4)
         # [m] the width of the local costmap
-        self.local_width = rospy.get_param('local_width', 1)
+        self.local_width = rospy.get_param('/local_costmap/local_width', 1)
         # [m] the height of the local costmap
-        self.local_height = rospy.get_param('local_height', 1)
+        self.local_height = rospy.get_param('/local_costmap/local_height', 1)
         self.first_map = True
         self.map = OccupancyGrid()
         self.listener = tf.TransformListener()
@@ -96,8 +92,8 @@ class mnlc_local_costmap_opencv():
         cspace.info.resolution = global_resolution
         cspace.info.height = local_grid_height
         cspace.info.width = local_grid_width
-        ctrl_rate = self.ctrl_rate
-        rtab_map_pub = rospy.Publisher('/latest_map', OccupancyGrid, queue_size=1)
+        rtab_map_pub = rospy.Publisher(
+            '/latest_map', OccupancyGrid, queue_size=1)
         rtab_map_pub.publish(self.initial_map_metadata)
         while 1:
             time_init = rospy.get_time()
@@ -155,12 +151,13 @@ class mnlc_local_costmap_opencv():
                 dataFromGridC[int(math.floor(
                     row * global_grid_height) + column)] = -1
             dataC = tuple(np.array(dataFromGridC, dtype=int))
-            cspace.info.origin.position.x = trans[0] - (local_grid_width * global_resolution/2)
-            cspace.info.origin.position.y = trans[1] - (local_grid_height * global_resolution/2)
+            cspace.info.origin.position.x = trans[0] - \
+                (local_grid_width * global_resolution/2)
+            cspace.info.origin.position.y = trans[1] - \
+                (local_grid_height * global_resolution/2)
             cspace.header.stamp = rospy.Time.now()
             cspace.data = dataC
             self.c_space_pub.publish(cspace)
-            # ctrl_rate.sleep()
             time_end = rospy.get_time()
             # print("Calculating Local CSpace took: ", time_end - time_init, ".")
 

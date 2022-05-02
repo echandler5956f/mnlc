@@ -30,34 +30,32 @@ class mnlc_global_opencv_frontier_detector():
         rospy.init_node("mnlc_global_opencv_frontier_detector",
                         disable_signals=True)
         self.initialize_params()
-        rospy.sleep(self.timeout * 7)
+        rospy.sleep(self.start_time)
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
         self.safe_start()
         rospy.loginfo("mnlc_global_opencv_frontier_detector node ready.")
 
     def initialize_params(self):
-        # grid cost to be considered an obstacle
-        self.obstacle_cost = rospy.get_param('obstacle_cost', 90)
-        self.ctrl_invl = rospy.get_param(
-            'ctrl_invl', 0.01)  # [s] control loop interval
-        self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
+        self.start_time = rospy.get_param(
+            '/opencv_frontier_detector/start_time')
         # [s] standard service timeout limit
-        self.timeout = rospy.get_param('timeout', 1.0)
+        self.timeout = rospy.get_param('/controller/timeout')
         # number of grid cells to pad the c_scpace with
-        self.padding = rospy.get_param('padding', 4)
+        self.padding = rospy.get_param('/opencv_frontier_detector/padding')
         # width-number of cells left and right to add to the visited list
-        self.visited_width = rospy.get_param('visited_width', 20)
+        self.visited_width = rospy.get_param(
+            '/opencv_frontier_detector/visited_width')
         # height-number of cells above and below to add to the visited list
-        self.visited_height = rospy.get_param('visited_height', 20)
+        self.visited_height = rospy.get_param(
+            '/opencv_frontier_detector/visited_height')
         self.listener = tf.TransformListener()
         self.map_metadata = OccupancyGrid()
         self.visited = []
         self.points = Marker()
         self.cspace = None
-        # t = rospy.Timer(self.ctrl_invl, self.update_map())
         self.latest_map = OccupancyGrid()
-        rtab_map_sub = rospy.Subscriber('/latest_map', OccupancyGrid, self.update_map, queue_size=1)
-
+        rospy.Subscriber('/latest_map', OccupancyGrid,
+                         self.update_map, queue_size=1)
 
     def initialize_marker(self, map):
         self.points.header.frame_id = map.header.frame_id
@@ -113,7 +111,7 @@ class mnlc_global_opencv_frontier_detector():
                 self.error_handler()
                 return
         self.detected_points_pub = rospy.Publisher(
-            '/detected_points', PointStamped, queue_size=10)
+            '/detected_points', PointStamped, queue_size=1000)
         self.shapes_pub = rospy.Publisher(
             'OpenCVFrontierDetector/shapes', Marker, queue_size=1)
         self.detect_frontiers()

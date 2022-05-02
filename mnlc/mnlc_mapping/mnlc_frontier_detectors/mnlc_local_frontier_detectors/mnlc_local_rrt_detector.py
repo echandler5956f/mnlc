@@ -25,25 +25,25 @@ class mnlc_local_rrt_detector():
         rospy.loginfo("Initializing mnlc_local_rrt_detector.")
         rospy.init_node("mnlc_local_rrt_detector", anonymous=True)
         self.initialize_params()
-        rospy.sleep(self.timeout * 5)
+        rospy.sleep(self.controller_start_time)
         self.safe_start()
-        rospy.sleep(self.timeout * 5)
+        rospy.sleep(self.start_time)
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
         rospy.loginfo("mnlc_local_rrt_detector node ready.")
         self.detect_frontiers()
 
     def initialize_params(self):
+        self.controller_start_time = rospy.get_param('/controller/start_time')
+        self.start_time = rospy.get_param('/local_rrt_detector/start_time')
         self.bounding_points = []
         self.bounding_point_sub = rospy.Subscriber(
             name='/bounding_points', data_class=PointStamped, callback=self.set_bounding_points, queue_size=5)
         # grid cost to be considered an obstacle
-        self.obstacle_cost = rospy.get_param('obstacle_cost', 90)
-        self.ctrl_invl = rospy.get_param(
-            'ctrl_invl', 0.01)  # [s] control loop interval
-        self.ctrl_rate = rospy.Rate(1/self.ctrl_invl)
+        self.obstacle_cost = rospy.get_param('/controller/obstacle_cost')
         # [s] standard service timeout limit
-        self.timeout = rospy.get_param('timeout', 1.0)
-        self.eta = rospy.get_param('eta', 0.4)  # how greedy the search is
+        self.timeout = rospy.get_param('/controller/timeout')
+        # how greedy the search is
+        self.eta = rospy.get_param('/local_rrt_detector/eta')
         self.latest_map = OccupancyGrid()
 
     def safe_start(self):
@@ -76,9 +76,9 @@ class mnlc_local_rrt_detector():
         self.rtab_map_sub = rospy.Subscriber(
             '/latest_map', OccupancyGrid, self.update_map, queue_size=1)
         self.detected_points_pub = rospy.Publisher(
-            '/detected_points', PointStamped, queue_size=10)
+            '/detected_points', PointStamped, queue_size=1000)
         self.shapes_pub = rospy.Publisher(
-            'mnlc_local_rrt_detector/shapes', Marker, queue_size=10)
+            'mnlc_local_rrt_detector/shapes', Marker, queue_size=1000)
         self.state_machine = rospy.Subscriber(
             'mnlc_state_machine', std_msgs.msg.Int8, self.update_state_machine, queue_size=1)
 

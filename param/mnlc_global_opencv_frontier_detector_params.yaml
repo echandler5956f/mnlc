@@ -1,6 +1,5 @@
-obstacle_cost: 90 # grid cost to be considered an obstacle
-ctrl_invl: 0.01  # [s] control loop interval
-timeout: 1.0 # [s] standard service timeout limit
-padding: 4 # number of grid cells to pad the c_scpace with
-visited_width: 20 # width-number of cells left and right to add to the visited list
-visited_height: 20  # height-number of cells above and below to add to the visited list
+opencv_frontier_detector:
+  start_time: 5
+  padding: 4 # number of grid cells to pad the c_scpace with
+  visited_width: 20 # width-number of cells left and right to add to the visited list
+  visited_height: 20  # height-number of cells above and below to add to the visited list

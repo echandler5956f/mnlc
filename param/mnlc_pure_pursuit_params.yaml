@@ -1,19 +1,18 @@
-obstacle_cost: 90 # grid cost to be considered an obstacle
-ctrl_invl: 0.01  # [s] control loop interval
-timeout: 1.0 # [s] standard service timeout limit
-rad_tolerance: 0.0125 # radius fidelity of the smoothing
-tolerance: 0.0625 # [m] tolerance
-alpha: 0.5001 # curve constant
-beta: 0.4999 # curve constant
-w_base: 0.23  # [m] wheel base
-spacing: 0.01 # [m] space between injected points
-kv: 4.5454 # velocity constant
-ka: 0.0375 # acceleration constant
-lad: 0.225  # [m] look-ahead distance
-lfg: 0.005 # look forward gain
-target_speed: 0.0375 # [m/s] velocity target
-target_acc: 0.0375 # [m/s^2] acceleration target
-kp: 0.5 # pid proportional gain
-ki: 0.0 # integral gain
-kd: 0.0 # derivative gain
-error_bound: 0.0 # a hard cap on the pid error. if 0.0, no cap
+pure_pursuit:
+  start_time: 5
+  rad_tolerance: 0.0125 # radius fidelity of the smoothing
+  tolerance: 0.0625 # [m] tolerance
+  alpha: 0.51 # curve constant
+  beta: 0.49 # curve constant
+  w_base: 0.23  # [m] wheel base
+  spacing: 0.01 # [m] space between injected points
+  kv: 4.5454 # velocity constant
+  ka: 0.0375 # acceleration constant
+  lad: 0.225  # [m] look-ahead distance
+  lfg: 0.005 # look forward gain
+  target_speed: 0.0375 # [m/s] velocity target
+  target_acc: 0.0375 # [m/s^2] acceleration target
+  kp: 0.5 # pid proportional gain
+  ki: 0.0 # integral gain
+  kd: 0.0 # derivative gain
+  error_bound: 0.0 # a hard cap on the pid error. if 0.0, no cap
