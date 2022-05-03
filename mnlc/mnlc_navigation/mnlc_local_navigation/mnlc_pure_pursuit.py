@@ -155,6 +155,8 @@ class mnlc_pure_pursuit():
         rospy.Timer(rospy.Duration(self.ctrl_invl), self.odometry)
         self.cmd_vel_pub = rospy.Publisher(
             '/cmd_vel', Twist, None, queue_size=1)
+        self.smoothed_pth_pub = rospy.Publisher(
+            '/pure_persuit/smoothed_path', Path, queue_size=1)
         self.phase1_server = actionlib.SimpleActionServer(
             '/phase1', rbem.explorationAction, execute_cb=self.execute_path, auto_start=False)
         self.phase1_server.start()
@@ -202,15 +204,20 @@ class mnlc_pure_pursuit():
     def execute_path(self, goal):
         start_time = rospy.get_time()
         poses = goal.path
+        if len(poses) - 1 > 1:
+            injected_path = self.inject_waypoints(poses)
+            smoothed_path = self.path_smoothing(injected_path)
+            self.smoothed_pth_pub.publish(smoothed_path)
+            i = Path()
         rospy.loginfo("Executing Pure Persuit path following.")
         time_init = rospy.get_time()
-        dx = poses[5].pose.position.x - self.cx
-        dy = poses[5].pose.position.y - self.cy
+        dx = smoothed_path.poses[5].pose.position.x - self.cx
+        dy = smoothed_path.poses[5].pose.position.y - self.cy
         it = math.atan2(dy, dx)
         iq = quaternion_from_euler(0.0, 0.0, it, 'rxyz')
         self.turnTo(iq)
-        last_index = len(poses) - 1
-        t_index, lf = self.search_target(poses)
+        last_index = len(smoothed_path.poses) - 1
+        t_index, lf = self.search_target(smoothed_path.poses)
         # print("t_index is: ", t_index, " and last_index is: ", last_index)
         next_path_time = time.time()
         while last_index > t_index:
@@ -221,11 +228,11 @@ class mnlc_pure_pursuit():
                 return
             if time.time() > next_path_time:
                 lin_v = self.kv * self.target_speed + self.ka * self.target_acc
-                ang_v, t_index = self.pp_steering(poses, t_index)
+                ang_v, t_index = self.pp_steering(smoothed_path.poses, t_index)
                 self.send_speed(lin_v, ang_v)
                 next_path_time = time.time() + self.ctrl_invl
                 feedback = rbem.explorationFeedback()
-                feedback.poses_left = len(poses) - t_index
+                feedback.poses_left = len(smoothed_path.poses) - t_index
                 self.phase1_server.publish_feedback(feedback=feedback)
         self.old_nearest = None
         self.stop()
@@ -234,11 +241,11 @@ class mnlc_pure_pursuit():
         result.reached_frontier = True
         self.phase1_server.set_succeeded(result=result)
 
-    def inject_waypoints(self, path):
+    def inject_waypoints(self, poses):
         new_path = Path()
-        for i in range(0, len(path.poses) - 1):
-            vector = np.array([path.poses[i + 1].pose.position.x - path.poses[i].pose.position.x,
-                              path.poses[i + 1].pose.position.y - path.poses[i].pose.position.y])
+        for i in range(0, len(poses) - 1):
+            vector = np.array([poses[i + 1].pose.position.x - poses[i].pose.position.x,
+                              poses[i + 1].pose.position.y - poses[i].pose.position.y])
             mag = math.sqrt(math.pow(vector[0], 2) + math.pow(vector[1], 2))
             num_points = math.ceil(mag / self.spacing)
             vector = np.array(
@@ -247,18 +254,18 @@ class mnlc_pure_pursuit():
                 pose = PoseStamped()
                 pose.header.frame_id = 'map'
                 pose.header.stamp = rospy.Time.now()
-                pose.pose.position.x = path.poses[i].pose.position.x + (
+                pose.pose.position.x = poses[i].pose.position.x + (
                     vector[0] * j)
-                pose.pose.position.y = path.poses[i].pose.position.y + (
+                pose.pose.position.y =poses[i].pose.position.y + (
                     vector[1] * j)
                 new_path.poses.append(pose)
         last_pose = PoseStamped()
         last_pose.header.frame_id = 'map'
         last_pose.header.stamp = rospy.Time.now()
-        last_pose.pose.position.x = path.poses[len(
-            path.poses) - 1].pose.position.x
-        last_pose.pose.position.y = path.poses[len(
-            path.poses) - 1].pose.position.y
+        last_pose.pose.position.x = poses[len(
+            poses) - 1].pose.position.x
+        last_pose.pose.position.y = poses[len(
+           poses) - 1].pose.position.y
         new_path.poses.append(last_pose)
         new_path.header.frame_id = 'map'
         new_path.header.stamp = rospy.Time.now()

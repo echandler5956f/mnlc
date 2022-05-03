@@ -7,6 +7,7 @@ from nav_msgs.msg import OccupancyGrid
 from rbe3002.msg import PointArray
 from nav_msgs.srv import GetMap
 import std_srvs.srv
+import std_msgs.msg
 import numpy as np
 import roslib
 import rospy
@@ -19,6 +20,7 @@ roslib.load_manifest('rbe3002')
 class mnlc_sklearn_frontier_filter():
 
     def __init__(self):
+        self.state = 1
         self.error = False
         rospy.loginfo("Initializing mnlc_sklearn_frontier_filter.")
         rospy.init_node("mnlc_sklearn_frontier_filter")
@@ -41,12 +43,14 @@ class mnlc_sklearn_frontier_filter():
         self.next_time = rospy.get_time()
         self.detected_points_sub = rospy.Subscriber(
             '/detected_points', PointStamped, self.update_frontiers, queue_size=1000)
-        rtab_map_sub = rospy.Subscriber(
+        self.rtab_map_sub = rospy.Subscriber(
             '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_map, queue_size=1)
         self.assigned_points_pub = rospy.Publisher(
             '/frontier_filter/filtered_points_markers', Marker, queue_size=10)
         self.filter_pub = rospy.Publisher(
             '/frontier_filter/filtered_points', PointArray, queue_size=10)
+        self.state_machine_sub = rospy.Subscriber('/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
+
 
     def initialize_marker(self, map):
         self.marker.header.frame_id = map.header.frame_id
@@ -102,9 +106,9 @@ class mnlc_sklearn_frontier_filter():
             centroids = []
             front = copy.copy(self.frontiers)
             if len(front) > 1:
-                bandwidth = estimate_bandwidth(front, quantile=0.1)
+                bandwidth = estimate_bandwidth(front, quantile=0.2)
                 if bandwidth == 0.0:
-                    bandwidth = 0.1
+                    bandwidth = 0.2
                 ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
                 ms.fit(front)
                 centroids = ms.cluster_centers_
@@ -143,7 +147,7 @@ class mnlc_sklearn_frontier_filter():
                             if (mapdata.data[j] == -1 and np.linalg.norm(centroid-p) <= radius):
                                 info_gain += 1
                 info_gain = info_gain * (mapdata.info.resolution ** 2)
-                if cond or info_gain < 0.25:
+                if cond or info_gain < 0.125:
                     centroids = np.delete(centroids, (i), axis=0)
                     i = i - 1
                 i += 1
@@ -168,6 +172,9 @@ class mnlc_sklearn_frontier_filter():
 
     def update_map(self, map):
         self.latest_map = map
+
+    def update_state(self, state):
+        self.state = state
 
     def error_handler(self):
         self.error = True

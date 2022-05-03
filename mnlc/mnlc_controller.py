@@ -55,6 +55,7 @@ class mnlc_controller(sme.GraphMachine):
         self.global_costmap = OccupancyGrid()
         self.odom_br = tf.TransformBroadcaster()
         self.poseL = tf.TransformListener()
+        self.backup_frontier = None
         self.state_machine = rospy.Publisher(
             '/mnlc_state_machine', std_msgs.msg.Int8, queue_size=1)
         self.bounding_points_pub = rospy.Publisher(
@@ -62,7 +63,7 @@ class mnlc_controller(sme.GraphMachine):
         self.goal_subscriber = rospy.Subscriber(
             '/move_base_simple/goal', PoseStamped, self.update_goal, queue_size=1)
         self.send_current_cell = rospy.Publisher(
-            'mncl_controller/current_cell', Point, queue_size=1)
+            'mnlc_controller/current_cell', Point, queue_size=1)
         self.cmd_vel_pub = rospy.Publisher(
             '/cmd_vel', Twist, None, queue_size=1)
         self.nodes_responded = 0
@@ -97,6 +98,8 @@ class mnlc_controller(sme.GraphMachine):
             '/mnlc_local_costmap_opencv/cspace', OccupancyGrid, self.update_local_costmap, queue_size=1)
         self.global_c_space_sub = rospy.Subscriber(
             '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_global_costmap, queue_size=1)
+        self.detected_opencv_sub = rospy.Subscriber(
+            '/opencv_points', PointStamped, self.update_backup_frontiers, queue_size=1)
         rospy.Service('/begin_phase1', std_srvs.srv.Empty,
                       self.count_operational_nodes)
         cond = 0
@@ -150,15 +153,26 @@ class mnlc_controller(sme.GraphMachine):
         self.bounding_points_pub.publish(p3)
         self.bounding_points_pub.publish(p4)
         recieved_first_frontier = self.recieved_first_frontier
+        ts = rospy.get_time()
         while recieved_first_frontier == False:
             print("Waiting for first frontier")
             rospy.sleep(1)
             recieved_first_frontier = self.recieved_first_frontier
+            if rospy.get_time() > ts + 15:
+                if self.backup_frontier is not None:
+                    g = PoseStamped()
+                    g.header.frame_id = '/map'
+                    g.header.stamp = rospy.Time.now()
+                    g.pose.position.x = self.backup_frontier.point.x
+                    g.pose.position.y = self.backup_frontier.point.y
+                    self.goal_pose = g
+                    break
         failed = 1
         failing = False
         s = rospy.get_time()
         while failed < 5:
-            if rospy.get_time() > s + 200.0:
+            if rospy.get_time() >= s + 100.0:
+                failed = 6
                 break
             print("Navigating to frontier")
             frontier_goal = self.goal_pose
@@ -259,6 +273,9 @@ class mnlc_controller(sme.GraphMachine):
             while rospy.get_time() < s + t:
                 self.send_speed(0.05, 0.05)
             self.stop()
+        
+    def update_backup_frontiers(self, backup_frontier):
+        self.backup_frontier = backup_frontier
 
     def feedback(self, feedback):
         print("Feedback: ", feedback)
@@ -392,6 +409,7 @@ class mnlc_controller(sme.GraphMachine):
                     break
             rospy.sleep(0.1)
         print("Made it back to origin!")
+        rospy.sleep(1)
         self.final()
 
     def final(self):

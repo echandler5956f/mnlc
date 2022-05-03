@@ -60,7 +60,7 @@ class mnlc_assigner():
         self.goal_publisher = rospy.Publisher(
             '/move_base_simple/goal', PoseStamped, queue_size=1)
         self.get_currennt_cell = rospy.Subscriber(
-            'mncl_controller/current_cell', Point, self.update_visited, queue_size=1)
+            'mnlc_controller/current_cell', Point, self.update_visited, queue_size=1)
         self.state_machine_sub = rospy.Subscriber('/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
 
     def initialize_marker(self, map):
@@ -110,45 +110,46 @@ class mnlc_assigner():
         exploration_goal = PointStamped()
         exploration_goal.header.frame_id = self.points.header.frame_id
         exploration_goal.point.z = 0
-        while not rospy.is_shutdown() and self.state == 1:
-            time_init = rospy.get_time()
-            mapdata = self.latest_map
-            centroids = copy.copy(self.filtered_frontiers)
-            info_gain = []
-            x = self.pose2d.cx
-            y = self.pose2d.cy
-            position = np.array([x, y])
-            radius = self.info_radius
-            for i in range(len(centroids)):
-                centroid = np.array([centroids[i][0], centroids[i][1]])
-                info_gain.append(self.informationGain(
-                    mapdata, centroid, radius))
-            info_gain = self.discount(
-                mapdata, [x, y], centroids, info_gain, radius)
-            rev_rec = []
-            centroid_rec = []
-            for i in range(len(centroids)):
-                cost = np.linalg.norm(position - centroids[i])
-                information_gain = info_gain[i]
-                if np.linalg.norm(position - centroids[i]) <= self.hysteresis_radius:
-                    information_gain *= self.hysteresis_gain
-                rev = information_gain * self.info_multiplier - cost
-                rev_rec.append(rev)
-                centroid_rec.append(centroids[i])
-            if len(rev_rec) > 0:
-                best_frontier = centroid_rec[rev_rec.index(max(rev_rec))]
-                goal_pose = PoseStamped()
-                goal_pose.header.frame_id = '/map'
-                goal_pose.header.stamp = rospy.Time.now()
-                goal_pose.pose.position.x = best_frontier[0]
-                goal_pose.pose.position.y = best_frontier[1]
-                self.goal_publisher.publish(goal_pose)
-                exploration_goal.header.stamp = rospy.Time(0)
-                exploration_goal.point.x = goal_pose.pose.position.x
-                exploration_goal.point.y = goal_pose.pose.position.y
-                self.points.points = [exploration_goal.point]
-                self.assigned_points_pub.publish(self.points)
-            # print("Calculating mnlc Assigner took: ", rospy.get_time() - time_init, ".")
+        while not rospy.is_shutdown():
+            if self.state == 1:
+                # time_init = rospy.get_time()
+                mapdata = self.latest_map
+                centroids = copy.copy(self.filtered_frontiers)
+                info_gain = []
+                x = self.pose2d.cx
+                y = self.pose2d.cy
+                position = np.array([x, y])
+                radius = self.info_radius
+                for i in range(len(centroids)):
+                    centroid = np.array([centroids[i][0], centroids[i][1]])
+                    info_gain.append(self.informationGain(
+                        mapdata, centroid, radius))
+                info_gain = self.discount(
+                    mapdata, [x, y], centroids, info_gain, radius)
+                rev_rec = []
+                centroid_rec = []
+                for i in range(len(centroids)):
+                    cost = np.linalg.norm(position - centroids[i])
+                    information_gain = info_gain[i]
+                    if np.linalg.norm(position - centroids[i]) <= self.hysteresis_radius:
+                        information_gain *= self.hysteresis_gain
+                    rev = information_gain * self.info_multiplier - cost
+                    rev_rec.append(rev)
+                    centroid_rec.append(centroids[i])
+                if len(rev_rec) > 0:
+                    best_frontier = centroid_rec[rev_rec.index(max(rev_rec))]
+                    goal_pose = PoseStamped()
+                    goal_pose.header.frame_id = '/map'
+                    goal_pose.header.stamp = rospy.Time.now()
+                    goal_pose.pose.position.x = best_frontier[0]
+                    goal_pose.pose.position.y = best_frontier[1]
+                    self.goal_publisher.publish(goal_pose)
+                    exploration_goal.header.stamp = rospy.Time(0)
+                    exploration_goal.point.x = goal_pose.pose.position.x
+                    exploration_goal.point.y = goal_pose.pose.position.y
+                    self.points.points = [exploration_goal.point]
+                    self.assigned_points_pub.publish(self.points)
+                # print("Calculating mnlc Assigner took: ", rospy.get_time() - time_init, ".")
 
     def informationGain(self, mapdata, point, radius):
         infoGain = 0
