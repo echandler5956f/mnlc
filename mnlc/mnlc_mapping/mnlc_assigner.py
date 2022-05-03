@@ -205,8 +205,8 @@ class mnlc_assigner():
     def update_visited(self, visited):
         x = visited.x
         y = visited.y
-        visited_width = 5
-        visited_height = 5
+        visited_width = 10
+        visited_height = 10
         xmin = int(x) - int(math.floor(visited_width / 2))
         xmax = int(x) + int(math.floor(visited_width / 2))
         ymin = int(y) - int(math.floor(visited_height / 2))
