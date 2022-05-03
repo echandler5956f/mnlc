@@ -1,16 +1,11 @@
 #!/usr/bin/env python
 
-from geometry_msgs.msg import PointStamped, Point
-from nav_msgs.msg import OccupancyGrid, GridCells
+from geometry_msgs.msg import PointStamped
 from visualization_msgs.msg import Marker
-from rbe3002.msg import PointArray
+from nav_msgs.msg import OccupancyGrid
 from nav_msgs.srv import GetMap
-import move_base_msgs.msg as mb
-import rbe3002.msg as rbe
 import std_srvs.srv
-import std_msgs.msg
 import numpy as np
-import actionlib
 import roslib
 import rospy
 import math
@@ -27,8 +22,8 @@ class mnlc_global_opencv_frontier_detector():
     def __init__(self):
         self.error = False
         rospy.loginfo("Initializing mnlc_global_opencv_frontier_detector.")
-        rospy.init_node("mnlc_global_opencv_frontier_detector",
-                        disable_signals=True)
+        rospy.init_node("mnlc_global_opencv_frontier_detector")
+        rospy.sleep(15)
         self.initialize_params()
         rospy.sleep(self.start_time)
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
@@ -54,14 +49,12 @@ class mnlc_global_opencv_frontier_detector():
         self.points = Marker()
         self.cspace = None
         self.latest_map = OccupancyGrid()
-        rospy.Subscriber('/latest_map', OccupancyGrid,
-                         self.update_map, queue_size=1)
 
     def initialize_marker(self, map):
         self.points.header.frame_id = map.header.frame_id
         self.points.header.stamp = rospy.Time.now()
         self.points.ns = "markers"
-        self.points.id = 0
+        self.points.id = 9
         self.points.type = Marker.POINTS
         self.points.action = Marker.ADD
         self.points.pose.orientation.w = 1.0
@@ -98,6 +91,8 @@ class mnlc_global_opencv_frontier_detector():
             return
         rospy.loginfo("Begin phase1 service call successful.")
         temp = tmp()
+        rospy.Subscriber('/map', OccupancyGrid,
+                    self.update_map, queue_size=1)
         self.listener.waitForTransform(
             '/odom', '/base_footprint', rospy.Time(0), timeout=rospy.Duration(self.timeout))
         flag = 0
@@ -111,16 +106,16 @@ class mnlc_global_opencv_frontier_detector():
                 self.error_handler()
                 return
         self.detected_points_pub = rospy.Publisher(
-            '/detected_points', PointStamped, queue_size=1000)
+            '/detected_points', PointStamped, queue_size=100)
         self.shapes_pub = rospy.Publisher(
-            'OpenCVFrontierDetector/shapes', Marker, queue_size=1)
+            '/OpenCVFrontierDetector/shapes', Marker, queue_size=1)
         self.detect_frontiers()
 
     def detect_frontiers(self):
         exploration_goal = PointStamped()
         exploration_goal.header.frame_id = self.points.header.frame_id
         exploration_goal.point.z = 0
-        while not rospy.is_shutdown():
+        while 1:
             latest_map = self.latest_map
             img_map = np.zeros(
                 (latest_map.info.height, latest_map.info.width, 1), np.uint8)
@@ -164,7 +159,8 @@ class mnlc_global_opencv_frontier_detector():
                 exploration_goal.header.stamp = rospy.Time(0)
                 exploration_goal.point.x = frontier[0]
                 exploration_goal.point.y = frontier[1]
-                self.detected_points_pub.publish(exploration_goal)
+                for i in range(50):
+                    self.detected_points_pub.publish(exploration_goal)
                 self.points.points = [exploration_goal.point]
                 self.shapes_pub.publish(self.points)
 
@@ -173,7 +169,7 @@ class mnlc_global_opencv_frontier_detector():
         while flag == 0:
             try:
                 (trans, rot) = self.listener.lookupTransform(
-                    "odom", "base_footprint", rospy.Time(0))
+                    "/odom", "/base_footprint", rospy.Time(0))
                 flag = 1
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 return
@@ -196,7 +192,6 @@ class mnlc_global_opencv_frontier_detector():
 
     def update_map(self, map):
         self.latest_map = map
-        # self.latest_map = cv2.imread(r'/home/quant/.ros/global_costmap.pgm', -1)
 
     def error_handler(self):
         self.error = True

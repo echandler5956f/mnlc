@@ -1,7 +1,7 @@
 pure_pursuit:
   start_time: 5
-  rad_tolerance: 0.025 # radius fidelity of the smoothing
-  tolerance: 0.0625 # [m] tolerance
+  rad_tolerance: 0.03125 # radius fidelity of the smoothing
+  tolerance: 0.0875 # [m] tolerance
   alpha: 0.5001 # curve constant
   beta: 0.4999 # curve constant
   w_base: 0.237  # [m] wheel base

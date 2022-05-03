@@ -185,9 +185,9 @@ class mnlc_assigner():
                             info_gain[j] -= 1.0
                         pp = (current_pt[0], current_pt[1])
                         if pp in visited:
-                            info_gain[j] -= 0.25
+                            info_gain[j] -= 0.375
                         if (mapdata.data[i] > self.obstacle_cost):
-                            info_gain[j] -= 0.425
+                            info_gain[j] -= 0.5
         return info_gain
 
     def update_filtered_frontiers(self, point_array):

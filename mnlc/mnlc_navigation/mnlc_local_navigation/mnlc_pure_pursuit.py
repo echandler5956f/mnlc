@@ -215,10 +215,6 @@ class mnlc_pure_pursuit():
         next_path_time = time.time()
         while last_index > t_index:
             if rospy.get_time() > start_time + 40.0 and 0.0025 >= self.vel:
-                s_time = rospy.get_time()
-                while rospy.get_time() <= s_time + 0.75:
-                    self.send_speed(-0.1, 0.0)
-                self.stop()
                 result = rbem.explorationResult()
                 result.reached_frontier = False
                 self.phase1_server.set_succeeded(result=result)
@@ -344,6 +340,10 @@ class mnlc_pure_pursuit():
         reachedHeading = False
         while (not reachedHeading and not rospy.is_shutdown()):
             error = yaw - self.ctheta
+            while error > math.pi:
+                error -= 2 * math.pi
+            while error < - math.pi:
+                error += 2 * math.pi
             if(abs(error) < 0.1):
                 reachedHeading = True
                 self.stop()

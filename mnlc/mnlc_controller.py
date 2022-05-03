@@ -8,11 +8,13 @@ import move_base_msgs.msg as mb
 import rbe3002.msg as rbem
 import std_srvs.srv
 import std_msgs.msg
+import numpy as np
 import actionlib
 import roslib
 import rospy
 import math
 import tf
+
 
 roslib.load_manifest('rbe3002')
 
@@ -62,6 +64,8 @@ class mnlc_controller(sme.GraphMachine):
             '/move_base_simple/goal', PoseStamped, self.update_goal, queue_size=1)
         self.send_current_cell = rospy.Publisher(
             'mncl_controller/current_cell', Point, queue_size=1)
+        self.cmd_vel_pub = rospy.Publisher(
+            '/cmd_vel', Twist, None, queue_size=1)
         self.nodes_responded = 0
 
     def safe_start_phase_1(self):
@@ -103,8 +107,8 @@ class mnlc_controller(sme.GraphMachine):
                 cond = 1
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 cond = 0
-        self.cx = trans[0]
-        self.cy = trans[1]
+        self.kx = self.cx = trans[0]
+        self.ky = self.cy = trans[1]
         self.odom_sub = rospy.Subscriber(
             '/odom', Odometry, self.update_odom_tf)
         self.exploring_state()
@@ -150,7 +154,9 @@ class mnlc_controller(sme.GraphMachine):
             print("Waiting for first frontier")
             rospy.sleep(1)
             recieved_first_frontier = self.recieved_first_frontier
-        while 1:
+        failed = 1
+        failing = False
+        while failed < 5:
             print("Navigating to frontier")
             frontier_goal = self.goal_pose
             rospy.wait_for_service('/plan_path')
@@ -165,16 +171,87 @@ class mnlc_controller(sme.GraphMachine):
             if len(path.plan.poses) <= 1:
                 rospy.logwarn(
                     "Controller recieved information indicating that the planner cannot plan a path. Sending new frontier.")
-                pass
+                failing = True
+                f = 0
+                t = rospy.get_time()
+                while failing  == True:
+                    frontier_goal = self.goal_pose
+                    rospy.wait_for_service('/plan_path')
+                    try:
+                        path_srv = rospy.ServiceProxy('/plan_path', GetPlan)
+                        start_pose = PoseStamped()
+                        start_pose.pose.position.x = self.cx
+                        start_pose.pose.position.y = self.cy
+                        path = path_srv(start_pose, frontier_goal, 1.0)
+                    except rospy.ServiceException as e:
+                        rospy.logerr("Path Planning service call failed: %s." % e)
+                    if len(path.plan.poses) > 1:
+                        failed = failed + 1
+                        failing = False
+                        succeeded = True
+                    else:
+                        self.recovery(np.random.randint(0, 8), 0.125)
+                        rospy.sleep(0.25)
+                        if rospy.get_time() > t + 30.0:
+                            return
+                    f = f + 1
             else:
+                succeeded = True
+            if succeeded:
                 goal = rbem.explorationGoal()
                 goal.path = path.plan.poses
                 self.phase1_client.send_goal(
                     goal=goal, feedback_cb=self.feedback)
                 self.phase1_client.wait_for_result()
                 result = self.phase1_client.get_result()
-                print(result)
+                if result.reached_frontier == False:
+                    self.recovery(np.random.randint(0, 8), 0.125)
+                    rospy.sleep(0.25)
+                    failed = failed + 1
                 rospy.sleep(0.1)
+        self.re_init()
+
+    def recovery(self, it, t):
+        if it == 7:
+            s = rospy.get_time()
+            while rospy.get_time() < s + t:
+                self.send_speed(-0.05, -0.05)
+            self.stop()
+        if it == 6:
+            s = rospy.get_time()
+            while rospy.get_time() < s + t:
+                self.send_speed(-0.05, 0.0)
+            self.stop()
+        if it == 5:
+            s = rospy.get_time()
+            while rospy.get_time() < s + t:
+                self.send_speed(-0.05, 0.05)
+            self.stop()
+        if it == 4:
+            s = rospy.get_time()
+            while rospy.get_time() < s + t:
+                self.send_speed(0.05, -0.05)
+            self.stop()
+        if it == 3:
+            s = rospy.get_time()
+            while rospy.get_time() < s + t:
+                self.send_speed(0.0, 0.05)
+            self.stop()
+        if it == 2:
+            s = rospy.get_time()
+            while rospy.get_time() < s + t:
+                self.send_speed(0.05, -0.05)
+            self.stop()
+        if it == 1:
+            s = rospy.get_time()
+            while rospy.get_time() < s + t:
+                self.send_speed(0.05, 0.0)
+            self.stop()
+        if it == 0:
+            s = rospy.get_time()
+            while rospy.get_time() < s + t:
+                self.send_speed(0.05, 0.05)
+            self.stop()
 
     def feedback(self, feedback):
         print("Feedback: ", feedback)
@@ -234,18 +311,18 @@ class mnlc_controller(sme.GraphMachine):
             self.error_handler()
             return
         rospy.wait_for_service(
-            service='/rtabmap/set_mode_localization ', timeout=rospy.Duration(self.timeout))
+            service='/rtabmap/set_mode_localization', timeout=rospy.Duration(self.timeout))
         try:
-            rospy.ServiceProxy(name='/rtabmap/set_mode_localization ',
+            rospy.ServiceProxy(name='/rtabmap/set_mode_localization',
                                service_class=std_srvs.srv.Empty)
         except rospy.ServiceException as e:
             rospy.logerr("RTabMap Localization service call failed: %s" % e)
             self.error_handler()
             return
         rospy.wait_for_service(
-            service='/rtabmap/update_parameters ', timeout=rospy.Duration(self.timeout))
+            service='/rtabmap/update_parameters', timeout=rospy.Duration(self.timeout))
         try:
-            rospy.ServiceProxy(name='/rtabmap/update_parameters ',
+            rospy.ServiceProxy(name='/rtabmap/update_parameters',
                                service_class=std_srvs.srv.Empty)
         except rospy.ServiceException as e:
             rospy.logerr(
@@ -276,24 +353,38 @@ class mnlc_controller(sme.GraphMachine):
                     "We should not have any more nodes than what is essential to navigate, but it appears we do. Detectingnodes when we should have .")
                 break
             self.ctrl_rate.sleep()
-        self.phase2_client = actionlib.SimpleActionClient(
-            '/mnlc/navigate_to_origin', mb.MoveBaseAction)
-        self.phase2_client.wait_for_server(
-            timeout=rospy.Duration(self.timeout))
         self.return_to_origin_state()
         self.state_machine.publish(2)
         rospy.loginfo("Error checks complete. Getting goal for Phase 2.")
 
     def set_phase_2_goal(self):
-        self.phase2_goal = mb.MoveBaseGoal()
-        self.phase2_goal.target_pose.pose.position.x = 0.0
-        self.phase2_goal.target_pose.pose.position.y = 0.0
-        self.phase2_goal.target_pose.pose.orientation.z = 0.0
-        self.phase2_goal.target_pose.pose.orientation.w = 1.0
-        self.phase2_goal.target_pose.header.frame_id = '/map'
-        self.phase2_goal.target_pose.header.stamp = rospy.Time.now()
-        self.phase2_client.send_goal(
-            goal=self.phase2_goal, done_cb=self.final)
+        goal_pose = PoseStamped()
+        goal_pose.header.frame_id = '/map'
+        goal_pose.header.stamp = rospy.Time.now()
+        goal_pose.pose.position.x = self.kx
+        goal_pose.pose.position.y = self.ky
+        while 1:
+            print("Navigating to origin")
+            rospy.wait_for_service('/plan_path')
+            try:
+                path_srv = rospy.ServiceProxy('/plan_path', GetPlan)
+                start_pose = PoseStamped()
+                start_pose.pose.position.x = self.cx
+                start_pose.pose.position.y = self.cy
+                path = path_srv(start_pose, goal_pose, 1.0)
+            except rospy.ServiceException as e:
+                rospy.logerr("Path Planning service call failed: %s." % e)
+            else:
+                goal = rbem.explorationGoal()
+                goal.path = path.plan.poses
+                self.phase1_client.send_goal(
+                goal=goal, feedback_cb=self.feedback)
+                self.phase1_client.wait_for_result()
+                result = self.phase1_client.get_result()
+                if result.reached_frontier == True:
+                    break
+            rospy.sleep(0.1)
+        print("Made it back to origin!")
 
     def final(self):
         self.phase3_client = actionlib.SimpleActionClient(
@@ -311,6 +402,16 @@ class mnlc_controller(sme.GraphMachine):
     def update_goal(self, pose_stamped_msg):
         self.recieved_first_frontier = True
         self.goal_pose = pose_stamped_msg
+
+    def send_speed(self, linear_speed, angular_speed):
+        msg_cmd_vel = Twist()
+        msg_cmd_vel.linear.x = linear_speed
+        msg_cmd_vel.angular.z = angular_speed
+        self.cmd_vel_pub.publish(msg_cmd_vel)
+
+    def stop(self):
+        rospy.loginfo("Sending zero-velocity target to the Turtlebot.")
+        self.send_speed(0.0, 0.0)
 
     def count_operational_nodes(self, tmp):
         self.nodes_responded += 1

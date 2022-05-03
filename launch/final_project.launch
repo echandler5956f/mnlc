@@ -51,7 +51,7 @@
   <node name="mnlc_sklearn_frontier_filter"         pkg="rbe3002" type="mnlc_sklearn_frontier_filter.py"         output="screen"/>
 
   <!-- Global Frontier Detectors -->
-  <!-- <node name="mnlc_global_opencv_frontier_detector" pkg="rbe3002" type="mnlc_global_opencv_frontier_detector.py" output="screen"/> -->
+  <node name="mnlc_global_opencv_frontier_detector" pkg="rbe3002" type="mnlc_global_opencv_frontier_detector.py" output="screen"/>
   <node name="mnlc_global_rrt_detector1"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/>
   <!-- <node name="mnlc_global_rrt_detector2"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/>
   <node name="mnlc_global_rrt_detector3"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/> -->
@@ -74,7 +74,7 @@
   <rosparam file="$(find rbe3002)/param/mnlc_pure_pursuit_params.yaml"                    command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_assigner_params.yaml"                        command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_sklearn_frontier_filter_params.yaml"         command="load"/>
-  <!-- <rosparam file="$(find rbe3002)/param/mnlc_global_opencv_frontier_detector_params.yaml" command="load"/> -->
+  <rosparam file="$(find rbe3002)/param/mnlc_global_opencv_frontier_detector_params.yaml" command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_global_rrt_detector_params.yaml"             command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_local_rrt_detector_params.yaml"              command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_global_costmap_opencv_params.yaml"           command="load"/>
