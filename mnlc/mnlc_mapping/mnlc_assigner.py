@@ -6,6 +6,7 @@ from visualization_msgs.msg import Marker
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.srv import GetMap
 import std_srvs.srv
+import std_msgs.msg
 import numpy as np
 import roslib
 import rospy
@@ -18,6 +19,7 @@ roslib.load_manifest('rbe3002')
 class mnlc_assigner():
 
     def __init__(self):
+        self.state = 1
         self.error = False
         rospy.loginfo("Initializing mnlc_assigner.")
         rospy.init_node("mnlc_assigner")
@@ -59,6 +61,7 @@ class mnlc_assigner():
             '/move_base_simple/goal', PoseStamped, queue_size=1)
         self.get_currennt_cell = rospy.Subscriber(
             'mncl_controller/current_cell', Point, self.update_visited, queue_size=1)
+        self.state_machine_sub = rospy.Subscriber('/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
 
     def initialize_marker(self, map):
         self.points.header.frame_id = map.header.frame_id
@@ -107,7 +110,7 @@ class mnlc_assigner():
         exploration_goal = PointStamped()
         exploration_goal.header.frame_id = self.points.header.frame_id
         exploration_goal.point.z = 0
-        while not rospy.is_shutdown():
+        while not rospy.is_shutdown() and self.state == 1:
             time_init = rospy.get_time()
             mapdata = self.latest_map
             centroids = copy.copy(self.filtered_frontiers)
@@ -214,6 +217,9 @@ class mnlc_assigner():
         visited = {(xs, ys): 0 for xs in range(xmin, xmax, 1)
                    for ys in range(ymin, ymax, 1)}
         self.visited.update(visited)
+
+    def update_state(self, state):
+        self.state = state
 
     def update_map(self, map):
         self.latest_map = map

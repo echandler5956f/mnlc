@@ -159,8 +159,7 @@ class mnlc_global_opencv_frontier_detector():
                 exploration_goal.header.stamp = rospy.Time(0)
                 exploration_goal.point.x = frontier[0]
                 exploration_goal.point.y = frontier[1]
-                for i in range(50):
-                    self.detected_points_pub.publish(exploration_goal)
+                self.detected_points_pub.publish(exploration_goal)
                 self.points.points = [exploration_goal.point]
                 self.shapes_pub.publish(self.points)
 

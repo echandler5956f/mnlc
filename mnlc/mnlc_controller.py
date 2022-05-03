@@ -4,7 +4,6 @@ from geometry_msgs.msg import Twist, PointStamped, PoseStamped, Point
 from nav_msgs.msg import OccupancyGrid, Odometry
 from nav_msgs.srv import GetMap, GetPlan
 import transitions.extensions as sme
-import move_base_msgs.msg as mb
 import rbe3002.msg as rbem
 import std_srvs.srv
 import std_msgs.msg

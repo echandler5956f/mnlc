@@ -4,7 +4,7 @@ pure_pursuit:
   tolerance: 0.0875 # [m] tolerance
   alpha: 0.5001 # curve constant
   beta: 0.4999 # curve constant
-  w_base: 0.237  # [m] wheel base
+  w_base: 0.235  # [m] wheel base
   spacing: 0.0125 # [m] space between injected points
   kv: 4.5454 # velocity constant
   ka: 0.01 # acceleration constant

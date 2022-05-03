@@ -102,9 +102,9 @@ class mnlc_sklearn_frontier_filter():
             centroids = []
             front = copy.copy(self.frontiers)
             if len(front) > 1:
-                bandwidth = estimate_bandwidth(front, quantile=0.2)
+                bandwidth = estimate_bandwidth(front, quantile=0.1)
                 if bandwidth == 0.0:
-                    bandwidth = 0.2
+                    bandwidth = 0.1
                 ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
                 ms.fit(front)
                 centroids = ms.cluster_centers_
@@ -143,13 +143,13 @@ class mnlc_sklearn_frontier_filter():
                             if (mapdata.data[j] == -1 and np.linalg.norm(centroid-p) <= radius):
                                 info_gain += 1
                 info_gain = info_gain * (mapdata.info.resolution ** 2)
-                if cond or info_gain < 0.125:
+                if cond or info_gain < 0.25:
                     centroids = np.delete(centroids, (i), axis=0)
                     i = i - 1
                 i += 1
                 point_array.points = []
                 self.marker.points = []
-            if len(centroids != 0):
+            if len(centroids) != 0:
                 for cent in centroids:
                     point.point.x = cent[0]
                     point.point.y = cent[1]
