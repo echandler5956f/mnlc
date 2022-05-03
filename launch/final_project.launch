@@ -53,16 +53,16 @@
   <!-- Global Frontier Detectors -->
   <!-- <node name="mnlc_global_opencv_frontier_detector" pkg="rbe3002" type="mnlc_global_opencv_frontier_detector.py" output="screen"/> -->
   <node name="mnlc_global_rrt_detector1"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/>
-  <node name="mnlc_global_rrt_detector2"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/>
-  <node name="mnlc_global_rrt_detector3"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/>
+  <!-- <node name="mnlc_global_rrt_detector2"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/>
+  <node name="mnlc_global_rrt_detector3"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/> -->
 
 
   <!-- Local Frontier Detectors -->
   <node name="mnlc_local_rrt_detector1"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
   <node name="mnlc_local_rrt_detector2"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
   <node name="mnlc_local_rrt_detector3"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
-  <node name="mnlc_local_rrt_detector4"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
-  <node name="mnlc_local_rrt_detector5"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
+  <!-- <node name="mnlc_local_rrt_detector4"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
+  <node name="mnlc_local_rrt_detector5"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/> -->
 
   <!-- Costmaps -->
   <node name="mnlc_global_costmap_opencv"           pkg="rbe3002" type="mnlc_global_costmap_opencv.py"           output="screen"/>

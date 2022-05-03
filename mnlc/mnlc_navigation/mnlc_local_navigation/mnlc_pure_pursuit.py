@@ -216,8 +216,8 @@ class mnlc_pure_pursuit():
         while last_index > t_index:
             if rospy.get_time() > start_time + 30.0 and 0.00625 >= self.vel:
                 s_time = rospy.get_time()
-                while rospy.get_time() <= s_time + 1.0:
-                    self.send_speed(-0.125, 0.0)
+                while rospy.get_time() <= s_time + 0.75:
+                    self.send_speed(-0.1, 0.0)
                 self.stop()
                 result = rbem.explorationResult()
                 result.reached_frontier = False
