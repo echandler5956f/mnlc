@@ -102,10 +102,10 @@ class mnlc_sklearn_frontier_filter():
             centroids = []
             front = copy.copy(self.frontiers)
             if len(front) > 1:
-                # bandwidth = estimate_bandwidth(front, quantile=0.3)
-                # if bandwidth == 0.0:
-                #     bandwidth = 0.3
-                ms = MeanShift(bandwidth=0.3)
+                bandwidth = estimate_bandwidth(front, quantile=0.3)
+                if bandwidth == 0.0:
+                    bandwidth = 0.3
+                ms = MeanShift(bandwidth=bandwidth)
                 ms.fit(front)
                 centroids = ms.cluster_centers_
             if len(front) == 1:
@@ -123,7 +123,7 @@ class mnlc_sklearn_frontier_filter():
                                                                               mapdata.info.resolution))])
                 data = int(
                     mapdata.data[grid[0] + (grid[1] * mapdata.info.width)])
-                cond = data >= int(self.obstacle_cost)# or data == -1
+                cond = data >= int(self.obstacle_cost)
                 centroid = np.array([centroids[i][0], centroids[i][1]])
                 radius = self.info_radius
                 info_gain = 0
