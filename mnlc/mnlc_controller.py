@@ -67,6 +67,7 @@ class mnlc_controller(sme.GraphMachine):
         self.cmd_vel_pub = rospy.Publisher(
             '/cmd_vel', Twist, None, queue_size=1)
         self.nodes_responded = 0
+        self.new_goal = PoseStamped()
 
     def safe_start_phase_1(self):
         rospy.wait_for_service(
@@ -156,7 +157,10 @@ class mnlc_controller(sme.GraphMachine):
             recieved_first_frontier = self.recieved_first_frontier
         failed = 1
         failing = False
+        s = rospy.get_time()
         while failed < 5:
+            if rospy.get_time() > s + 200.0:
+                break
             print("Navigating to frontier")
             frontier_goal = self.goal_pose
             rospy.wait_for_service('/plan_path')
@@ -174,6 +178,7 @@ class mnlc_controller(sme.GraphMachine):
                 failing = True
                 f = 0
                 t = rospy.get_time()
+                move_on = False
                 while failing  == True:
                     frontier_goal = self.goal_pose
                     rospy.wait_for_service('/plan_path')
@@ -193,8 +198,11 @@ class mnlc_controller(sme.GraphMachine):
                         self.recovery(np.random.randint(0, 8), 0.125)
                         rospy.sleep(0.25)
                         if rospy.get_time() > t + 30.0:
-                            return
+                            move_on = True
+                            break
                     f = f + 1
+                if move_on:
+                    break
             else:
                 succeeded = True
             if succeeded:
@@ -385,23 +393,71 @@ class mnlc_controller(sme.GraphMachine):
                     break
             rospy.sleep(0.1)
         print("Made it back to origin!")
+        self.final()
 
     def final(self):
-        self.phase3_client = actionlib.SimpleActionClient(
-            '/mnlc/navigation', mb.MoveBaseAction)
-        self.phase3_client.wait_for_server(
-            timeout=rospy.Duration(self.timeout))
-        self.phase3_goal = mb.MoveBaseGoal()
-        self.simple_goal = rospy.Subscriber(
-            '/move_base_simple/goal', PoseStamped, self.convert_goal_topic_to_action, queue_size=1)
         self.go_to_point_state()
-        self.state_machine.publish(2)
-        rospy.loginfo(
-            "Remapping '/move_base_simple/goal' topic to '/mnlc/navigation' action client")
+        self.state_machine.publish(3)
+        failing = False
+        while 1:
+            print("Navigating to goal")
+            goal = self.new_goal
+            rospy.wait_for_service('/plan_path')
+            try:
+                path_srv = rospy.ServiceProxy('/plan_path', GetPlan)
+                start_pose = PoseStamped()
+                start_pose.pose.position.x = self.cx
+                start_pose.pose.position.y = self.cy
+                path = path_srv(start_pose, goal, 1.0)
+            except rospy.ServiceException as e:
+                rospy.logerr("Path Planning service call failed: %s." % e)
+            if len(path.plan.poses) <= 1:
+                rospy.logwarn(
+                    "Controller recieved information indicating that the planner cannot plan a path. Sending new frontier.")
+                failing = True
+                t = rospy.get_time()
+                while failing  == True:
+                    goal = self.new_goal
+                    rospy.wait_for_service('/plan_path')
+                    try:
+                        path_srv = rospy.ServiceProxy('/plan_path', GetPlan)
+                        start_pose = PoseStamped()
+                        start_pose.pose.position.x = self.cx
+                        start_pose.pose.position.y = self.cy
+                        path = path_srv(start_pose, goal, 1.0)
+                    except rospy.ServiceException as e:
+                        rospy.logerr("Path Planning service call failed: %s." % e)
+                    if len(path.plan.poses) > 1:
+                        failing = False
+                        succeeded = True
+                    else:
+                        self.recovery(np.random.randint(0, 8), 0.125)
+                        rospy.sleep(0.25)
+                        if rospy.get_time() > t + 30.0:
+                            rospy.logerr("Goal is considered unreachable by Controller")
+                            break
+            else:
+                succeeded = True
+            if succeeded:
+                goal = rbem.explorationGoal()
+                goal.path = path.plan.poses
+                self.phase1_client.send_goal(
+                    goal=goal, feedback_cb=self.feedback)
+                self.phase1_client.wait_for_result()
+                result = self.phase1_client.get_result()
+                if result.reached_frontier == False:
+                    rospy.logerr("Goal is considered unreachable by Controller. Jiggling.")
+                    self.recovery(np.random.randint(0, 8), 0.125)
+                    rospy.sleep(0.25)
+                rospy.sleep(0.1)
 
     def update_goal(self, pose_stamped_msg):
-        self.recieved_first_frontier = True
-        self.goal_pose = pose_stamped_msg
+        if self.is_state('phase_1', self):
+            self.recieved_first_frontier = True
+            self.goal_pose = pose_stamped_msg
+        if self.is_state('phase_2', self):
+            self.phase1_client.cancel_all_goals()
+            self.new_goal = pose_stamped_msg
 
     def send_speed(self, linear_speed, angular_speed):
         msg_cmd_vel = Twist()
