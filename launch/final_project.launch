@@ -1,6 +1,6 @@
 <launch>
   <!-- Globals -->
-  <arg name="sim" default="0"/>
+  <arg name="sim" default="1"/>
   <arg name="mapping" default="1"/>
   <param name="sim" value="$(arg sim)"/>
 
@@ -59,10 +59,10 @@
 
   <!-- Local Frontier Detectors -->
   <node name="mnlc_local_rrt_detector1"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
-  <node name="mnlc_local_rrt_detector2"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
+  <!-- <node name="mnlc_local_rrt_detector2"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
   <node name="mnlc_local_rrt_detector3"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
   <node name="mnlc_local_rrt_detector4"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
-  <node name="mnlc_local_rrt_detector5"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
+  <node name="mnlc_local_rrt_detector5"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/> -->
 
   <!-- Costmaps -->
   <node name="mnlc_global_costmap_opencv"           pkg="rbe3002" type="mnlc_global_costmap_opencv.py"           output="screen"/>

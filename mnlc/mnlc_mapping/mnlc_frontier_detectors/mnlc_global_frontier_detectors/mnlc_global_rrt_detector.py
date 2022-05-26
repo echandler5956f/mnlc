@@ -188,9 +188,9 @@ class mnlc_global_rrt_detector():
                 self.detected_points_pub.publish(point)
                 points.points = []
             elif obs_free == 1:
-                if rospy.get_time() > next_time + 30:
-                    next_time = rospy.get_time() + 30
-                    v = []
+                # if rospy.get_time() > next_time + 30:
+                #     next_time = rospy.get_time() + 30
+                #     v = []
                 v.append(copy.copy(rnew))
                 p.x, p.y, p.z = rnew[0], rnew[1], 0.0
                 line.points.append(copy.copy(p))
@@ -199,7 +199,7 @@ class mnlc_global_rrt_detector():
             self.shapes_pub.publish(line)
 
     def update_state_machine(self, state):
-        self.state = state
+        self.state = state.data
         if state == 2:
             rospy.signal_shutdown(
                 "Mapping complete. Node is now uneeded. Shutting down mnlc_global_rrt_detector.")

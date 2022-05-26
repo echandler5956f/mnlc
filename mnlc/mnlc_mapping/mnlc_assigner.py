@@ -53,13 +53,15 @@ class mnlc_assigner():
         self.next_time = rospy.get_time()
         self.filtered_frontiers_sub = rospy.Subscriber(
             '/frontier_filter/filtered_points', PointArray, self.update_filtered_frontiers, queue_size=10)
+        self.filtered_frontiers_sub = rospy.Subscriber(
+            '/opencv_points', PointStamped, self.update_opencv_points, queue_size=10)
         self.rtab_map_sub = rospy.Subscriber(
             '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_map, queue_size=1)
         self.assigned_points_pub = rospy.Publisher(
             '/assigned_frontiers', Marker, queue_size=10)
         self.goal_publisher = rospy.Publisher(
             '/move_base_simple/goal', PoseStamped, queue_size=1)
-        self.get_currennt_cell = rospy.Subscriber(
+        self.get_current_cell = rospy.Subscriber(
             'mnlc_controller/current_cell', Point, self.update_visited, queue_size=1)
         self.state_machine_sub = rospy.Subscriber('/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
 
@@ -112,7 +114,7 @@ class mnlc_assigner():
         exploration_goal.point.z = 0
         while not rospy.is_shutdown():
             if self.state == 1:
-                # time_init = rospy.get_time()
+                time_init = rospy.get_time()
                 mapdata = self.latest_map
                 centroids = copy.copy(self.filtered_frontiers)
                 info_gain = []
@@ -149,7 +151,7 @@ class mnlc_assigner():
                     exploration_goal.point.y = goal_pose.pose.position.y
                     self.points.points = [exploration_goal.point]
                     self.assigned_points_pub.publish(self.points)
-                # print("Calculating mnlc Assigner took: ", rospy.get_time() - time_init, ".")
+                print("Calculating mnlc Assigner took: ", rospy.get_time() - time_init, ".")
 
     def informationGain(self, mapdata, point, radius):
         infoGain = 0
@@ -166,7 +168,7 @@ class mnlc_assigner():
                     p = np.array([mapdata.info.origin.position.x + (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution,
                                   mapdata.info.origin.position.y + (i/mapdata.info.width) * mapdata.info.resolution])
                     if (mapdata.data[i] == -1 and np.linalg.norm(point-p) <= radius):
-                        infoGain += 1
+                        infoGain += 1.0
         return infoGain * (mapdata.info.resolution ** 2)
 
     def discount(self, mapdata, point, centroids, info_gain, r):
@@ -186,12 +188,18 @@ class mnlc_assigner():
                         p = np.array([mapdata.info.origin.position.x + (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution,
                                       mapdata.info.origin.position.y + (i/mapdata.info.width) * mapdata.info.resolution])
                         if (mapdata.data[i] == -1 and np.linalg.norm(p-current_pt) <= r and np.linalg.norm(p-point) <= r):
-                            info_gain[j] -= 1.0
+                            info_gain[j] -= mapdata.info.resolution ** 2
                         pp = (current_pt[0], current_pt[1])
-                        if pp in visited:
+                        x = int(math.floor((pp[0] - mapdata.info.origin.position.x) /
+                            mapdata.info.resolution))
+                        y = int(math.floor((pp[1] - mapdata.info.origin.position.y) /
+                            mapdata.info.resolution))
+                        ppw = (x, y)
+                        if ppw in visited:
+                            # print("in visited")
                             info_gain[j] -= 0.375
-                        if (mapdata.data[i] > self.obstacle_cost):
-                            info_gain[j] -= 0.5
+                        # if (mapdata.data[j] > self.obstacle_cost):
+                        #     info_gain[j] -= 0.5
         return info_gain
 
     def update_filtered_frontiers(self, point_array):
@@ -206,11 +214,15 @@ class mnlc_assigner():
                 np.array([point.point.x, point.point.y]))
             i = i + 1
 
+    def update_opencv_points(self, point):
+        self.filtered_frontiers.append(
+                np.array([point.point.x, point.point.y]))
+
     def update_visited(self, visited):
         x = visited.x
         y = visited.y
-        visited_width = 10
-        visited_height = 10
+        visited_width = 20
+        visited_height = 20
         xmin = int(x) - int(math.floor(visited_width / 2))
         xmax = int(x) + int(math.floor(visited_width / 2))
         ymin = int(y) - int(math.floor(visited_height / 2))
@@ -220,7 +232,7 @@ class mnlc_assigner():
         self.visited.update(visited)
 
     def update_state(self, state):
-        self.state = state
+        self.state = state.data
 
     def update_map(self, map):
         self.latest_map = map
