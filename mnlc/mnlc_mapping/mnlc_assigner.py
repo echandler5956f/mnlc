@@ -151,7 +151,7 @@ class mnlc_assigner():
                     exploration_goal.point.y = goal_pose.pose.position.y
                     self.points.points = [exploration_goal.point]
                     self.assigned_points_pub.publish(self.points)
-                print("Calculating mnlc Assigner took: ", rospy.get_time() - time_init, ".")
+                # print("Calculating mnlc Assigner took: ", rospy.get_time() - time_init, ".")
 
     def informationGain(self, mapdata, point, radius):
         infoGain = 0
