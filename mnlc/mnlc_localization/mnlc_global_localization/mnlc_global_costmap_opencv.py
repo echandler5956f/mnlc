@@ -11,7 +11,6 @@ import tf
 
 roslib.load_manifest('rbe3002')
 
-
 class mnlc_global_costmap_opencv():
 
     def __init__(self):
@@ -78,12 +77,17 @@ class mnlc_global_costmap_opencv():
         temp = tmp()
         self.listener.waitForTransform(
             '/odom', '/base_footprint', rospy.Time(0), timeout=rospy.Duration(self.timeout))
-        rospy.Timer(rospy.Duration(secs=0, nsecs=5000000),
-                    self.publish_cspace, oneshot=True)
         # allocate a thread for publishing
         self.calculate_global_costmap()
 
     def calculate_global_costmap(self):
+        cspace = OccupancyGrid()
+        cspace.header.frame_id = '/map'
+        cspace.info.origin.position.x = self.gox
+        cspace.info.origin.position.y = self.goy
+        cspace.info.resolution = self.resolution
+        cspace.info.height = self.height
+        cspace.info.width = self.width
         kernel1 = np.ones((self.padding, self.padding), np.float)
         while not rospy.is_shutdown():
             # time_init = rospy.get_time()
@@ -96,7 +100,9 @@ class mnlc_global_costmap_opencv():
                 gaussian_blur, None, alpha=0, beta=100, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
             dataFromGridC = norm_image.flatten('C')
             dataFromGridC[unkown_indices] = -1
-            self.cspace_data = dataFromGridC
+            cspace.header.stamp = rospy.Time.now()
+            cspace.data = dataFromGridC
+            self.c_space_pub.publish(cspace)
             # time_end = rospy.get_time()
             # print("Calculating Global CSpace took: ", time_end - time_init, ".")
 
@@ -115,20 +121,6 @@ class mnlc_global_costmap_opencv():
             f.write(byte_array)
             f.close()
         self.img = cv2.imread(path, -1)
-
-    def publish_cspace(self, tmp):
-        cspace = OccupancyGrid()
-        cspace.header.frame_id = '/map'
-        cspace.info.origin.position.x = self.gox
-        cspace.info.origin.position.y = self.goy
-        cspace.info.resolution = self.resolution
-        cspace.info.height = self.height
-        cspace.info.width = self.width
-        rospy.sleep(0.5)
-        while not rospy.is_shutdown():
-            cspace.header.stamp = rospy.Time.now()
-            cspace.data = self.cspace_data
-            self.c_space_pub.publish(cspace)
 
     def error_handler(self):
         self.error = True

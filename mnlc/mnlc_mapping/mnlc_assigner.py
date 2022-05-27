@@ -197,7 +197,7 @@ class mnlc_assigner():
                         ppw = (x, y)
                         if ppw in visited:
                             # print("in visited")
-                            info_gain[j] -= 0.375
+                            info_gain[j] -= 1.25
                         # if (mapdata.data[j] > self.obstacle_cost):
                         #     info_gain[j] -= 0.5
         return info_gain

@@ -51,7 +51,6 @@ class mnlc_sklearn_frontier_filter():
             '/frontier_filter/filtered_points', PointArray, queue_size=10)
         self.state_machine_sub = rospy.Subscriber('/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
 
-
     def initialize_marker(self, map):
         self.marker.header.frame_id = map.header.frame_id
         self.marker.header.stamp = rospy.Time.now()
@@ -106,9 +105,9 @@ class mnlc_sklearn_frontier_filter():
             centroids = []
             front = copy.copy(self.frontiers)
             if len(front) > 1:
-                bandwidth = estimate_bandwidth(front, quantile=0.2)
+                bandwidth = estimate_bandwidth(front, quantile=0.19)
                 if bandwidth == 0.0:
-                    bandwidth = 0.2
+                    bandwidth = 0.19
                 ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
                 ms.fit(front)
                 centroids = ms.cluster_centers_

@@ -4,6 +4,7 @@ from geometry_msgs.msg import Twist, PointStamped, PoseStamped, Point
 from nav_msgs.msg import OccupancyGrid, Odometry
 from nav_msgs.srv import GetMap, GetPlan
 import transitions.extensions as sme
+from scipy.spatial import distance
 import rbe3002.msg as rbem
 import std_srvs.srv
 import std_msgs.msg
@@ -13,7 +14,6 @@ import roslib
 import rospy
 import math
 import tf
-
 
 roslib.load_manifest('rbe3002')
 
@@ -55,7 +55,6 @@ class mnlc_controller(sme.GraphMachine):
         self.global_costmap = OccupancyGrid()
         self.odom_br = tf.TransformBroadcaster()
         self.poseL = tf.TransformListener()
-        self.backup_frontier = None
         self.state_machine = rospy.Publisher(
             '/mnlc_state_machine', std_msgs.msg.Int8, queue_size=1)
         self.bounding_points_pub = rospy.Publisher(
@@ -98,8 +97,6 @@ class mnlc_controller(sme.GraphMachine):
             '/mnlc_local_costmap_opencv/cspace', OccupancyGrid, self.update_local_costmap, queue_size=1)
         self.global_c_space_sub = rospy.Subscriber(
             '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_global_costmap, queue_size=1)
-        self.detected_opencv_sub = rospy.Subscriber(
-            '/opencv_points', PointStamped, self.update_backup_frontiers, queue_size=1)
         rospy.Service('/begin_phase1', std_srvs.srv.Empty,
                       self.count_operational_nodes)
         cond = 0
@@ -120,119 +117,6 @@ class mnlc_controller(sme.GraphMachine):
         self.state_machine.publish(s)
         rospy.loginfo("Error checks complete. Beginning Phase 1.")
         self.phase_1()
-
-    # def phase_1(self):
-    #     self.phase1_client = actionlib.SimpleActionClient(
-    #         '/phase1', rbem.explorationAction)
-    #     self.phase1_client.wait_for_server()
-    #     rest = Twist()
-    #     map = self.initial_map_metadata
-    #     p0, p1, p2, p3, p4 = PointStamped(), PointStamped(
-    #     ), PointStamped(), PointStamped(), PointStamped()
-    #     p0.header.frame_id = p1.header.frame_id = p2.header.frame_id = p3.header.frame_id = p4.header.frame_id = '/map'
-    #     p0.header.stamp = p1.header.stamp = p2.header.stamp = p3.header.stamp = p4.header.stamp = rospy.Time.now()
-    #     p0.point.x = -(((map.info.width) * map.info.resolution) + map.info.origin.position.x +
-    #                    (map.info.resolution/2)) * self.exploration_scale_factor
-    #     p0.point.y = (((map.info.height) * map.info.resolution) + map.info.origin.position.y +
-    #                   (map.info.resolution/2)) * self.exploration_scale_factor
-    #     p1.point.x = (((map.info.width) * map.info.resolution) + map.info.origin.position.x +
-    #                   (map.info.resolution/2)) * self.exploration_scale_factor
-    #     p1.point.y = (((map.info.height) * map.info.resolution) + map.info.origin.position.y +
-    #                   (map.info.resolution/2)) * self.exploration_scale_factor
-    #     p2.point.x = (((map.info.width) * map.info.resolution) + map.info.origin.position.x +
-    #                   (map.info.resolution/2)) * self.exploration_scale_factor
-    #     p2.point.y = -(((map.info.height) * map.info.resolution) + map.info.origin.position.y +
-    #                    (map.info.resolution/2)) * self.exploration_scale_factor
-    #     p3.point.x = -(((map.info.width) * map.info.resolution) + map.info.origin.position.x +
-    #                    (map.info.resolution/2)) * self.exploration_scale_factor
-    #     p3.point.y = -(((map.info.height) * map.info.resolution) + map.info.origin.position.y +
-    #                    (map.info.resolution/2)) * self.exploration_scale_factor
-    #     p4.point.x = self.cx
-    #     p4.point.y = self.cy
-    #     self.bounding_points_pub.publish(p0)
-    #     self.bounding_points_pub.publish(p1)
-    #     self.bounding_points_pub.publish(p2)
-    #     self.bounding_points_pub.publish(p3)
-    #     self.bounding_points_pub.publish(p4)
-    #     recieved_first_frontier = self.recieved_first_frontier
-    #     ts = rospy.get_time()
-    #     while recieved_first_frontier == False:
-    #         print("Waiting for first frontier")
-    #         rospy.sleep(1)
-    #         recieved_first_frontier = self.recieved_first_frontier
-    #         if rospy.get_time() > ts + 15:
-    #             if self.backup_frontier is not None:
-    #                 g = PoseStamped()
-    #                 g.header.frame_id = '/map'
-    #                 g.header.stamp = rospy.Time.now()
-    #                 g.pose.position.x = self.backup_frontier.point.x
-    #                 g.pose.position.y = self.backup_frontier.point.y
-    #                 self.goal_pose = g
-    #                 break
-    #     failed = 1
-    #     failing = False
-    #     s = rospy.get_time()
-    #     while failed < 5:
-    #         if rospy.get_time() >= s + 100.0:
-    #             failed = 6
-    #             break
-    #         print("Navigating to frontier")
-    #         frontier_goal = self.goal_pose
-    #         rospy.wait_for_service('/plan_path')
-    #         try:
-    #             path_srv = rospy.ServiceProxy('/plan_path', GetPlan)
-    #             start_pose = PoseStamped()
-    #             start_pose.pose.position.x = self.cx
-    #             start_pose.pose.position.y = self.cy
-    #             path = path_srv(start_pose, frontier_goal, 1.0)
-    #         except rospy.ServiceException as e:
-    #             rospy.logerr("Path Planning service call failed: %s." % e)
-    #         if len(path.plan.poses) <= 1:
-    #             rospy.logwarn(
-    #                 "Controller recieved information indicating that the planner cannot plan a path. Sending new frontier.")
-    #             failing = True
-    #             f = 0
-    #             t = rospy.get_time()
-    #             move_on = False
-    #             while failing  == True:
-    #                 frontier_goal = self.goal_pose
-    #                 rospy.wait_for_service('/plan_path')
-    #                 try:
-    #                     path_srv = rospy.ServiceProxy('/plan_path', GetPlan)
-    #                     start_pose = PoseStamped()
-    #                     start_pose.pose.position.x = self.cx
-    #                     start_pose.pose.position.y = self.cy
-    #                     path = path_srv(start_pose, frontier_goal, 1.0)
-    #                 except rospy.ServiceException as e:
-    #                     rospy.logerr("Path Planning service call failed: %s." % e)
-    #                 if len(path.plan.poses) > 1:
-    #                     failed = failed + 1
-    #                     failing = False
-    #                     succeeded = True
-    #                 else:
-    #                     self.recovery(np.random.randint(0, 8), 0.125)
-    #                     rospy.sleep(0.25)
-    #                     if rospy.get_time() > t + 30.0:
-    #                         move_on = True
-    #                         break
-    #                 f = f + 1
-    #             if move_on:
-    #                 break
-    #         else:
-    #             succeeded = True
-    #         if succeeded:
-    #             goal = rbem.explorationGoal()
-    #             goal.path = path.plan.poses
-    #             self.phase1_client.send_goal(
-    #                 goal=goal, feedback_cb=self.feedback)
-    #             self.phase1_client.wait_for_result()
-    #             result = self.phase1_client.get_result()
-    #             if result.reached_frontier == False:
-    #                 self.recovery(np.random.randint(0, 8), 0.125)
-    #                 rospy.sleep(0.25)
-    #                 failed = failed + 1
-    #             rospy.sleep(0.1)
-    #     # self.re_init()
 
     def phase_1(self):
         self.phase1_client = actionlib.SimpleActionClient(
@@ -272,6 +156,9 @@ class mnlc_controller(sme.GraphMachine):
             print("Waiting for first frontier")
             rospy.sleep(1)
             recieved_first_frontier = self.recieved_first_frontier
+        failed = 1
+        failing = False
+        s = rospy.get_time()
         while 1:
             print("Navigating to frontier")
             frontier_goal = self.goal_pose
@@ -287,64 +174,91 @@ class mnlc_controller(sme.GraphMachine):
             if len(path.plan.poses) <= 1:
                 rospy.logwarn(
                     "Controller recieved information indicating that the planner cannot plan a path. Sending new frontier.")
-                pass
+                failing = True
+                f = 0
+                t = rospy.get_time()
+                move_on = False
+                while failing == True:
+                    frontier_goal = self.goal_pose
+                    rospy.wait_for_service('/plan_path')
+                    try:
+                        path_srv = rospy.ServiceProxy('/plan_path', GetPlan)
+                        start_pose = PoseStamped()
+                        start_pose.pose.position.x = self.cx
+                        start_pose.pose.position.y = self.cy
+                        path = path_srv(start_pose, frontier_goal, 1.0)
+                    except rospy.ServiceException as e:
+                        rospy.logerr(
+                            "Path Planning service call failed: %s." % e)
+                    if len(path.plan.poses) > 1:
+                        failed = failed + 1
+                        failing = False
+                        succeeded = True
+                    else:
+                        self.recovery(np.random.randint(0, 8), 0.25, 0.1)
+                        rospy.sleep(0.25)
+                        if rospy.get_time() > t + 45.0 and distance.euclidean(self.vel[0], self.vel[1]) <= 0.000625:
+                            move_on = True
+                            break
+                    f = f + 1
+                if move_on:
+                    break
             else:
+                succeeded = True
+            if succeeded:
                 goal = rbem.explorationGoal()
                 goal.path = path.plan.poses
                 self.phase1_client.send_goal(
-                    goal=goal, feedback_cb=self.feedback)
+                    goal=goal)
                 self.phase1_client.wait_for_result()
                 result = self.phase1_client.get_result()
-                print(result)
+                if result.reached_frontier == False:
+                    self.recovery(np.random.randint(0, 8), 0.25, 0.1)
+                    rospy.sleep(0.25)
+                    failed = failed + 1
                 rospy.sleep(0.1)
 
-    def recovery(self, it, t):
+    def recovery(self, it, t, v):
         if it == 7:
             s = rospy.get_time()
             while rospy.get_time() < s + t:
-                self.send_speed(-0.05, -0.05)
+                self.send_speed(-v, -v)
             self.stop()
         if it == 6:
             s = rospy.get_time()
             while rospy.get_time() < s + t:
-                self.send_speed(-0.05, 0.0)
+                self.send_speed(-v, 0.0)
             self.stop()
         if it == 5:
             s = rospy.get_time()
             while rospy.get_time() < s + t:
-                self.send_speed(-0.05, 0.05)
+                self.send_speed(-v, 0.05)
             self.stop()
         if it == 4:
             s = rospy.get_time()
             while rospy.get_time() < s + t:
-                self.send_speed(0.05, -0.05)
+                self.send_speed(v, -v)
             self.stop()
         if it == 3:
             s = rospy.get_time()
             while rospy.get_time() < s + t:
-                self.send_speed(0.0, 0.05)
+                self.send_speed(0.0, v)
             self.stop()
         if it == 2:
             s = rospy.get_time()
             while rospy.get_time() < s + t:
-                self.send_speed(0.05, -0.05)
+                self.send_speed(v, -v)
             self.stop()
         if it == 1:
             s = rospy.get_time()
             while rospy.get_time() < s + t:
-                self.send_speed(0.05, 0.0)
+                self.send_speed(v, 0.0)
             self.stop()
         if it == 0:
             s = rospy.get_time()
             while rospy.get_time() < s + t:
-                self.send_speed(0.05, 0.05)
+                self.send_speed(v, v)
             self.stop()
-        
-    def update_backup_frontiers(self, backup_frontier):
-        self.backup_frontier = backup_frontier
-
-    def feedback(self, feedback):
-        print("Feedback: ", feedback)
 
     def update_global_costmap(self, map):
         if map.info.resolution != 0.0:
@@ -369,13 +283,16 @@ class mnlc_controller(sme.GraphMachine):
             "/odom", "/base_footprint", rospy.Time(0))
         self.cx = tr[0]
         self.cy = tr[1]
+        (self.vel, ang) = self.poseL.lookupTwistFull("/base_footprint", "/odom",
+                                                     "/base_footprint", (0, 0, 0), "/odom", rospy.Time(0.0), rospy.Duration(0.1))
         if self.initial_map_metadata.info.resolution != 0:
             point = Point()
             point.x = int(math.floor(
                 (self.cx - self.initial_map_metadata.info.origin.position.x) / self.initial_map_metadata.info.resolution))
             point.y = int(math.floor(
-                (self.cy - self.initial_map_metadata.info.origin.position.y) /self.initial_map_metadata.info.resolution))
+                (self.cy - self.initial_map_metadata.info.origin.position.y) / self.initial_map_metadata.info.resolution))
             self.send_current_cell.publish(point)
+        # print(distance.euclidean(self.vel[0], self.vel[1]))
 
     # def re_init(self):
     #     rospy.loginfo(
@@ -566,6 +483,7 @@ class mnlc_controller(sme.GraphMachine):
     def run(self):
         while not rospy.is_shutdown() and self.error == False:
             rospy.spin()
+
 
 if __name__ == '__main__':
     try:
