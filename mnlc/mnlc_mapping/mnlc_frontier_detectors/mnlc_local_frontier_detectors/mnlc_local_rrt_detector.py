@@ -119,6 +119,7 @@ class mnlc_local_rrt_detector():
         obstacle_cost = self.obstacle_cost
         listener = tf.TransformListener()
         while self.state != 2 and not rospy.is_shutdown() and self.error == False:
+            time_init = rospy.get_time()
             data = self.latest_map.data
             width = self.latest_map.info.width
             rand = [(np.random.random() * ix) - (ix * 0.5) + sx,
@@ -208,6 +209,7 @@ class mnlc_local_rrt_detector():
                 p.x, p.y, p.z = near[0], near[1], 0.0
                 line.points.append(copy.copy(p))
             self.shapes_pub.publish(line)
+            # print("Calculating local rrt frontiers took: ", rospy.get_time() - time_init, ".")
 
     def update_state_machine(self, state):
         self.state = state

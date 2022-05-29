@@ -49,7 +49,8 @@ class mnlc_sklearn_frontier_filter():
             '/frontier_filter/filtered_points_markers', Marker, queue_size=10)
         self.filter_pub = rospy.Publisher(
             '/frontier_filter/filtered_points', PointArray, queue_size=10)
-        self.state_machine_sub = rospy.Subscriber('/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
+        self.state_machine_sub = rospy.Subscriber(
+            '/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
 
     def initialize_marker(self, map):
         self.marker.header.frame_id = map.header.frame_id
@@ -96,7 +97,7 @@ class mnlc_sklearn_frontier_filter():
 
     def filter_potential_frontiers(self):
         point = PointStamped()
-        point.header.frame_id = 'map'
+        point.header.frame_id = '/map'
         point_array = PointArray()
         self.marker.points = []
         while not rospy.is_shutdown():
@@ -160,7 +161,7 @@ class mnlc_sklearn_frontier_filter():
                     self.marker.points.append(copy.copy(point.point))
                 self.filter_pub.publish(point_array)
                 self.assigned_points_pub.publish(self.marker)
-            # print("Calculating mnlc Filter took: ", rospy.get_time() - time_init, ".")
+            print("Calculating frontier filter took: ", rospy.get_time() - time_init, ".")
 
     def update_frontiers(self, frontier):
         if len(self.frontiers) > 0:

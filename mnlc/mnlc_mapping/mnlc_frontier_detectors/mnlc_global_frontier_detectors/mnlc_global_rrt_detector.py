@@ -118,6 +118,7 @@ class mnlc_global_rrt_detector():
         obstacle_cost = self.obstacle_cost
         next_time = rospy.get_time()
         while self.state != 2 and not rospy.is_shutdown() and self.error == False:
+            time_init = rospy.get_time()
             data = self.latest_map.data
             width = self.latest_map.info.width
             rand = [(np.random.random() * ix) - (ix * 0.5) + sx,
@@ -188,15 +189,13 @@ class mnlc_global_rrt_detector():
                 self.detected_points_pub.publish(point)
                 points.points = []
             elif obs_free == 1:
-                # if rospy.get_time() > next_time + 30:
-                #     next_time = rospy.get_time() + 30
-                #     v = []
                 v.append(copy.copy(rnew))
                 p.x, p.y, p.z = rnew[0], rnew[1], 0.0
                 line.points.append(copy.copy(p))
                 p.x, p.y, p.z = near[0], near[1], 0.0
                 line.points.append(copy.copy(p))
             self.shapes_pub.publish(line)
+            # print("Calculating global rrt frontiers took: ", rospy.get_time() - time_init, ".")
 
     def update_state_machine(self, state):
         self.state = state.data

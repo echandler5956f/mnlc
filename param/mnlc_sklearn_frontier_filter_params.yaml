@@ -1,5 +1,5 @@
 frontier_filter:
   start_time: 12
-  obstacle_cost: 20
+  obstacle_cost: 40
   info_radius: 1.0
   filter_clear: 0.25

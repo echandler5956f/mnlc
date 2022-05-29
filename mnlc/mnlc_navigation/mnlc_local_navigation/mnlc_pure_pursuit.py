@@ -250,7 +250,7 @@ class mnlc_pure_pursuit():
                 [vector[0] / mag, vector[1] / mag]) * self.spacing
             for j in range(int(num_points)):
                 pose = PoseStamped()
-                pose.header.frame_id = 'map'
+                pose.header.frame_id = '/map'
                 pose.header.stamp = rospy.Time.now()
                 pose.pose.position.x = poses[i].pose.position.x + (
                     vector[0] * j)
@@ -258,14 +258,14 @@ class mnlc_pure_pursuit():
                     vector[1] * j)
                 new_path.poses.append(pose)
         last_pose = PoseStamped()
-        last_pose.header.frame_id = 'map'
+        last_pose.header.frame_id = '/map'
         last_pose.header.stamp = rospy.Time.now()
         last_pose.pose.position.x = poses[len(
             poses) - 1].pose.position.x
         last_pose.pose.position.y = poses[len(
             poses) - 1].pose.position.y
         new_path.poses.append(last_pose)
-        new_path.header.frame_id = 'map'
+        new_path.header.frame_id = '/map'
         new_path.header.stamp = rospy.Time.now()
         return new_path
 
@@ -286,12 +286,12 @@ class mnlc_pure_pursuit():
         smoothed_path = Path()
         for arr in npath:
             pose = PoseStamped()
-            pose.header.frame_id = 'map'
+            pose.header.frame_id = '/map'
             pose.header.stamp = rospy.Time.now()
             pose.pose.position.x = arr[0]
             pose.pose.position.y = arr[1]
             smoothed_path.poses.append(pose)
-        smoothed_path.header.frame_id = 'map'
+        smoothed_path.header.frame_id = '/map'
         smoothed_path.header.stamp = rospy.Time.now()
         return smoothed_path
 

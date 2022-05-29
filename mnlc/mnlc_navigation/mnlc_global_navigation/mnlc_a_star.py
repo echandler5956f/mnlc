@@ -137,7 +137,8 @@ class mnlc_a_star():
                 break
             time = rospy.get_time()
             if time >= start_time + 10.0:
-                rospy.logwarn("A* has not found a path in less than 10.0 seconds. Requesting new path...")
+                rospy.logwarn(
+                    "A* has not found a path in less than 10.0 seconds. Requesting new path...")
                 return -1
             x = current[0]
             y = current[1]
@@ -153,7 +154,8 @@ class mnlc_a_star():
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost
                     next_np = np.array(next)
-                    priority = new_cost + 4.0 * distance.euclidean(goal_np, next_np)
+                    priority = new_cost + 4.0 * \
+                        distance.euclidean(goal_np, next_np)
                     frontier.put(next, priority)
                     came_from[next] = current
                     point = Point()
@@ -161,7 +163,7 @@ class mnlc_a_star():
                     point.y = (y * res) + oy + res/2
                     frontier_nodes.cells.append(point)
         frontier_nodes.cells.reverse()
-        frontier_nodes.header.frame_id = "map"
+        frontier_nodes.header.frame_id = "/map"
         frontier_nodes.header.stamp = rospy.Time.now()
         self.frontier_pub.publish(frontier_nodes)
         path = self.reconstruct_path(came_from, start, goal)

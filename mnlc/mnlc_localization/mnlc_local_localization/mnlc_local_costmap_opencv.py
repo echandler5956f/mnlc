@@ -110,6 +110,7 @@ class mnlc_local_costmap_opencv():
             mapdata_asarray = np.array(current_mapdata.data)
             flag = 0
             while flag == 0:
+                time_init = rospy.get_time()
                 try:
                     (trans, rot) = self.listener.lookupTransform(
                         "odom", "base_footprint", rospy.Time(0))
@@ -118,7 +119,6 @@ class mnlc_local_costmap_opencv():
                     rospy.logerr("Tf exception")
                     self.error_handler()
                     return
-            time_init = rospy.get_time()
             x = int(math.floor((trans[0] - gox) / global_resolution))
             y = int(math.floor((trans[1] - goy) / global_resolution))
             immediate_vincinity = []
@@ -159,7 +159,7 @@ class mnlc_local_costmap_opencv():
             cspace.data = dataC
             self.c_space_pub.publish(cspace)
             time_end = rospy.get_time()
-            # print("Calculating Local CSpace took: ", time_end - time_init, ".")
+            print("Calculating local costmap took: ", time_end - time_init, ".")
 
     def error_handler(self):
         self.error = True

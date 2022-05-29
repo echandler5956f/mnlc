@@ -92,7 +92,7 @@ class mnlc_global_opencv_frontier_detector():
         rospy.loginfo("Begin phase1 service call successful.")
         temp = tmp()
         rospy.Subscriber('/map', OccupancyGrid,
-                    self.update_map, queue_size=1)
+                         self.update_map, queue_size=1)
         self.listener.waitForTransform(
             '/odom', '/base_footprint', rospy.Time(0), timeout=rospy.Duration(self.timeout))
         flag = 0
@@ -118,6 +118,7 @@ class mnlc_global_opencv_frontier_detector():
         exploration_goal.header.frame_id = self.points.header.frame_id
         exploration_goal.point.z = 0
         while 1:
+            time_init = rospy.get_time()
             latest_map = self.latest_map
             img_map = np.zeros(
                 (latest_map.info.height, latest_map.info.width, 1), np.uint8)
@@ -161,11 +162,11 @@ class mnlc_global_opencv_frontier_detector():
                 exploration_goal.header.stamp = rospy.Time(0)
                 exploration_goal.point.x = frontier[0]
                 exploration_goal.point.y = frontier[1]
-                # for i in range(1000):
-                #     self.detected_points_pub.publish(exploration_goal)
                 self.detected_opencv_pub.publish(exploration_goal)
                 self.points.points = [exploration_goal.point]
                 self.shapes_pub.publish(self.points)
+            print("Calculating opencv frontiers took: ", rospy.get_time() - time_init, ".")
+
 
     def update_visited(self):
         flag = 0

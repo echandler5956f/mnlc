@@ -11,6 +11,7 @@ import tf
 
 roslib.load_manifest('rbe3002')
 
+
 class mnlc_global_costmap_opencv():
 
     def __init__(self):
@@ -90,7 +91,7 @@ class mnlc_global_costmap_opencv():
         cspace.info.width = self.width
         kernel1 = np.ones((self.padding, self.padding), np.float)
         while not rospy.is_shutdown():
-            # time_init = rospy.get_time()
+            time_init = rospy.get_time()
             img = self.img
             unkown_indices = self.unkown_indices
             img_dilate = cv2.dilate(img, kernel=kernel1, iterations=1)
@@ -103,8 +104,7 @@ class mnlc_global_costmap_opencv():
             cspace.header.stamp = rospy.Time.now()
             cspace.data = dataFromGridC
             self.c_space_pub.publish(cspace)
-            # time_end = rospy.get_time()
-            # print("Calculating Global CSpace took: ", time_end - time_init, ".")
+            print("Calculating Global CSpace took: ", rospy.get_time() - time_init, ".")
 
     def update_map(self, map):
         path = r'/home/quant/.ros/global_costmap.pgm'

@@ -32,7 +32,8 @@ class mnlc_assigner():
     def initialize_params(self):
         self.start_time = rospy.get_param('/frontier_assigner/start_time')
         # grid cost to be considered an obstacle
-        self.obstacle_cost = rospy.get_param('/frontier_assigner/obstacle_cost')
+        self.obstacle_cost = rospy.get_param(
+            '/frontier_assigner/obstacle_cost')
         # [s] standard service timeout limit
         self.timeout = rospy.get_param('/controller/timeout')
         self.info_radius = rospy.get_param('/frontier_assigner/info_radius')
@@ -63,7 +64,8 @@ class mnlc_assigner():
             '/move_base_simple/goal', PoseStamped, queue_size=1)
         self.get_current_cell = rospy.Subscriber(
             'mnlc_controller/current_cell', Point, self.update_visited, queue_size=1)
-        self.state_machine_sub = rospy.Subscriber('/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
+        self.state_machine_sub = rospy.Subscriber(
+            '/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
 
     def initialize_marker(self, map):
         self.points.header.frame_id = map.header.frame_id
@@ -151,7 +153,7 @@ class mnlc_assigner():
                     exploration_goal.point.y = goal_pose.pose.position.y
                     self.points.points = [exploration_goal.point]
                     self.assigned_points_pub.publish(self.points)
-                # print("Calculating mnlc Assigner took: ", rospy.get_time() - time_init, ".")
+                print("Calculating frontier assigner took: ", rospy.get_time() - time_init, ".")
 
     def informationGain(self, mapdata, point, radius):
         infoGain = 0
@@ -191,9 +193,9 @@ class mnlc_assigner():
                             info_gain[j] -= mapdata.info.resolution ** 2
                         pp = (current_pt[0], current_pt[1])
                         x = int(math.floor((pp[0] - mapdata.info.origin.position.x) /
-                            mapdata.info.resolution))
+                                           mapdata.info.resolution))
                         y = int(math.floor((pp[1] - mapdata.info.origin.position.y) /
-                            mapdata.info.resolution))
+                                           mapdata.info.resolution))
                         ppw = (x, y)
                         if ppw in visited:
                             # print("in visited")
@@ -216,7 +218,7 @@ class mnlc_assigner():
 
     def update_opencv_points(self, point):
         self.filtered_frontiers.append(
-                np.array([point.point.x, point.point.y]))
+            np.array([point.point.x, point.point.y]))
 
     def update_visited(self, visited):
         x = visited.x

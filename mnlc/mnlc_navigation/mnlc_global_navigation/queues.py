@@ -2,6 +2,7 @@
 
 import heapq
 
+
 class PriorityQueueDep:
 
     def __init__(self):

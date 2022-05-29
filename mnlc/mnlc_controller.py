@@ -51,7 +51,7 @@ class mnlc_controller(sme.GraphMachine):
         self.machine = sme.GraphMachine.__init__(self, states=self.states, transitions=self.transitions,
                                                  initial=self.states[0], send_event=True, queued=True, ignore_invalid_triggers=True)
         self.initial_map_metadata = OccupancyGrid()
-        self.local_costmap = OccupancyGrid()
+        # self.local_costmap = OccupancyGrid()
         self.global_costmap = OccupancyGrid()
         self.odom_br = tf.TransformBroadcaster()
         self.poseL = tf.TransformListener()
@@ -93,8 +93,8 @@ class mnlc_controller(sme.GraphMachine):
             self.error_handler()
             return
         self.initial_map_metadata = map.map
-        self.local_c_space_sub = rospy.Subscriber(
-            '/mnlc_local_costmap_opencv/cspace', OccupancyGrid, self.update_local_costmap, queue_size=1)
+        # self.local_c_space_sub = rospy.Subscriber(
+        #     '/mnlc_local_costmap_opencv/cspace', OccupancyGrid, self.update_local_costmap, queue_size=1)
         self.global_c_space_sub = rospy.Subscriber(
             '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_global_costmap, queue_size=1)
         rospy.Service('/begin_phase1', std_srvs.srv.Empty,
@@ -266,11 +266,11 @@ class mnlc_controller(sme.GraphMachine):
         else:
             rospy.logwarn("Receiving a global costmap with 0 resolution!")
 
-    def update_local_costmap(self, map):
-        if map.info.resolution != 0.0:
-            self.local_costmap = map
-        else:
-            rospy.logwarn("Receiving a local costmap with 0 resolution!")
+    # def update_local_costmap(self, map):
+    #     if map.info.resolution != 0.0:
+    #         self.local_costmap = map
+    #     else:
+    #         rospy.logwarn("Receiving a local costmap with 0 resolution!")
 
     def update_odom_tf(self, msg):
         self.odom_br.sendTransform(
