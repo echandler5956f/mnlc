@@ -106,9 +106,9 @@ class mnlc_sklearn_frontier_filter():
             centroids = []
             front = copy.copy(self.frontiers)
             if len(front) > 1:
-                bandwidth = estimate_bandwidth(front, quantile=0.19)
+                bandwidth = estimate_bandwidth(front, quantile=0.3)
                 if bandwidth == 0.0:
-                    bandwidth = 0.19
+                    bandwidth = 0.3
                 ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
                 ms.fit(front)
                 centroids = ms.cluster_centers_
@@ -161,7 +161,7 @@ class mnlc_sklearn_frontier_filter():
                     self.marker.points.append(copy.copy(point.point))
                 self.filter_pub.publish(point_array)
                 self.assigned_points_pub.publish(self.marker)
-            print("Calculating frontier filter took: ", rospy.get_time() - time_init, ".")
+            # print("Calculating frontier filter took: ", rospy.get_time() - time_init, ".")
 
     def update_frontiers(self, frontier):
         if len(self.frontiers) > 0:

@@ -130,6 +130,14 @@ class mnlc_a_star():
         frontier_nodes.cell_height = self.global_costmap.info.resolution
         frontier_nodes.cell_width = self.global_costmap.info.resolution
         start_time = rospy.get_time()
+        goal_neighbors = [(goal[0], goal[1]), (goal[0] + 1, goal[1] + 1), (goal[0] + 1, goal[1]), (goal[0] + 1, goal[1] - 1), (goal[0], goal[1] + 1),
+                              (goal[0], goal[1] - 1), (goal[0] - 1, goal[1] + 1), (goal[0] - 1, goal[1]), (goal[0] - 1, goal[1] - 1)]
+        for next in goal_neighbors:
+            gc = data[next[0] + (next[1] * width)]
+            if gc >= obstacle_cost:
+                rospy.logwarn(
+                    "A* has determined that the goal is invalid. Requesting new path...")
+                return -1
         while not frontier.empty():
             current = frontier.get()
             if current == goal:
@@ -149,7 +157,7 @@ class mnlc_a_star():
             for next in valid_neighbors:
                 c = data[next[0] + (next[1] * width)]
                 if c == -1:
-                    c = 25
+                    c = 20
                 new_cost = cost_so_far[current] + c
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost

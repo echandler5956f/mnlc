@@ -48,7 +48,6 @@ class mnlc_assigner():
         self.marker = Marker()
         self.latest_map = OccupancyGrid()
         self.filtered_frontiers = []
-        self.pose2d = Pose2d()
         self.points = Marker()
         self.visited = dict()
         self.next_time = rospy.get_time()
@@ -120,8 +119,8 @@ class mnlc_assigner():
                 mapdata = self.latest_map
                 centroids = copy.copy(self.filtered_frontiers)
                 info_gain = []
-                x = self.pose2d.cx
-                y = self.pose2d.cy
+                x = self.cx
+                y = self.cy
                 position = np.array([x, y])
                 radius = self.info_radius
                 for i in range(len(centroids)):
@@ -153,7 +152,7 @@ class mnlc_assigner():
                     exploration_goal.point.y = goal_pose.pose.position.y
                     self.points.points = [exploration_goal.point]
                     self.assigned_points_pub.publish(self.points)
-                print("Calculating frontier assigner took: ", rospy.get_time() - time_init, ".")
+                # print("Calculating frontier assigner took: ", rospy.get_time() - time_init, ".")
 
     def informationGain(self, mapdata, point, radius):
         infoGain = 0
@@ -221,10 +220,11 @@ class mnlc_assigner():
             np.array([point.point.x, point.point.y]))
 
     def update_visited(self, visited):
+        mapdata = self.latest_map
         x = visited.x
         y = visited.y
-        visited_width = 20
-        visited_height = 20
+        visited_width = 25
+        visited_height = 25
         xmin = int(x) - int(math.floor(visited_width / 2))
         xmax = int(x) + int(math.floor(visited_width / 2))
         ymin = int(y) - int(math.floor(visited_height / 2))
@@ -232,6 +232,10 @@ class mnlc_assigner():
         visited = {(xs, ys): 0 for xs in range(xmin, xmax, 1)
                    for ys in range(ymin, ymax, 1)}
         self.visited.update(visited)
+        self.cx = (x * mapdata.info.resolution) + \
+            mapdata.info.origin.position.x + (mapdata.info.resolution/2)
+        self.cy = (y * mapdata.info.resolution) + \
+            mapdata.info.origin.position.y + (mapdata.info.resolution/2)
 
     def update_state(self, state):
         self.state = state.data

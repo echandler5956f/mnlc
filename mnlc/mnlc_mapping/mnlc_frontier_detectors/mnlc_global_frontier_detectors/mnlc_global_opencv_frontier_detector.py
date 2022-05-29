@@ -165,7 +165,7 @@ class mnlc_global_opencv_frontier_detector():
                 self.detected_opencv_pub.publish(exploration_goal)
                 self.points.points = [exploration_goal.point]
                 self.shapes_pub.publish(self.points)
-            print("Calculating opencv frontiers took: ", rospy.get_time() - time_init, ".")
+            # print("Calculating opencv frontiers took: ", rospy.get_time() - time_init, ".")
 
 
     def update_visited(self):

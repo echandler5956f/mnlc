@@ -104,7 +104,7 @@ class mnlc_global_costmap_opencv():
             cspace.header.stamp = rospy.Time.now()
             cspace.data = dataFromGridC
             self.c_space_pub.publish(cspace)
-            print("Calculating Global CSpace took: ", rospy.get_time() - time_init, ".")
+            # print("Calculating Global CSpace took: ", rospy.get_time() - time_init, ".")
 
     def update_map(self, map):
         path = r'/home/quant/.ros/global_costmap.pgm'

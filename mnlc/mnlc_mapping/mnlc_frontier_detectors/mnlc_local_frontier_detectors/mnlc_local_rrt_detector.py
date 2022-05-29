@@ -209,7 +209,7 @@ class mnlc_local_rrt_detector():
                 p.x, p.y, p.z = near[0], near[1], 0.0
                 line.points.append(copy.copy(p))
             self.shapes_pub.publish(line)
-            # print("Calculating local rrt frontiers took: ", rospy.get_time() - time_init, ".")
+            # print("Calculating local rrt frontiers took: ", rospy.get_time() - time_init, ".")        
 
     def update_state_machine(self, state):
         self.state = state
