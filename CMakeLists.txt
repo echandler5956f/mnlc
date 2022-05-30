@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(rbe3002)
 
+# Set to Release in order to speed up the program significantly
+set(CMAKE_BUILD_TYPE Release) #None, Debug, Release, RelWithDebInfo, MinSizeRel
+
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 

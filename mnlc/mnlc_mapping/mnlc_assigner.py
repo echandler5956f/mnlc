@@ -113,6 +113,11 @@ class mnlc_assigner():
         exploration_goal = PointStamped()
         exploration_goal.header.frame_id = self.points.header.frame_id
         exploration_goal.point.z = 0
+        mapdata = self.latest_map
+        mox = mapdata.info.origin.position.x
+        moy = mapdata.info.origin.position.y
+        mw = mapdata.info.width
+        res = mapdata.info.resolution
         while not rospy.is_shutdown():
             if self.state == 1:
                 time_init = rospy.get_time()
@@ -125,10 +130,47 @@ class mnlc_assigner():
                 radius = self.info_radius
                 for i in range(len(centroids)):
                     centroid = np.array([centroids[i][0], centroids[i][1]])
-                    info_gain.append(self.informationGain(
-                        mapdata, centroid, radius))
-                info_gain = self.discount(
-                    mapdata, [x, y], centroids, info_gain, radius)
+                    infoGain = 0
+                    index = int(
+                        (math.floor((centroid[1] - moy)/res) * mw) + (math.floor((centroid[0] - mox)/res)))
+                    r_region = int(radius/res)
+                    init_index = index-r_region * (mw + 1)
+                    for n in range(0, 2 * r_region + 1):
+                        start = n * mw + init_index
+                        end = start + 2 * r_region
+                        limit = ((start/mw) + 2) * mw
+                        for m in range(start, end + 1):
+                            if (m >= 0 and m < limit and m < len(mapdata.data)):
+                                p = np.array([mox + (m - (m/mw) * (mw)) * res,
+                                              moy + (m/mw) * res])
+                                if (mapdata.data[m] == -1 and np.linalg.norm(centroid-p) <= radius):
+                                    infoGain += 1.0
+                    ig = infoGain * (res ** 2)
+                    info_gain.append(ig)
+                point = [x, y]
+                visited = self.visited
+                index = int((math.floor((point[1] - moy)/res) *
+                            mw) + (math.floor((point[0] - mox)/res)))
+                r_region = int(radius/res)
+                init_index = index-r_region*(mw + 1)
+                for n in range(0, 2 * r_region + 1):
+                    start = n * mw + init_index
+                    end = start + 2 * r_region
+                    limit = ((start/mw) + 2) * mw
+                    for j in range(start, end + 1):
+                        if (j >= 0 and j < limit and j < len(mapdata.data)):
+                            for k in range(0, len(centroids)):
+                                current_pt = centroids[k]
+                                p = np.array([mox + (j - (j/mw) * (mw)) * res,
+                                              moy + (j/mw) * res])
+                                if (mapdata.data[j] == -1 and np.linalg.norm(p-current_pt) <= radius and np.linalg.norm(p-point) <= radius):
+                                    info_gain[k] -= res ** 2
+                                pp = (current_pt[0], current_pt[1])
+                                x = int(math.floor((pp[0] - mox) / res))
+                                y = int(math.floor((pp[1] - moy) / res))
+                                ppw = (x, y)
+                                if ppw in visited:
+                                    info_gain[k] -= 2.0
                 rev_rec = []
                 centroid_rec = []
                 for i in range(len(centroids)):
@@ -152,56 +194,8 @@ class mnlc_assigner():
                     exploration_goal.point.y = goal_pose.pose.position.y
                     self.points.points = [exploration_goal.point]
                     self.assigned_points_pub.publish(self.points)
-                # print("Calculating frontier assigner took: ", rospy.get_time() - time_init, ".")
-
-    def informationGain(self, mapdata, point, radius):
-        infoGain = 0
-        index = int((math.floor((point[1] - mapdata.info.origin.position.y)/mapdata.info.resolution) *
-                     mapdata.info.width) + (math.floor((point[0] - mapdata.info.origin.position.x)/mapdata.info.resolution)))
-        r_region = int(radius/mapdata.info.resolution)
-        init_index = index-r_region * (mapdata.info.width + 1)
-        for n in range(0, 2 * r_region + 1):
-            start = n * mapdata.info.width + init_index
-            end = start + 2 * r_region
-            limit = ((start/mapdata.info.width) + 2) * mapdata.info.width
-            for i in range(start, end + 1):
-                if (i >= 0 and i < limit and i < len(mapdata.data)):
-                    p = np.array([mapdata.info.origin.position.x + (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution,
-                                  mapdata.info.origin.position.y + (i/mapdata.info.width) * mapdata.info.resolution])
-                    if (mapdata.data[i] == -1 and np.linalg.norm(point-p) <= radius):
-                        infoGain += 1.0
-        return infoGain * (mapdata.info.resolution ** 2)
-
-    def discount(self, mapdata, point, centroids, info_gain, r):
-        visited = self.visited
-        index = int((math.floor((point[1] - mapdata.info.origin.position.y)/mapdata.info.resolution) *
-                     mapdata.info.width) + (math.floor((point[0] - mapdata.info.origin.position.x)/mapdata.info.resolution)))
-        r_region = int(r/mapdata.info.resolution)
-        init_index = index-r_region*(mapdata.info.width + 1)
-        for n in range(0, 2 * r_region + 1):
-            start = n * mapdata.info.width + init_index
-            end = start + 2 * r_region
-            limit = ((start/mapdata.info.width) + 2) * mapdata.info.width
-            for i in range(start, end + 1):
-                if (i >= 0 and i < limit and i < len(mapdata.data)):
-                    for j in range(0, len(centroids)):
-                        current_pt = centroids[j]
-                        p = np.array([mapdata.info.origin.position.x + (i - (i/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution,
-                                      mapdata.info.origin.position.y + (i/mapdata.info.width) * mapdata.info.resolution])
-                        if (mapdata.data[i] == -1 and np.linalg.norm(p-current_pt) <= r and np.linalg.norm(p-point) <= r):
-                            info_gain[j] -= mapdata.info.resolution ** 2
-                        pp = (current_pt[0], current_pt[1])
-                        x = int(math.floor((pp[0] - mapdata.info.origin.position.x) /
-                                           mapdata.info.resolution))
-                        y = int(math.floor((pp[1] - mapdata.info.origin.position.y) /
-                                           mapdata.info.resolution))
-                        ppw = (x, y)
-                        if ppw in visited:
-                            # print("in visited")
-                            info_gain[j] -= 1.25
-                        # if (mapdata.data[j] > self.obstacle_cost):
-                        #     info_gain[j] -= 0.5
-        return info_gain
+                # print("Calculating frontier assigner took: ",
+                #       rospy.get_time() - time_init, ".")
 
     def update_filtered_frontiers(self, point_array):
         if rospy.get_time() > self.next_time:

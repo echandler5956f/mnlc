@@ -144,9 +144,9 @@ class mnlc_a_star():
                 rospy.loginfo("Path has been found.")
                 break
             time = rospy.get_time()
-            if time >= start_time + 10.0:
+            if time >= start_time + 3.0:
                 rospy.logwarn(
-                    "A* has not found a path in less than 10.0 seconds. Requesting new path...")
+                    "A* has not found a path in less than 3.0 seconds. Requesting new path...")
                 return -1
             x = current[0]
             y = current[1]

@@ -65,7 +65,8 @@ class mnlc_controller(sme.GraphMachine):
             'mnlc_controller/current_cell', Point, queue_size=1)
         self.cmd_vel_pub = rospy.Publisher(
             '/cmd_vel', Twist, None, queue_size=1)
-        self.vel_pub = rospy.Publisher('/velocity', std_msgs.msg.Float32, None, queue_size=5)
+        self.vel_pub = rospy.Publisher(
+            '/velocity', std_msgs.msg.Float32, None, queue_size=5)
         self.nodes_responded = 0
         self.new_goal = PoseStamped()
 
@@ -198,7 +199,7 @@ class mnlc_controller(sme.GraphMachine):
                     else:
                         self.recovery(np.random.randint(0, 8), 0.25, 0.1)
                         rospy.sleep(0.25)
-                        if rospy.get_time() > t + 45.0 and distance.euclidean(self.vel[0], self.vel[1]) <= 0.000625:
+                        if rospy.get_time() > t + 20.0 and distance.euclidean(self.vel[0], self.vel[1]) <= 0.000625:
                             move_on = True
                             break
                     f = f + 1
@@ -214,7 +215,7 @@ class mnlc_controller(sme.GraphMachine):
                 self.phase1_client.wait_for_result()
                 result = self.phase1_client.get_result()
                 if result.reached_frontier == False:
-                    self.recovery(np.random.randint(0, 8), 0.25, 0.1)
+                    self.recovery(np.random.randint(0, 8), 0.25, 0.125)
                     rospy.sleep(0.25)
                     failed = failed + 1
                 rospy.sleep(0.125)
@@ -293,7 +294,7 @@ class mnlc_controller(sme.GraphMachine):
             point.y = int(math.floor(
                 (self.cy - self.initial_map_metadata.info.origin.position.y) / self.initial_map_metadata.info.resolution))
             self.send_current_cell.publish(point)
-        print(distance.euclidean(self.vel[0], self.vel[1]))
+        # print(distance.euclidean(self.vel[0], self.vel[1]))
         v = std_msgs.msg.Float32()
         v.data = distance.euclidean(self.vel[0], self.vel[1])
         self.vel_pub.publish(v)

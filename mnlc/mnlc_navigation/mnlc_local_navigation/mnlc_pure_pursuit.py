@@ -240,7 +240,7 @@ class mnlc_pure_pursuit():
         # print("t_index is: ", t_index, " and last_index is: ", last_index)
         next_path_time = rospy.get_time()
         while last_index > t_index:
-            if rospy.get_time() > start_time + 60.0 and distance.euclidean(self.vel[0], self.vel[1]) <= 0.000625:
+            if rospy.get_time() > start_time + 20.0 and distance.euclidean(self.vel[0], self.vel[1]) <= 0.000625:
                 self.old_nearest = None
                 self.stop()
                 result = rbem.explorationResult()

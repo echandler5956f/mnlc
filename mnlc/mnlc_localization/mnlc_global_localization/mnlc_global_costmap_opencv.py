@@ -27,7 +27,6 @@ class mnlc_global_costmap_opencv():
 
     def initialize_params(self):
         self.start_time = rospy.get_param('/global_costmap/start_time')
-        # grid cost to be considered an obstacle
         # [s] standard service timeout limit
         self.timeout = rospy.get_param('/controller/timeout')
         # number of grid cells to pad the c_scpace with
@@ -78,7 +77,6 @@ class mnlc_global_costmap_opencv():
         temp = tmp()
         self.listener.waitForTransform(
             '/odom', '/base_footprint', rospy.Time(0), timeout=rospy.Duration(self.timeout))
-        # allocate a thread for publishing
         self.calculate_global_costmap()
 
     def calculate_global_costmap(self):
@@ -107,6 +105,7 @@ class mnlc_global_costmap_opencv():
             # print("Calculating Global CSpace took: ", rospy.get_time() - time_init, ".")
 
     def update_map(self, map):
+        time_init = rospy.get_time()
         path = r'/home/quant/.ros/global_costmap.pgm'
         self.rtab_map_pub.publish(map)
         mapdata_asarray = np.array(object=map.data, copy=False)
@@ -121,6 +120,7 @@ class mnlc_global_costmap_opencv():
             f.write(byte_array)
             f.close()
         self.img = cv2.imread(path, -1)
+        # print("Calculating Global CSpace took: ", rospy.get_time() - time_init, ".")
 
     def error_handler(self):
         self.error = True
