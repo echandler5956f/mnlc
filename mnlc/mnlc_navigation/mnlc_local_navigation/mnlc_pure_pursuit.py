@@ -3,10 +3,12 @@
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from geometry_msgs.msg import Twist, PoseStamped
 from nav_msgs.msg import Path, OccupancyGrid
+from sensor_msgs.msg._Imu import Imu
 from scipy.spatial import distance
 import move_base_msgs.msg as mb
 from nav_msgs.srv import GetMap
 import rbe3002.msg as rbem
+import std_msgs.msg
 import std_srvs.srv
 import numpy as np
 import actionlib
@@ -88,6 +90,8 @@ class mnlc_pure_pursuit():
 
     def initialize_params(self):
         self.t = rospy.get_time()
+        self.acc = std_msgs.msg.Float32()
+        self.acc.data = 0.0
         self.start_time = rospy.get_param('/pure_pursuit/start_time')
         self.ctrl_invl = rospy.get_param(
             '/controller/ctrl_invl')  # [s] control loop interval
@@ -171,9 +175,12 @@ class mnlc_pure_pursuit():
         roll, pitch, self.ctheta = euler_from_quaternion(rot)
         self.cx = trans[0]
         self.cy = trans[1]
+        self.imu_sub = rospy.Subscriber(
+            '/imu', Imu, self.update_imu)
         rospy.Timer(rospy.Duration(self.ctrl_invl), self.odometry)
         self.cmd_vel_pub = rospy.Publisher(
             '/cmd_vel', Twist, None, queue_size=1)
+        self.acc_pub = rospy.Publisher('/acc', std_msgs.msg.Float32, None, queue_size=1)
         self.smoothed_pth_pub = rospy.Publisher(
             '/pure_persuit/smoothed_path', Path, queue_size=1)
         self.phase1_server = actionlib.SimpleActionServer(
@@ -240,7 +247,7 @@ class mnlc_pure_pursuit():
         # print("t_index is: ", t_index, " and last_index is: ", last_index)
         next_path_time = rospy.get_time()
         while last_index > t_index:
-            if rospy.get_time() > start_time + 20.0 and distance.euclidean(self.vel[0], self.vel[1]) <= 0.000625:
+            if rospy.get_time() > start_time + 25.0 and distance.euclidean(self.vel[0], self.vel[1]) <= 0.000625:
                 self.old_nearest = None
                 self.stop()
                 result = rbem.explorationResult()
@@ -406,6 +413,12 @@ class mnlc_pure_pursuit():
         roll, pitch, self.ctheta = euler_from_quaternion(rot)
         self.rx = self.cx - ((self.w_base / 2) * math.cos(self.ctheta))
         self.ry = self.cy - ((self.w_base / 2) * math.sin(self.ctheta))
+
+    def update_imu(self, msg):
+        rospy.sleep(0.01)
+        self.acc.data = distance.euclidean(
+            msg.linear_acceleration.x, msg.linear_acceleration.y)
+        self.acc_pub.publish(self.acc)        
 
     def stop(self):
         rospy.loginfo("Sending zero-velocity target to the Turtlebot.")

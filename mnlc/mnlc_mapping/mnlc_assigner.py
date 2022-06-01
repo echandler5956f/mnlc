@@ -171,6 +171,8 @@ class mnlc_assigner():
                                 ppw = (x, y)
                                 if ppw in visited:
                                     info_gain[k] -= 2.0
+                                if (mapdata.data[k] > self.obstacle_cost):
+                                    info_gain[k] -= 0.125
                 rev_rec = []
                 centroid_rec = []
                 for i in range(len(centroids)):

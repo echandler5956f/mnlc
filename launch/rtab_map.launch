@@ -47,6 +47,7 @@
       <param name="map_filter_angle" type="double" value="30"/>
       <param name="Grid/Sensor" type="string" value="0"/>
       <param name="RGBD/ProximityPathMaxNeighbors" type="string" value="10"/>
+      <param name="Rtabmap/DetectionRate" type="double" value="15.0"/>
       <!-- <param name="Grid/CellSize" value="0.025"/> -->
 
       <!-- localization mode -->

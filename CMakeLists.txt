@@ -6,12 +6,27 @@ set(CMAKE_BUILD_TYPE Release) #None, Debug, Release, RelWithDebInfo, MinSizeRel
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
+IF(NOT MSVC)
+  include(CheckCXXCompilerFlag)
+  CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+  CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+if(COMPILER_SUPPORTS_CXX11)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+elseif(COMPILER_SUPPORTS_CXX0X)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+else()
+  message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support which is required 
+  by linked third party packages starting from ROS Jade. Ignore this message for ROS Indigo.")
+endif()
+endif()
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
+  cv_bridge
+  image_transport
   nav_msgs
   roscpp
   rospy
@@ -25,8 +40,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
-
+find_package(OpenCV REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -126,10 +140,18 @@ CATKIN_DEPENDS message_runtime
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
+
+include_directories(include)
 include_directories(
-# include
+  SYSTEM
+  ${EXTERNAL_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
+
+add_executable(mnlc_global_costmap_opencv src/mnlc_global_costmap_opencv.cpp)
+target_link_libraries(mnlc_global_costmap_opencv ${catkin_LIBRARIES} ${OpenCV_INCLUDE_DIRS} ${OpenCV_LIBS})
+
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/rbe3002_lab2.cpp
