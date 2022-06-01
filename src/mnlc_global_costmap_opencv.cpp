@@ -5,17 +5,7 @@
 #include <boost/foreach.hpp>
 #include <std_srvs/Empty.h>
 #include "ros/ros.h"
-#include <fstream>
 #include <map>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <image_transport/image_transport.h>
-#include <cv_bridge/cv_bridge.h>
-#include "std_msgs/String.h"
-#include <sstream>
-#include "nav_msgs/MapMetaData.h"
-#include <iostream>
-#include <bits/stdc++.h>
 
 std::unordered_map<int, int> unknown_indices;
 nav_msgs::OccupancyGrid mapdata;
@@ -126,7 +116,7 @@ int main(int argc, char **argv)
   cv::Mat kernel = cv::getStructuringElement(dilation_type,
                                              cv::Size(dilation_size, dilation_size),
                                              cv::Point((int)(dilation_size / 2), (int)(dilation_size / 2)));
-  ros::Rate loop_rate(100);
+  ros::Rate loop_rate(60);
   while (ros::ok())
   {
     std::unordered_map<int, int> uk = unknown_indices;

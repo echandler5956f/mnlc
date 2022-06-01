@@ -197,9 +197,9 @@ class mnlc_controller(sme.GraphMachine):
                         failing = False
                         succeeded = True
                     else:
-                        self.recovery(np.random.randint(0, 8), 0.25, 0.1)
-                        rospy.sleep(0.25)
-                        if rospy.get_time() > t + 20.0 and distance.euclidean(self.vel[0], self.vel[1]) <= 0.000625:
+                        self.recovery(np.random.randint(0, 8), 0.25, 0.2)
+                        rospy.sleep(0.125)
+                        if rospy.get_time() > t + 5.0 and distance.euclidean(self.vel[0], self.vel[1]) <= 0.000625:
                             move_on = True
                             break
                     f = f + 1
@@ -215,8 +215,8 @@ class mnlc_controller(sme.GraphMachine):
                 self.phase1_client.wait_for_result()
                 result = self.phase1_client.get_result()
                 if result.reached_frontier == False:
-                    self.recovery(np.random.randint(0, 8), 0.25, 0.125)
-                    rospy.sleep(0.25)
+                    self.recovery(np.random.randint(0, 8), 0.25, 0.2)
+                    rospy.sleep(0.125)
                     failed = failed + 1
                 rospy.sleep(0.125)
 

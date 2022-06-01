@@ -133,6 +133,8 @@ class mnlc_assigner():
                     infoGain = 0
                     index = int(
                         (math.floor((centroid[1] - moy)/res) * mw) + (math.floor((centroid[0] - mox)/res)))
+                    # if (mapdata.data[index] == 0):
+                    #     infoGain += 2.0
                     r_region = int(radius/res)
                     init_index = index-r_region * (mw + 1)
                     for n in range(0, 2 * r_region + 1):
@@ -171,8 +173,8 @@ class mnlc_assigner():
                                 ppw = (x, y)
                                 if ppw in visited:
                                     info_gain[k] -= 2.0
-                                if (mapdata.data[k] > self.obstacle_cost):
-                                    info_gain[k] -= 0.125
+                                if (mapdata.data[k] != -1):
+                                    info_gain[k] -= mapdata.data[k] * 0.075
                 rev_rec = []
                 centroid_rec = []
                 for i in range(len(centroids)):
