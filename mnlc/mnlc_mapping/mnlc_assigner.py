@@ -172,7 +172,7 @@ class mnlc_assigner():
                                 y = int(math.floor((pp[1] - moy) / res))
                                 ppw = (x, y)
                                 if ppw in visited:
-                                    info_gain[k] -= 2.5
+                                    info_gain[k] -= 2.0
                                 if (mapdata.data[k] != -1):
                                     info_gain[k] -= mapdata.data[k] * 0.075
                 rev_rec = []

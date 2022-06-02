@@ -10,7 +10,7 @@
 #include <map>
 
 std::unordered_map<int, int> unknown_indices;
-std::vector<cv::Point> frontiers;
+std::vector<cv::Point2f> frontiers;
 nav_msgs::OccupancyGrid mapdata;
 cv::Mat image;
 
@@ -57,33 +57,40 @@ void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
   cv::Mat original;
   cv::inRange(frontier_image, 0, 1, original);
   cv::Mat edges;
-  cv::Canny(frontier_image, edges, 0, 255);
-  std::vector<std::vector<cv::Point>> contours;
-  cv::findContours(original, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-  cv::drawContours(original, contours, -1, cvScalar(255, 255, 255), 5);
+  const double threshold1 = 0.0;
+  const double threshold2 = 255.0;
+  const int kernel_size = 3;
+  cv::Canny(frontier_image, edges, threshold1, threshold2, kernel_size, true);
+  std::vector<std::vector<cv::Point>> contours1;
+  cv::findContours(original, contours1, cv::RETR_LIST, cv::CHAIN_APPROX_TC89_L1);
+  cv::drawContours(original, contours1, -1, 255, 5);
   cv::Mat tmp;
   cv::bitwise_not(original, tmp);
   cv::Mat frontier;
   cv::bitwise_and(tmp, edges, frontier);
-  cv::findContours(frontier, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-  cv::drawContours(frontier, contours, -1, cvScalar(255, 255, 255), 2);
-  cv::findContours(frontier, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+  std::vector<std::vector<cv::Point>> contours2;
+  cv::findContours(frontier, contours2, cv::RETR_LIST, cv::CHAIN_APPROX_TC89_L1);
+  cv::drawContours(frontier, contours2, -1, 255, 2);
+  std::vector<std::vector<cv::Point>> contours3;
+  cv::findContours(frontier, contours3, cv::RETR_LIST, cv::CHAIN_APPROX_TC89_L1);
   float res = m.info.resolution;
   float gox = m.info.origin.position.x;
   float goy = m.info.origin.position.y;
-  if (sizeof(contours) > 0)
+  cv::Point2f p;
+  cv::Moments moment;
+  if (sizeof(contours3) > 0)
   {
-    BOOST_FOREACH (std::vector<cv::Point> &contour, contours)
+    BOOST_FOREACH (std::vector<cv::Point> &contour, contours3)
     {
-      cv::Moments moment = cv::moments(contour);
+      moment = cv::moments(contour, true);
       int cx = (int)(moment.m10 / moment.m00);
       int cy = (int)(moment.m01 / moment.m00);
       float xr = cx * res + gox;
       float yr = cy * res + goy;
-      cv::Point point;
-      point.x = xr;
-      point.y = yr;
-      frontiers.push_back(point);
+      // printf("xr: %f\t yr: %f\n", xr, yr);
+      p.x = xr;
+      p.y = yr;
+      frontiers.push_back(p);
     }
   }
 }
@@ -211,19 +218,19 @@ int main(int argc, char **argv)
         }
       }
     }
-    BOOST_FOREACH (cv::Point &frontier, frontiers)
+    BOOST_FOREACH (cv::Point2f &frontier, frontiers)
     {
       exploration_goal.header.stamp = ros::Time(0);
       exploration_goal.point.x = frontier.y;
       exploration_goal.point.y = frontier.x;
-      // detected_opencv_pub.publish(exploration_goal);
+      detected_opencv_pub.publish(exploration_goal);
       std::vector<geometry_msgs::Point> p_arr;
       geometry_msgs::Point p;
       p.x = exploration_goal.point.x;
       p.y = exploration_goal.point.y;
       p_arr.push_back(p);
       points.points = p_arr;
-      // shapes_pub.publish(points);
+      shapes_pub.publish(points);
     }
     cspace.header.stamp = ros::Time::now();
     mapdata.header.stamp = ros::Time::now();

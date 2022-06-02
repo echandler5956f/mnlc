@@ -54,7 +54,7 @@
   <node name="mnlc_sklearn_frontier_filter"         pkg="rbe3002" type="mnlc_sklearn_frontier_filter.py"         output="screen"/>
 
   <!-- Global Frontier Detectors -->
-  <node name="mnlc_global_opencv_frontier_detector" pkg="rbe3002" type="mnlc_global_opencv_frontier_detector.py" output="screen"/>
+  <!-- <node name="mnlc_global_opencv_frontier_detector" pkg="rbe3002" type="mnlc_global_opencv_frontier_detector.py" output="screen"/> -->
   <node name="mnlc_global_rrt_detector1"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/>
 
   <!-- Local Frontier Detectors -->
