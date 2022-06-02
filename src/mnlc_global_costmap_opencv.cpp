@@ -1,3 +1,5 @@
+#include <geometry_msgs/PointStamped.h>
+#include <visualization_msgs/Marker.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <tf/transform_listener.h>
 #include <opencv2/opencv.hpp>
@@ -8,31 +10,43 @@
 #include <map>
 
 std::unordered_map<int, int> unknown_indices;
+std::vector<cv::Point> frontiers;
 nav_msgs::OccupancyGrid mapdata;
 cv::Mat image;
 
 void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
 {
   ros::Time time_init = ros::Time::now();
-  std::unordered_map<int, int> uk;
   double ti = time_init.toSec();
   nav_msgs::OccupancyGrid m = *map;
   mapdata = m;
+  frontiers.clear();
+  cv::Mat frontier_image = cv::Mat::ones(m.info.width, m.info.height, CV_8UC1);
+  std::unordered_map<int, int> uk;
   int index = 0;
   int row = 0;
   int col = 0;
-  BOOST_FOREACH (int8_t &datapoint, m.data)
+  std::vector<int8_t, std::allocator<int8_t>> temp = m.data;
+  BOOST_FOREACH (int8_t &datapoint, temp)
   {
-    if (datapoint == -1)
-    {
-
-      uk.emplace(index, 0);
-      m.data[index] = 0;
-    }
     row = index / m.info.width;
     col = index % m.info.width;
     // printf("row: %d \t", row);
     // printf("col: %d \n", col);
+    if (datapoint == 100)
+    {
+      frontier_image.ptr<unsigned char>(col)[row] = 0;
+    }
+    else if (datapoint == 0)
+    {
+      frontier_image.ptr<unsigned char>(col)[row] = 255;
+    }
+    else if (datapoint == -1)
+    {
+      uk.emplace(index, 0);
+      m.data[index] = 0;
+      frontier_image.ptr<unsigned char>(col)[row] = 205;
+    }
     unsigned char ch = (unsigned char)m.data[index];
     image.ptr<unsigned char>(col)[row] = ch;
     index++;
@@ -40,6 +54,38 @@ void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
   // for (auto itr = uk.begin(); itr != uk.end(); itr++)
   //       std::cout << itr->first << "\t" << itr->second << std::endl;
   unknown_indices = uk;
+  cv::Mat original;
+  cv::inRange(frontier_image, 0, 1, original);
+  cv::Mat edges;
+  cv::Canny(frontier_image, edges, 0, 255);
+  std::vector<std::vector<cv::Point>> contours;
+  cv::findContours(original, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+  cv::drawContours(original, contours, -1, cvScalar(255, 255, 255), 5);
+  cv::Mat tmp;
+  cv::bitwise_not(original, tmp);
+  cv::Mat frontier;
+  cv::bitwise_and(tmp, edges, frontier);
+  cv::findContours(frontier, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+  cv::drawContours(frontier, contours, -1, cvScalar(255, 255, 255), 2);
+  cv::findContours(frontier, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+  float res = m.info.resolution;
+  float gox = m.info.origin.position.x;
+  float goy = m.info.origin.position.y;
+  if (sizeof(contours) > 0)
+  {
+    BOOST_FOREACH (std::vector<cv::Point> &contour, contours)
+    {
+      cv::Moments moment = cv::moments(contour);
+      int cx = (int)(moment.m10 / moment.m00);
+      int cy = (int)(moment.m01 / moment.m00);
+      float xr = cx * res + gox;
+      float yr = cy * res + goy;
+      cv::Point point;
+      point.x = xr;
+      point.y = yr;
+      frontiers.push_back(point);
+    }
+  }
 }
 
 int main(int argc, char **argv)
@@ -53,6 +99,21 @@ int main(int argc, char **argv)
   int padding;
   n.getParam("/global_costmap/padding", padding);
   bool first_map = true;
+  int detector_padding = (int)(padding / 2);
+  visualization_msgs::Marker points;
+  points.header.frame_id = "/map";
+  points.header.stamp = ros::Time::now();
+  points.ns = "markers";
+  points.id = 9;
+  points.type = visualization_msgs::Marker::POINTS;
+  points.action = visualization_msgs::Marker::ADD;
+  points.pose.orientation.w = 1.0;
+  points.scale.x = points.scale.y = 0.3;
+  points.color.r = 255.0 / 255.0;
+  points.color.g = 0.0 / 255.0;
+  points.color.b = 0.0 / 255.0;
+  points.color.a = 1;
+  points.lifetime = ros::Duration();
   nav_msgs::OccupancyGrid map;
   tf::TransformListener listener;
   ros::Time st;
@@ -83,6 +144,8 @@ int main(int argc, char **argv)
   double goy = initial_map_metadata.info.origin.position.y;
   ros::Publisher rtab_map_pub = n.advertise<nav_msgs::OccupancyGrid>("/latest_map", 1);
   ros::Publisher cspace_pub = n.advertise<nav_msgs::OccupancyGrid>("/mnlc_global_costmap_opencv/cspace", 1);
+  ros::Publisher detected_opencv_pub = n.advertise<geometry_msgs::PointStamped>("/opencv_points", 1);
+  ros::Publisher shapes_pub = n.advertise<visualization_msgs::Marker>("/OpenCVFrontierDetector/shapes", 1);
   cspace_pub.publish(initial_map_metadata);
   image = cv::Mat::ones(width, height, CV_8UC1);
   ros::Subscriber rtabmap_sub = n.subscribe("/map", 10, update_map);
@@ -116,6 +179,9 @@ int main(int argc, char **argv)
   cv::Mat kernel = cv::getStructuringElement(dilation_type,
                                              cv::Size(dilation_size, dilation_size),
                                              cv::Point((int)(dilation_size / 2), (int)(dilation_size / 2)));
+  geometry_msgs::PointStamped exploration_goal;
+  exploration_goal.header.frame_id = "/map";
+  exploration_goal.point.z = 0;
   ros::Rate loop_rate(60);
   while (ros::ok())
   {
@@ -144,6 +210,20 @@ int main(int argc, char **argv)
           data_from_grid_c.push_back(norm_image.ptr<unsigned char>(j)[i]);
         }
       }
+    }
+    BOOST_FOREACH (cv::Point &frontier, frontiers)
+    {
+      exploration_goal.header.stamp = ros::Time(0);
+      exploration_goal.point.x = frontier.y;
+      exploration_goal.point.y = frontier.x;
+      // detected_opencv_pub.publish(exploration_goal);
+      std::vector<geometry_msgs::Point> p_arr;
+      geometry_msgs::Point p;
+      p.x = exploration_goal.point.x;
+      p.y = exploration_goal.point.y;
+      p_arr.push_back(p);
+      points.points = p_arr;
+      // shapes_pub.publish(points);
     }
     cspace.header.stamp = ros::Time::now();
     mapdata.header.stamp = ros::Time::now();

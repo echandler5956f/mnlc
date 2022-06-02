@@ -50,7 +50,7 @@
       <param name="map_filter_angle" type="double" value="30"/>
       <param name="Grid/Sensor" type="string" value="0"/>
       <param name="RGBD/ProximityPathMaxNeighbors" type="string" value="10"/>
-      <param name="Rtabmap/DetectionRate" type="double" value="12.0"/>
+      <param name="Rtabmap/DetectionRate" type="double" value="10.0"/>
       <param name="Rtabmap/odom_sensor_sync" type="bool" value="true"/>
       <!-- <param name="Grid/CellSize" value="0.025"/> -->
 
