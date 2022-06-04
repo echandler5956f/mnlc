@@ -173,7 +173,7 @@ class mnlc_controller(sme.GraphMachine):
                 path = path_srv(start_pose, frontier_goal, 1.0)
             except rospy.ServiceException as e:
                 rospy.logerr("Path Planning service call failed: %s." % e)
-            if len(path.plan.poses) <= 1:
+            if len(path.plan.poses) <= 1 or path.plan.poses[0].header.seq == 420:
                 rospy.logwarn(
                     "Controller recieved information indicating that the planner cannot plan a path. Sending new frontier.")
                 failing = True
@@ -192,7 +192,7 @@ class mnlc_controller(sme.GraphMachine):
                     except rospy.ServiceException as e:
                         rospy.logerr(
                             "Path Planning service call failed: %s." % e)
-                    if len(path.plan.poses) > 1:
+                    if len(path.plan.poses) > 1 or path.plan.poses[0].header.seq == 420:
                         failed = failed + 1
                         failing = False
                         succeeded = True

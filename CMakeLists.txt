@@ -141,16 +141,17 @@ CATKIN_DEPENDS message_runtime
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 
-include_directories(include)
-include_directories(
-  SYSTEM
-  ${EXTERNAL_INCLUDE_DIRS}
-  ${catkin_INCLUDE_DIRS}
-  ${OpenCV_INCLUDE_DIRS}
-)
+include_directories(include ${EXTERNAL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
+
+add_executable(mnlc_a_star src/mnlc_a_star.cpp)
+target_link_libraries(mnlc_a_star ${catkin_LIBRARIES})
+
+add_executable(mnlc_field_d_star src/mnlc_field_d_star.cpp src/mnlc_lexi_queue.cpp)
+target_link_libraries(mnlc_field_d_star ${catkin_LIBRARIES})
 
 add_executable(mnlc_global_costmap_opencv src/mnlc_global_costmap_opencv.cpp)
 target_link_libraries(mnlc_global_costmap_opencv ${catkin_LIBRARIES} ${OpenCV_INCLUDE_DIRS} ${OpenCV_LIBS})
+
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
