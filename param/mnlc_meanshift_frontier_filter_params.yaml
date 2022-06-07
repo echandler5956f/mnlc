@@ -2,4 +2,4 @@ frontier_filter:
   start_time: 12
   obstacle_cost: 30
   info_radius: 0.75
-  filter_clear: 0.25
+  frontier_clear: 0.01

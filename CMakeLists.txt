@@ -40,6 +40,9 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 ## System dependencies are found with CMake's conventions
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+find_package(pybind11 REQUIRED)
+find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(OpenCV REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -140,7 +143,6 @@ CATKIN_DEPENDS message_runtime
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-
 include_directories(include ${EXTERNAL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
 add_executable(mnlc_a_star src/mnlc_a_star.cpp)
@@ -152,6 +154,17 @@ target_link_libraries(mnlc_field_d_star ${catkin_LIBRARIES})
 add_executable(mnlc_global_costmap_opencv src/mnlc_global_costmap_opencv.cpp)
 target_link_libraries(mnlc_global_costmap_opencv ${catkin_LIBRARIES} ${OpenCV_INCLUDE_DIRS} ${OpenCV_LIBS})
 
+add_executable(mnlc_meanshift_frontier_filter src/mnlc_meanshift_frontier_filter.cpp)
+target_link_libraries(mnlc_meanshift_frontier_filter ${catkin_LIBRARIES} pybind11::embed Eigen3::Eigen)
+
+add_executable(mnlc_hdbscan_frontier_filter src/mnlc_hdbscan_frontier_filter.cpp)
+target_link_libraries(mnlc_hdbscan_frontier_filter ${catkin_LIBRARIES} ${OpenCV_INCLUDE_DIRS} ${OpenCV_LIBS} Eigen3::Eigen)
+
+add_executable(mnlc_global_rrt_detector src/mnlc_global_rrt_detector.cpp src/mersenne_twister.cpp)
+target_link_libraries(mnlc_global_rrt_detector ${catkin_LIBRARIES})
+
+add_executable(mnlc_local_rrt_detector src/mnlc_local_rrt_detector.cpp src/mersenne_twister.cpp)
+target_link_libraries(mnlc_local_rrt_detector ${catkin_LIBRARIES})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}

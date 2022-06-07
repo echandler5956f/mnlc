@@ -1,11 +1,11 @@
 #ifndef mnlc_lexi_queue_H
 #define mnlc_lexi_queue_H
-#include <queue>
-#include <vector>
-#include <list>
 #include <functional>
 #include <algorithm>
 #include <stdio.h>
+#include <vector>
+#include <queue>
+#include <list>
 
 namespace LexiQueue
 {
