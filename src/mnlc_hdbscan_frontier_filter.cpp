@@ -4,14 +4,12 @@ void update_frontiers(const geometry_msgs::PointStamped::ConstPtr &frontier)
 {
     if (first_map == false)
     {
-        std::vector<double> f = {frontier->point.x, frontier->point.y};
-        frontiers.push_back(f);
-        // frontiers.conservativeResize(frontiers.rows() + 1, 2);
-        // frontiers(frontiers.rows() - 1, 0) = frontier->point.x;
-        // frontiers(frontiers.rows() - 1, 1) = frontier->point.y;
-        // frontiers.conservativeResize(2, frontiers.cols() + 1);
-        // frontiers(0, frontiers.cols() - 1) = frontier->point.x;
-        // frontiers(1, frontiers.cols() - 1) = frontier->point.y;
+        double x = frontier->point.x;
+        double y = frontier->point.y;
+        if ((x * x) + (y * y) >= info_radius)
+        {
+            frontiers.push_back({x, y});
+        }
     }
     else
     {
@@ -27,12 +25,11 @@ void update_state_machine(const std_msgs::Int8::ConstPtr &s)
 void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
 {
     mapdata = *map;
-    if (ros::Time::now().toSec() >= next_time)
-    {
-        frontiers.clear();
-        // frontiers.resize(2, 0);
-        next_time = ros::Time::now().toSec() + frontier_clear;
-    }
+    // if (ros::Time::now().toSec() >= next_time)
+    // {
+    //     frontiers.clear();
+    //     next_time = ros::Time::now().toSec() + frontier_clear;
+    // }
 }
 
 int main(int argc, char **argv)
@@ -116,44 +113,57 @@ int main(int argc, char **argv)
         ros::spinOnce();
         // printf("Frontier inner size: %ld\t Frontier outer size: %ld\n", frontiers.innerSize(), frontiers.outerSize());
         // if (frontiers.outerSize() > 1 && frontiers.innerSize() > 1)
-        if (frontiers.size() > 1)
+                if (frontiers.size() > 120)
         {
             std::vector<int8_t, std::allocator<int8_t>> data = mapdata.data;
-            // auto b = cluster.attr("estimate_bandwidth")("X"_a = frontiers, "quantile"_a = 0.3, "n_samples"_a = 25, "random_state"_a = 12 );
-            // float bandwidth = b.cast<float>();
-            // printf("%f\n", bandwidth);
-            // if (bandwidth < 0.001)
-            // {
-            //     bandwidth = 0.3;
-            // }
-            // printf("Centroids inner size: %ld\t Centroids outer size: %ld\n", centroids.innerSize(), centroids.outerSize());
-            // Hdbscan hdbscan(csvName);
-            // hdbscan.loadCsv(2);
-            Hdbscan hdbscan(frontiers);
-            hdbscan.execute(5, 5, "Euclidean");
-            auto begin = hdbscan.normalizedLabels_.begin();
-            auto end = hdbscan.normalizedLabels_.end();
-            int num_clusters = *std::max_element(begin, end);
+            std::vector<std::vector<double>> f = frontiers;
+            Hdbscan hdbscan(f);
+            // printf("Initialized Hdbscan!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+            hdbscan.execute(7, 7, "Manhattan");
+            // printf("Executed Hdbscan!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+            int num_clusters = *std::max_element(hdbscan.normalizedLabels_.begin(), hdbscan.normalizedLabels_.end() - 1);
+            printf("Number of clusters: %d\t Number of elements: %lu\n", num_clusters, hdbscan.membershipProbabilities_.size());
+            std::vector<std::vector<std::vector<double>>> cluster_groups; // cluster_groups[group][i][0: x, 1: y, 2: probability]
             std::vector<std::vector<double>> centroids;
-            // RowMatrixXd centroids;
+            for (int i = 0; i < num_clusters; i++)
+            {
+                cluster_groups.push_back({});
+            }
+            // printf("Entering cluster grouping loop!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+            for (int i = 0; i < hdbscan.membershipProbabilities_.size(); i++)
+            {
+                // printf("Assigning clusters to groups!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+                if ((hdbscan.normalizedLabels_[i] != -1) && (hdbscan.normalizedLabels_[i] != 0))
+                {
+                    cluster_groups[hdbscan.normalizedLabels_[i] - 1].push_back({f[i][0], f[i][1], hdbscan.membershipProbabilities_[i]});
+                }
+            }
+            // printf("Finished grouping clusters!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+            for (int i = 0; i < num_clusters - 1; i++)
+            { // normalized clusters is not 0 index, so we compensate
+                // printf("Calculating centroid of cluster %d.\n", i);
+                std::vector<double> c = {0.0, 0.0};
+                for (int j = 0; j < cluster_groups[i].size(); j++)
+                {
+                    // printf("i: %d\t j: %d\n", i, j);
+                    c[0] += cluster_groups[i][j][0];
+                    c[1] += cluster_groups[i][j][1];
+                }
+                c[0] /= cluster_groups[i].size();
+                c[1] /= cluster_groups[i].size();
+                centroids.push_back(c);
+                printf("Centroid %d located at (%f, %f).\n", i, c[0], c[1]);
+            }
+            // printf("Finished calculating centroids!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
             int i = 0;
-            // while (i < centroids.innerSize())
             while (i < centroids.size())
             {
-                Eigen::Vector2i grid((int)(std::floor(centroids(0, i) - gox) / res), (int)(std::floor(centroids(1, i) - goy) / res));
+                Eigen::Vector2i grid((int)(std::floor(centroids[i][0] - gox) / res), (int)(std::floor(centroids[i][1] - goy) / res));
                 // int gindex = grid(0) + (grid(1) * width);
                 // int cost = data[gindex];
-                bool cond = (data[grid(0) + (grid(1) * width)] >= obstacle_cost) || data[grid(0) + (grid(1) * width)] == -1;
-                // if (cond)
-                // {
-                //     printf("Cond is TRUE\n");
-                // }
-                // else
-                // {
-                //     printf("Cond is FALSE\n");
-                // }
+                bool cond = (data[grid(0) + (grid(1) * width)] >= obstacle_cost);// || (data[grid(0) + (grid(1) * width)] == -1);
                 float info_gain = 0.0;
-                int index = (int)((std::floor((centroids(0, i) - gox) / res)) + (std::floor((centroids(1, i) - goy) / res)) * width);
+                int index = (int)((std::floor((centroids[i][1] - goy) / res) * width) + (std::floor((centroids[i][0] - gox) / res)));
                 int r_region = (int)(info_radius / res);
                 int init_index = index - r_region * (width + 1);
                 for (int n = 0; n < 2 * r_region + 1; n++)
@@ -168,7 +178,7 @@ int main(int argc, char **argv)
                         {
                             Eigen::Vector2d p(gox + (j - (j / width) * width) * res, goy + (j / width) * res);
                             // printf("Cost: %d.\t Radius: %f.\n", data[j], std::sqrt(std::pow(centroids(i, 0) - p(0), 2) + std::pow(centroids(i, 1) - p(1), 2)));
-                            if ((data[j] == -1) && (std::sqrt(std::pow(centroids(0, i) - p(0), 2) + std::pow(centroids(1, i) - p(1), 2)) <= info_radius))
+                            if ((data[j] == -1) && (std::sqrt(std::pow(centroids[i][0] - p(0), 2) + std::pow(centroids[i][1] - p(1), 2)) <= info_radius))
                             {
                                 info_gain = info_gain + 1;
                             }
@@ -176,31 +186,31 @@ int main(int argc, char **argv)
                     }
                 }
                 info_gain = info_gain * (std::pow(res, 2));
-                if (centroids.cols() - 1 <= 2)
-                {
-                    break;
-                }
                 printf("Info gain: %f\n", info_gain);
-                if (cond || (info_gain < 1.25))
+                // if (centroids.size() - 1 <= 2)
+                // {
+                //     break;
+                // }
+                if (cond || (info_gain < 1.0))
                 {
                     // printf("Rows before: %ld.\t Collumns before: %ld.\n", centroids.rows(), centroids.cols());
-                    centroids(0, i) = centroids(0, centroids.cols());
-                    centroids(1, i) = centroids(1, centroids.cols());
-                    centroids.resize(2, centroids.cols() - 1);
+                    centroids[i][0] = centroids[centroids.size() - 1][0];
+                    centroids[i][1] = centroids[centroids.size() - 1][1];
+                    centroids.pop_back();
                     // printf("Rows after: %ld.\t Collumns after: %ld.\n", centroids.rows(), centroids.cols());
-                    // printf("i = %d\n", i);
+                    // printf("i: %d\n", i);
                     i = i - 1;
                 }
                 i = i + 1;
             }
             point_array.points.clear();
             marker.points.clear();
-            if (centroids.innerSize() > 2)
+            if (centroids.size() > 1)
             {
-                for (int k = 0; k < centroids.innerSize(); k++)
+                for (int k = 0; k < centroids.size(); k++)
                 {
-                    point_stamped.point.x = centroids(0, k);
-                    point_stamped.point.y = centroids(1, k);
+                    point_stamped.point.x = centroids[k][0];
+                    point_stamped.point.y = centroids[k][1];
                     point_stamped.header.stamp = ros::Time::now();
                     point_array.points.push_back(point_stamped);
                     marker.points.push_back(point_stamped.point);
@@ -208,6 +218,7 @@ int main(int argc, char **argv)
                 filtered_points.publish(point_array);
                 shapes.publish(marker);
             }
+            frontiers.clear();
         }
         // loop_rate.sleep();
     }

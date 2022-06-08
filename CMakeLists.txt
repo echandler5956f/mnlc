@@ -158,13 +158,23 @@ add_executable(mnlc_meanshift_frontier_filter src/mnlc_meanshift_frontier_filter
 target_link_libraries(mnlc_meanshift_frontier_filter ${catkin_LIBRARIES} pybind11::embed Eigen3::Eigen)
 
 add_executable(mnlc_hdbscan_frontier_filter src/mnlc_hdbscan_frontier_filter.cpp)
-target_link_libraries(mnlc_hdbscan_frontier_filter ${catkin_LIBRARIES} ${OpenCV_INCLUDE_DIRS} ${OpenCV_LIBS} Eigen3::Eigen)
+target_link_libraries(mnlc_hdbscan_frontier_filter ${catkin_LIBRARIES} Eigen3::Eigen)
 
 add_executable(mnlc_global_rrt_detector src/mnlc_global_rrt_detector.cpp src/mersenne_twister.cpp)
 target_link_libraries(mnlc_global_rrt_detector ${catkin_LIBRARIES})
 
 add_executable(mnlc_local_rrt_detector src/mnlc_local_rrt_detector.cpp src/mersenne_twister.cpp)
 target_link_libraries(mnlc_local_rrt_detector ${catkin_LIBRARIES})
+
+add_executable(terster  src/terster.cpp src/hdbscan/Distance/EuclideanDistance.cpp 
+                        src/hdbscan/Distance/IDistanceCalculator.cpp src/hdbscan/Distance/ManhattanDistance.cpp 
+                        src/hdbscan/Distance/ManhattanDistance.cpp src/hdbscan/Hdbscan/hdbscan.cpp src/hdbscan/HdbscanStar/cluster.cpp
+                        src/hdbscan/HdbscanStar/hdbscanAlgorithm.cpp src/hdbscan/HdbscanStar/hdbscanConstraint.cpp
+                        src/hdbscan/HdbscanStar/outlierScore.cpp src/hdbscan/HdbscanStar/undirectedGraph.cpp
+                        src/hdbscan/Runner/hdbscanParameters.cpp src/hdbscan/Runner/hdbscanResult.cpp
+                        src/hdbscan/Runner/hdbscanRunner.cpp src/hdbscan/Utils/bitSet.cpp)
+target_link_libraries(terster ${catkin_LIBRARIES})
+
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}

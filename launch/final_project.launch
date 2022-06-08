@@ -45,7 +45,6 @@
   <!-- <node name="mnlc_a_star"                          pkg="rbe3002" type="mnlc_a_star.py"                          output="screen"/> -->
   <node name="mnlc_a_star"                          pkg="rbe3002" type="mnlc_a_star"                             output="screen"/>
 
-
   <!-- Local Planners -->
   <node name="mnlc_pure_pursuit"                    pkg="rbe3002" type="mnlc_pure_pursuit.py"                    output="screen"/>
 
@@ -54,8 +53,8 @@
 
   <!-- Frontier Filters -->
   <!-- <node name="mnlc_meanshift_frontier_filter"       pkg="rbe3002" type="mnlc_meanshift_frontier_filter"          output="screen"/> -->
-  <!-- <node name="mnlc_hdbscan_frontier_filter"         pkg="rbe3002" type="mnlc_hdbscan_frontier_filter"            output="screen"/> -->
-  <node name="mnlc_meanshift_frontier_filter"       pkg="rbe3002" type="mnlc_meanshift_frontier_filter.py"       output="screen"/>
+  <node name="mnlc_hdbscan_frontier_filter"         pkg="rbe3002" type="mnlc_hdbscan_frontier_filter"            output="screen"/>
+  <!-- <node name="mnlc_meanshift_frontier_filter"       pkg="rbe3002" type="mnlc_meanshift_frontier_filter.py"       output="screen"/> -->
 
   <!-- Global Frontier Detectors -->
   <!-- <node name="mnlc_global_rrt_detector"             pkg="rbe3002" type="mnlc_global_rrt_detector"                output="screen"/> -->
