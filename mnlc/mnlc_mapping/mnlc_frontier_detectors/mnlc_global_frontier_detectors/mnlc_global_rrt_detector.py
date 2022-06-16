@@ -73,11 +73,11 @@ class mnlc_global_rrt_detector():
         rospy.loginfo("Begin phase1 service call successful.")
         temp = tmp()
         self.rtab_map_sub = rospy.Subscriber(
-            '/latest_map', OccupancyGrid, self.update_map, queue_size=1)
+            '/mnlc_simple_costmap/cspace', OccupancyGrid, self.update_map, queue_size=1)
         self.detected_points_pub = rospy.Publisher(
-            '/detected_points', PointStamped, queue_size=100)
+            '/detected_points', PointStamped, queue_size=1000)
         self.shapes_pub = rospy.Publisher(
-            '/mnlc_global_rrt_detector/shapes', Marker, queue_size=100)
+            '/mnlc_global_rrt_detector/shapes', Marker, queue_size=1000)
         self.state_machine = rospy.Subscriber(
             '/mnlc_state_machine', std_msgs.msg.Int8, self.update_state_machine, queue_size=1)
 

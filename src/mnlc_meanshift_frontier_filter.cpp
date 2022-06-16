@@ -25,11 +25,11 @@ void update_state_machine(const std_msgs::Int8::ConstPtr &s)
 void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
 {
     mapdata = *map;
-    if (ros::Time::now().toSec() >= next_time)
+    if (ros::Time(0).toSec() >= next_time)
     {
         // frontiers.resize(0, 2);
         frontiers.resize(2, 0);
-        next_time = ros::Time::now().toSec() + frontier_clear;
+        next_time = ros::Time(0).toSec() + frontier_clear;
     }
 }
 
@@ -95,7 +95,7 @@ int main(int argc, char **argv)
     listener.waitForTransform("/odom", "/base_footprint", ros::Time(0), ros::Duration(timeout));
     visualization_msgs::Marker marker;
     marker.header.frame_id = mapdata.header.frame_id;
-    marker.header.stamp = ros::Time::now();
+    marker.header.stamp = ros::Time(0);
     marker.ns = "filtered_markers";
     marker.id = 3;
     marker.type = visualization_msgs::Marker::POINTS;
@@ -202,7 +202,7 @@ int main(int argc, char **argv)
                 {
                     point_stamped.point.x = centroids(0, k);
                     point_stamped.point.y = centroids(1, k);
-                    point_stamped.header.stamp = ros::Time::now();
+                    point_stamped.header.stamp = ros::Time(0);
                     point_array.points.push_back(point_stamped);
                     marker.points.push_back(point_stamped.point);
                 }

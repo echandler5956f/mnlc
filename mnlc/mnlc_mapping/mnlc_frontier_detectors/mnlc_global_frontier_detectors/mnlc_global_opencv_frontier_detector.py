@@ -52,7 +52,7 @@ class mnlc_global_opencv_frontier_detector():
 
     def initialize_marker(self, map):
         self.points.header.frame_id = map.header.frame_id
-        self.points.header.stamp = rospy.Time.now()
+        self.points.header.stamp = rospy.Time(0)
         self.points.ns = "markers"
         self.points.id = 9
         self.points.type = Marker.POINTS
@@ -93,16 +93,19 @@ class mnlc_global_opencv_frontier_detector():
         temp = tmp()
         rospy.Subscriber('/map', OccupancyGrid,
                          self.update_map, queue_size=1)
-        self.listener.waitForTransform(
-            '/odom', '/base_footprint', rospy.Time(0), timeout=rospy.Duration(self.timeout))
-        flag = 0
-        while flag == 0:
+        now = rospy.Time.now()
+        self.listener.waitForTransform('/odom', '/base_footprint', now, rospy.Duration(0, 100000000))
+        cond = 0
+        while cond == 0:
             try:
                 rospy.loginfo('Waiting for the robot transform')
                 (trans, rot) = self.listener.lookupTransform(
-                    '/odom', '/base_footprint', rospy.Time(0))
-                flag = 1
+                    '/map', '/base_footprint', now)
+                cond = 1
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                print("Python Global Opencv Frontier Detector (Init) TF EXCEPTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                cond = 0
+                # rospy.sleep(0.1)
                 self.error_handler()
                 return
         self.detected_points_pub = rospy.Publisher(
@@ -169,13 +172,17 @@ class mnlc_global_opencv_frontier_detector():
 
 
     def update_visited(self):
-        flag = 0
-        while flag == 0:
+        now = rospy.Time.now()
+        self.listener.waitForTransform('/map', '/base_footprint', now, rospy.Duration(0, 100000000))
+        cond = 0
+        while cond == 0:
             try:
                 (trans, rot) = self.listener.lookupTransform(
-                    "/odom", "/base_footprint", rospy.Time(0))
-                flag = 1
+                    '/map', '/base_footprint', now)
+                cond = 1
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                print("Python Global Opencv Frontier Detector (update_visited) TF EXCEPTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                # rospy.sleep(0.1)
                 return
         x = int(math.floor(
             (trans[0] - self.map_metadata.info.origin.position.x) / self.map_metadata.info.resolution))

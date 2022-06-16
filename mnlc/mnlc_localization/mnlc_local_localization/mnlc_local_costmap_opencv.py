@@ -108,15 +108,19 @@ class mnlc_local_costmap_opencv():
             current_mapdata = map.map
             rtab_map_pub.publish(current_mapdata)
             mapdata_asarray = np.array(current_mapdata.data)
-            flag = 0
-            while flag == 0:
+            now = rospy.Time.now()
+            self.listener.waitForTransform('/map', '/base_footprint', now, rospy.Duration(0, 100000000))
+            cond = 0
+            while cond == 0:
                 time_init = rospy.get_time()
                 try:
                     (trans, rot) = self.listener.lookupTransform(
-                        "odom", "base_footprint", rospy.Time(0))
-                    flag = 1
+                        '/map', '/base_footprint', now)
+                    cond = 1
                 except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
-                    rospy.logerr("Tf exception")
+                    print("Python Local Costmap Opencv (calculate_local_costmap) TF EXCEPTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                    cond = 0
+                    rospy.sleep(0.1)
                     self.error_handler()
                     return
             x = int(math.floor((trans[0] - gox) / global_resolution))
@@ -155,7 +159,7 @@ class mnlc_local_costmap_opencv():
                 (local_grid_width * global_resolution/2)
             cspace.info.origin.position.y = trans[1] - \
                 (local_grid_height * global_resolution/2)
-            cspace.header.stamp = rospy.Time.now()
+            cspace.header.stamp = rospy.Time(0)
             cspace.data = dataC
             self.c_space_pub.publish(cspace)
             time_end = rospy.get_time()

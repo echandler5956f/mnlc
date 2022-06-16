@@ -86,9 +86,9 @@ class mnlc_a_star():
         if path == -1:
             empty_pose = PoseStamped()
             empty_pose.header.frame_id = '/map'
-            empty_pose.header.stamp = rospy.Time.now()
+            empty_pose.header.stamp = rospy.Time(0)
             path_msg.poses = [empty_pose]
-            path_msg.header.stamp = rospy.Time.now()
+            path_msg.header.stamp = rospy.Time(0)
             rospy.loginfo(
                 "A* has not found a path within the alotted time. Send a new goal point.")
             return path_msg
@@ -100,10 +100,10 @@ class mnlc_a_star():
             point_ret.z = 0
             pose.pose.position.x = point_ret.x
             pose.pose.position.y = point_ret.y
-            pose.header.stamp = rospy.Time.now()
+            pose.header.stamp = rospy.Time(0)
             pose.header.frame_id = '/map'
             path_msg.poses.append(pose)
-        path_msg.header.stamp = rospy.Time.now()
+        path_msg.header.stamp = rospy.Time(0)
         rospy.loginfo("A* has computed the path.")
         return path_msg
 
@@ -172,7 +172,7 @@ class mnlc_a_star():
                     frontier_nodes.cells.append(point)
         frontier_nodes.cells.reverse()
         frontier_nodes.header.frame_id = "/map"
-        frontier_nodes.header.stamp = rospy.Time.now()
+        frontier_nodes.header.stamp = rospy.Time(0)
         self.frontier_pub.publish(frontier_nodes)
         path = self.reconstruct_path(came_from, start, goal)
         rospy.loginfo("A* has successfully found the optimal path.")

@@ -68,7 +68,7 @@ class mnlc_assigner():
 
     def initialize_marker(self, map):
         self.points.header.frame_id = map.header.frame_id
-        self.points.header.stamp = rospy.Time.now()
+        self.points.header.stamp = rospy.Time(0)
         self.points.ns = "goal_markers"
         self.points.id = 6
         self.points.type = Marker.POINTS
@@ -189,7 +189,7 @@ class mnlc_assigner():
                     best_frontier = centroid_rec[rev_rec.index(max(rev_rec))]
                     goal_pose = PoseStamped()
                     goal_pose.header.frame_id = '/map'
-                    goal_pose.header.stamp = rospy.Time.now()
+                    goal_pose.header.stamp = rospy.Time(0)
                     goal_pose.pose.position.x = best_frontier[0]
                     goal_pose.pose.position.y = best_frontier[1]
                     self.goal_publisher.publish(goal_pose)

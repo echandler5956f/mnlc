@@ -2,7 +2,7 @@
 
 void a_star(Node start, Node goal, std::vector<geometry_msgs::Point> &path)
 {
-    double time_init = ros::Time::now().toSec();
+    double time_init = ros::Time(0).toSec();
     ROS_INFO("Beginning A* algorithm");
     printf("Executing A* from (%d, %d) to (%d, %d).", start.x, start.y, goal.x, goal.y);
     int width = mapdata.info.width;
@@ -43,7 +43,7 @@ void a_star(Node start, Node goal, std::vector<geometry_msgs::Point> &path)
         }
     }
     Node connbrs[8];
-    double start_time = ros::Time::now().toSec();
+    double start_time = ros::Time(0).toSec();
     while (frontiers.empty() == false)
     {
         Node current = frontiers.top();
@@ -54,7 +54,7 @@ void a_star(Node start, Node goal, std::vector<geometry_msgs::Point> &path)
             ROS_INFO("Path has been found.");
             break;
         }
-        if (ros::Time::now().toSec() >= start_time + 1.0)
+        if (ros::Time(0).toSec() >= start_time + 1.0)
         {
             ROS_WARN("A* has not found a path in less than 1.0 seconds. Requesting new path...");
             return;
@@ -113,7 +113,7 @@ void a_star(Node start, Node goal, std::vector<geometry_msgs::Point> &path)
             // }
         }
     }
-    frontier_vis.header.stamp = ros::Time::now();
+    frontier_vis.header.stamp = ros::Time(0);
     ROS_INFO("Reconstructing path.");
     int c = goal_index;
     geometry_msgs::Point point;
@@ -132,7 +132,7 @@ void a_star(Node start, Node goal, std::vector<geometry_msgs::Point> &path)
     ROS_INFO("Path reconstructed.");
     std::reverse(path.begin(), path.end());
     ROS_INFO("A* has successfully found the optimal path.");
-    printf("Calculating A* took: %f\n", ros::Time::now().toSec() - time_init);
+    printf("Calculating A* took: %f\n", ros::Time(0).toSec() - time_init);
 }
 
 void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
@@ -157,7 +157,7 @@ bool plan_path(nav_msgs::GetPlan::Request &plan_request, nav_msgs::GetPlan::Resp
     nav_msgs::Path path;
     geometry_msgs::PoseStamped pose;
     path.header.frame_id = pose.header.frame_id = "/map";
-    path.header.stamp = pose.header.stamp = ros::Time::now();
+    path.header.stamp = pose.header.stamp = ros::Time(0);
     pose.pose.orientation.w = 1.0;
     if (path_of_points.size() <= 3)
     {
@@ -229,7 +229,7 @@ int main(int argc, char **argv)
     listener.waitForTransform("/odom", "/base_footprint", ros::Time(0), ros::Duration(timeout));
     ros::ServiceServer planner = n.advertiseService("/plan_path", plan_path);
     frontier_vis.header.frame_id = "/map";
-    frontier_vis.header.stamp = ros::Time::now();
+    frontier_vis.header.stamp = ros::Time(0);
     ros::Rate loop_rate(120);
     while (ros::ok())
     {

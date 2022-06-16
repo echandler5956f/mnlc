@@ -2,7 +2,7 @@
 
 void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
 {
-  ros::Time time_init = ros::Time::now();
+  ros::Time time_init = ros::Time(0);
   double ti = time_init.toSec();
   nav_msgs::OccupancyGrid m = *map;
   mapdata = m;
@@ -95,7 +95,7 @@ int main(int argc, char **argv)
   int detector_padding = (int)(padding / 2);
   visualization_msgs::Marker points;
   points.header.frame_id = "/map";
-  points.header.stamp = ros::Time::now();
+  points.header.stamp = ros::Time(0);
   points.ns = "markers";
   points.id = 9;
   points.type = visualization_msgs::Marker::POINTS;
@@ -161,7 +161,7 @@ int main(int argc, char **argv)
   listener.waitForTransform("/odom", "/base_footprint", ros::Time(0), ros::Duration(timeout));
   nav_msgs::OccupancyGrid cspace;
   cspace.header.frame_id = "/map";
-  cspace.header.stamp = ros::Time::now();
+  cspace.header.stamp = ros::Time(0);
   cspace.info.width = width;
   cspace.info.height = height;
   cspace.info.resolution = resolution;
@@ -218,8 +218,8 @@ int main(int argc, char **argv)
       points.points = p_arr;
       shapes_pub.publish(points);
     }
-    cspace.header.stamp = ros::Time::now();
-    mapdata.header.stamp = ros::Time::now();
+    cspace.header.stamp = ros::Time(0);
+    mapdata.header.stamp = ros::Time(0);
     cspace.data = data_from_grid_c;
     cspace_pub.publish(cspace);
     rtab_map_pub.publish(mapdata);

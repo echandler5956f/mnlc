@@ -54,7 +54,7 @@ class mnlc_meanshift_frontier_filter():
 
     def initialize_marker(self, map):
         self.marker.header.frame_id = map.header.frame_id
-        self.marker.header.stamp = rospy.Time.now()
+        self.marker.header.stamp = rospy.Time(0)
         self.marker.ns = "filtered_markers"
         self.marker.id = 3
         self.marker.type = Marker.POINTS

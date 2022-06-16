@@ -160,16 +160,19 @@ class mnlc_pure_pursuit():
             return
         rospy.loginfo("Begin phase1 service call successful.")
         temp = tmp()
-        self.listener.waitForTransform(
-            '/odom', '/base_footprint', rospy.Time(0), timeout=rospy.Duration(self.timeout))
-        flag = 0
-        while flag == 0:
+        now = rospy.Time.now()
+        self.listener.waitForTransform('/map', '/base_footprint', now, rospy.Duration(0, 100000000))
+        cond = 0
+        while cond == 0:
             try:
                 rospy.loginfo('Waiting for the robot transform')
                 (trans, rot) = self.listener.lookupTransform(
-                    '/odom', '/base_footprint', rospy.Time(0))
-                flag = 1
+                    '/map', '/base_footprint', now)
+                cond = 1
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                print("Python Pure Pursuit Controller (Init) TF EXCEPTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                cond = 0
+                # rospy.sleep(0.1)
                 self.error_handler()
                 return
         roll, pitch, self.ctheta = euler_from_quaternion(rot)
@@ -284,7 +287,7 @@ class mnlc_pure_pursuit():
             for j in range(int(num_points)):
                 pose = PoseStamped()
                 pose.header.frame_id = '/map'
-                pose.header.stamp = rospy.Time.now()
+                pose.header.stamp = rospy.Time(0)
                 pose.pose.position.x = poses[i].pose.position.x + (
                     vector[0] * j)
                 pose.pose.position.y = poses[i].pose.position.y + (
@@ -292,14 +295,14 @@ class mnlc_pure_pursuit():
                 new_path.poses.append(pose)
         last_pose = PoseStamped()
         last_pose.header.frame_id = '/map'
-        last_pose.header.stamp = rospy.Time.now()
+        last_pose.header.stamp = rospy.Time(0)
         last_pose.pose.position.x = poses[len(
             poses) - 1].pose.position.x
         last_pose.pose.position.y = poses[len(
             poses) - 1].pose.position.y
         new_path.poses.append(last_pose)
         new_path.header.frame_id = '/map'
-        new_path.header.stamp = rospy.Time.now()
+        new_path.header.stamp = rospy.Time(0)
         return new_path
 
     def path_smoothing(self, path):
@@ -320,12 +323,12 @@ class mnlc_pure_pursuit():
         for arr in npath:
             pose = PoseStamped()
             pose.header.frame_id = '/map'
-            pose.header.stamp = rospy.Time.now()
+            pose.header.stamp = rospy.Time(0)
             pose.pose.position.x = arr[0]
             pose.pose.position.y = arr[1]
             smoothed_path.poses.append(pose)
         smoothed_path.header.frame_id = '/map'
-        smoothed_path.header.stamp = rospy.Time.now()
+        smoothed_path.header.stamp = rospy.Time(0)
         return smoothed_path
 
     def search_target(self, poses):
@@ -398,16 +401,20 @@ class mnlc_pure_pursuit():
         self.cmd_vel_pub.publish(msg_cmd_vel)
 
     def odometry(self, tmp):
+        now = rospy.Time.now()
+        self.listener.waitForTransform('/odom', '/base_footprint', now, rospy.Duration(0, 100000000))
         cond = 0
         while cond == 0:
             try:
                 (trans, rot) = self.listener.lookupTransform(
-                    '/odom', '/base_footprint', rospy.Time(0))
-                (self.vel, ang) = self.listener.lookupTwistFull("/base_footprint", "/odom",
-                                                                "/base_footprint", (0, 0, 0), "/odom", rospy.Time(0.0), rospy.Duration(0.1))
+                    '/map', '/base_footprint', now)
+                (self.vel, ang) = self.listener.lookupTwistFull('/base_footprint', '/map',
+                                                                '/base_footprint', (0, 0, 0), '/map', now, rospy.Duration(0.1))
                 cond = 1
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                print("Pure Pursuit Controller (Odom update) TF EXCEPTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 cond = 0
+                # rospy.sleep(0.1)
         self.cx = trans[0]
         self.cy = trans[1]
         roll, pitch, self.ctheta = euler_from_quaternion(rot)

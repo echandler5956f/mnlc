@@ -99,7 +99,7 @@ class mnlc_global_costmap_opencv():
                 gaussian_blur, None, alpha=0, beta=100, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
             dataFromGridC = norm_image.flatten('C')
             dataFromGridC[unkown_indices] = -1
-            cspace.header.stamp = rospy.Time.now()
+            cspace.header.stamp = rospy.Time(0)
             cspace.data = dataFromGridC
             self.c_space_pub.publish(cspace)
             # print("Calculating Global CSpace took: ", rospy.get_time() - time_init, ".")

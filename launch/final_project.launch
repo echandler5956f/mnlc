@@ -5,7 +5,7 @@
   <param name="sim" value="$(arg sim)"/>
 
   <!-- Map Static Transform -->
-  <node name="map_static_transform" pkg="tf" type="static_transform_publisher" args="5 0 0 0 0 0 1 /map /world 100"/>
+  <!-- <node name="map_static_transform" pkg="tf" type="static_transform_publisher" args="5 0 0 0 0 0 1 /map /world 10"/> -->
 
   <!-- Turtlebot3 -->
   <include file="$(find turtlebot3_bringup)/launch/turtlebot3_remote.launch">
@@ -29,12 +29,20 @@
   <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_burger.urdf.xacro" />
   <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-urdf -model turtlebot3_burger -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description" />
 
+  <!-- LIDAR Filter -->
+  <node pkg="laser_filters" type="scan_to_scan_filter_chain" name="laser_filter" output="screen">
+    <rosparam command="load" file="$(find rbe3002)/param/mnlc_lidar_filter_params.yaml" />
+    <param name="tf_message_filter_target_frame" value="/base_footprint" />
+    <!-- <remap from="/scan" to="/base_scan"/> -->
+  </node>
+
   <!-- RTabMap -->
   <include file="$(find rbe3002)/launch/rtab_map.launch"/>
 
   <!-- Riz -->
   <node name="rviz" pkg="rviz" type="rviz" required="true" args="-d $(find rbe3002)/rviz/rbe3002_final_demo.rviz"/>
 
+  
   <!-- MNLC -->
   <!-- Mapping, Navigation, and Localization Controller -->
 
@@ -53,8 +61,8 @@
 
   <!-- Frontier Filters -->
   <!-- <node name="mnlc_meanshift_frontier_filter"       pkg="rbe3002" type="mnlc_meanshift_frontier_filter"          output="screen"/> -->
-  <node name="mnlc_hdbscan_frontier_filter"         pkg="rbe3002" type="mnlc_hdbscan_frontier_filter"            output="screen"/>
-  <!-- <node name="mnlc_meanshift_frontier_filter"       pkg="rbe3002" type="mnlc_meanshift_frontier_filter.py"       output="screen"/> -->
+  <!-- <node name="mnlc_hdbscan_frontier_filter"         pkg="rbe3002" type="mnlc_hdbscan_frontier_filter"            output="screen"/> -->
+  <node name="mnlc_meanshift_frontier_filter"       pkg="rbe3002" type="mnlc_meanshift_frontier_filter.py"       output="screen"/>
 
   <!-- Global Frontier Detectors -->
   <!-- <node name="mnlc_global_rrt_detector"             pkg="rbe3002" type="mnlc_global_rrt_detector"                output="screen"/> -->
@@ -72,6 +80,7 @@
 
   <!-- Costmaps -->
   <node name="mnlc_global_costmap_opencv"           pkg="rbe3002" type="mnlc_global_costmap_opencv"              output="screen"/>
+  <node name="mnlc_simple_costmap"                  pkg="rbe3002" type="mnlc_simple_costmap"                     output="screen"/>
   <!-- <node name="mnlc_global_costmap_opencv"           pkg="rbe3002" type="mnlc_global_costmap_opencv.py"           output="screen"/> -->
   <!-- <node name="mnlc_local_costmap_opencv"            pkg="rbe3002" type="mnlc_local_costmap_opencv.py"            output="screen"/> -->
 
@@ -86,6 +95,7 @@
   <rosparam file="$(find rbe3002)/param/mnlc_global_rrt_detector_params.yaml"             command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_local_rrt_detector_params.yaml"              command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_global_costmap_opencv_params.yaml"           command="load"/>
+  <rosparam file="$(find rbe3002)/param/mnlc_simple_costmap_params.yaml"                  command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_local_costmap_opencv_params.yaml"            command="load"/>
 
   <!-- Auto-SSH -->
