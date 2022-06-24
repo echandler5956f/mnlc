@@ -101,18 +101,14 @@ class mnlc_controller(sme.GraphMachine):
             '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_global_costmap, queue_size=1)
         rospy.Service('/begin_phase1', std_srvs.srv.Empty,
                       self.count_operational_nodes)
-        now = rospy.Time.now()
-        self.poseL.waitForTransform('/map', '/base_footprint', now, rospy.Duration(0, 100000000))
         cond = 0
         while cond == 0:
             try:
                 (trans, rot) = self.poseL.lookupTransform(
-                    '/map', '/base_footprint', now)
+                    '/odom', '/base_footprint', rospy.Time(0))
                 cond = 1
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                print("Python Controller (Init) TF EXCEPTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 cond = 0
-                # rospy.sleep(0.1)
         self.kx = self.cx = trans[0]
         self.ky = self.cy = trans[1]
         self.odom_sub = rospy.Subscriber(
@@ -133,7 +129,7 @@ class mnlc_controller(sme.GraphMachine):
         p0, p1, p2, p3, p4 = PointStamped(), PointStamped(
         ), PointStamped(), PointStamped(), PointStamped()
         p0.header.frame_id = p1.header.frame_id = p2.header.frame_id = p3.header.frame_id = p4.header.frame_id = '/map'
-        p0.header.stamp = p1.header.stamp = p2.header.stamp = p3.header.stamp = p4.header.stamp = rospy.Time(0)
+        p0.header.stamp = p1.header.stamp = p2.header.stamp = p3.header.stamp = p4.header.stamp = rospy.Time.now()
         p0.point.x = -(((map.info.width) * map.info.resolution) + map.info.origin.position.x +
                        (map.info.resolution/2)) * self.exploration_scale_factor
         p0.point.y = (((map.info.height) * map.info.resolution) + map.info.origin.position.y +
@@ -279,12 +275,18 @@ class mnlc_controller(sme.GraphMachine):
     #         rospy.logwarn("Receiving a local costmap with 0 resolution!")
 
     def update_odom_tf(self, msg):
+        self.odom_br.sendTransform(
+            (msg.pose.pose.position.x, msg.pose.pose.position.y,
+             msg.pose.pose.position.z),
+            (msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,
+             msg.pose.pose.orientation.z, msg.pose.pose.orientation.w),
+            rospy.Time.now(), "/base_footprint", "/odom")
         (tr, rot) = self.poseL.lookupTransform(
-            '/map', '/base_footprint', rospy.Time(0))
+            "/odom", "/base_footprint", rospy.Time(0))
         self.cx = tr[0]
         self.cy = tr[1]
-        (self.vel, ang) = self.poseL.lookupTwistFull('/base_footprint', '/map',
-                                                     '/base_footprint', (0, 0, 0), '/map', rospy.Time(0), rospy.Duration(0.1))
+        (self.vel, ang) = self.poseL.lookupTwistFull("/base_footprint", "/odom",
+                                                     "/base_footprint", (0, 0, 0), "/odom", rospy.Time(0.0), rospy.Duration(0.1))
         if self.initial_map_metadata.info.resolution != 0:
             point = Point()
             point.x = int(math.floor(
@@ -372,7 +374,7 @@ class mnlc_controller(sme.GraphMachine):
     # def set_phase_2_goal(self):
     #     goal_pose = PoseStamped()
     #     goal_pose.header.frame_id = '/map'
-    #     goal_pose.header.stamp = rospy.Time(0)
+    #     goal_pose.header.stamp = rospy.Time.now()
     #     goal_pose.pose.position.x = self.kx
     #     goal_pose.pose.position.y = self.ky
     #     while 1:

@@ -38,9 +38,9 @@ int main(int argc, char **argv)
     ros::Subscriber state_machine = n.subscribe("/mnlc_state_machine", 1, update_state_machine);
     ros::Subscriber update_bounding_points = n.subscribe("/bounding_points", 5, set_bounding_points);
     ros::Publisher detected_points = n.advertise<geometry_msgs::PointStamped>("/detected_points", 250);
-    ros::Publisher shapes = n.advertise<visualization_msgs::Marker>("/mnlc_local_rrt_detector/shapes", 25);
+    ros::Publisher shapes = n.advertise<visualization_msgs::Marker>("/mnlc_local_rrt_detector/shapes", 250);
     ros::Time st1;
-    st1.fromSec(controller_start_time);
+    st1.fromSec(controller_start_time * 1.5);
     ros::Time::sleepUntil(st1);
     ros::service::waitForService("/rtabmap/get_map", ros::Duration(timeout));
     ros::ServiceClient client1 = n.serviceClient<const nav_msgs::GetMap>("/rtabmap/get_map");
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
     line.action = visualization_msgs::Marker::ADD;
     points.pose.orientation.w = line.pose.orientation.w = 1.0;
     line.scale.x = line.scale.y = 0.01;
-    points.scale.x = points.scale.y = 0.1;
+    points.scale.x = points.scale.y = 0.05;
     points.color.r = 0.0 / 255.0;
     points.color.g = 0.0 / 255.0;
     points.color.b = 153.0 / 255.0;
@@ -94,8 +94,11 @@ int main(int argc, char **argv)
     line.color.b = 193.0 / 255.0;
     line.color.a = 1.0;
     points.lifetime = line.lifetime = ros::Duration();
-     geometry_msgs::Point p;
+    geometry_msgs::Point p;
     geometry_msgs::PointStamped frontier;
+    // ros::Time st2;
+    // st2.fromSec(start_time);
+    // ros::Time::sleepUntil(st2);
     while (points.points.size() < 5)
     {
         ros::spinOnce();
@@ -120,12 +123,12 @@ int main(int argc, char **argv)
     shapes.publish(points);
     float xr, yr;
     std::vector<float> x_rand, x_nearest, x_new;
-    ros::Rate loop_rate(100);
+    ros::Rate loop_rate(1500);
     while (ros::ok())
     {
         x_rand.clear();
         xr = (drand() * ix) - (ix * 0.5) + sx;
-        yr = (drand() * iy) - (iy * 0.5) + sy;
+        yr = (drand() * iy) - (iy * 0.5) + sx;
         x_rand.push_back(xr);
         x_rand.push_back(yr);
         float min = pow((pow((x_rand[0] - v[0][0]), 2) + pow((x_rand[1] - v[0][1]), 2)), 0.5);
@@ -141,22 +144,24 @@ int main(int argc, char **argv)
             }
         }
         x_nearest = v[min_index];
+        std::vector<float> x_newer;
         if (pow((pow((x_rand[0] - x_nearest[0]), 2) + pow((x_rand[1] - x_nearest[1]), 2)), 0.5) <= eta)
         {
-            x_new = x_rand;
+            x_newer = x_rand;
         }
         else
         {
             float m = (x_rand[1] - x_nearest[1]) / (x_rand[0] - x_nearest[0]);
             float sign = (x_rand[0] - x_nearest[0] < 0.0) ? -1.0 : 1.0;
-            x_new.push_back(sign * (sqrt((pow(eta, 2)) / ((pow(m, 2)) + 1))) + x_nearest[0]);
-            x_new.push_back(m * (x_new[0] - x_nearest[0]) + x_nearest[1]);
+            x_newer.push_back(sign * (sqrt((pow(eta, 2)) / ((pow(m, 2)) + 1))) + x_nearest[0]);
+            x_newer.push_back(m * (x_newer[0] - x_nearest[0]) + x_nearest[1]);
             if (x_rand[0] == x_nearest[0])
             {
-                x_new[0] = x_nearest[0];
-                x_new[1] = x_nearest[1] + eta;
+                x_newer[0] = x_nearest[0];
+                x_newer[1] = x_nearest[1] + eta;
             }
         }
+        x_new = x_newer;
         float rez = res * 0.1;
         int stepz = int(ceil(pow((pow((x_nearest[0] - x_new[0]), 2) + pow((x_nearest[1] - x_new[1]), 2)), 0.5)) / rez);
         std::vector<float> xi = x_nearest;
@@ -165,6 +170,7 @@ int main(int argc, char **argv)
         for (int c = 0; c < stepz; c++)
         {
             std::vector<float> x_newest;
+
             if (pow((pow((x_new[0] - xi[0]), 2) + pow((x_new[1] - xi[1]), 2)), 0.5) <= rez)
             {
                 x_newest = x_new;
@@ -222,23 +228,23 @@ int main(int argc, char **argv)
             p.y = x_new[1];
             p.z = 0.0;
             points.points.push_back(p);
-            shapes.publish(points);
+            // shapes.publish(points);
             detected_points.publish(frontier);
             points.points.clear();
             v.clear();
             tf::StampedTransform transform;
-            ros::Time now = ros::Time::now();
-            listener.waitForTransform("/map", "/base_footprint", now, ros::Duration(0.1));
             int temp = 0;
-            while (temp == 0) {
-                try {
+            while (temp == 0)
+            {
+                try
+                {
                     temp = 1;
-                    listener.lookupTransform("/map", "/base_footprint", now, transform);
+                    listener.lookupTransform("/map", "/base_footprint", ros::Time(0), transform);
                 }
-                catch (tf::TransformException ex) {
-                    printf("C++ Local RRT Detector (main loop) TF EXCEPTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                catch (tf::TransformException ex)
+                {
                     temp = 0;
-                    // ros::Duration(0.1).sleep();
+                    ros::Duration(0.05).sleep();
                 }
             }
             x_new[0] = transform.getOrigin().x();
@@ -258,9 +264,9 @@ int main(int argc, char **argv)
             p.z = 0.0;
             line.points.push_back(p);
         }
-        shapes.publish(line);
+        // shapes.publish(line);
         ros::spinOnce();
-        loop_rate.sleep();
+        // loop_rate.sleep();
     }
     return 0;
 }

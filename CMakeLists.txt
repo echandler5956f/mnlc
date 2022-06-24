@@ -152,7 +152,7 @@ add_executable(mnlc_field_d_star src/mnlc_field_d_star.cpp src/mnlc_lexi_queue.c
 target_link_libraries(mnlc_field_d_star ${catkin_LIBRARIES})
 
 add_executable(mnlc_global_costmap_opencv src/mnlc_global_costmap_opencv.cpp)
-target_link_libraries(mnlc_global_costmap_opencv ${catkin_LIBRARIES} ${OpenCV_INCLUDE_DIRS} ${OpenCV_LIBS})
+target_link_libraries(mnlc_global_costmap_opencv ${catkin_LIBRARIES})
 
 add_executable(mnlc_simple_costmap src/mnlc_simple_costmap.cpp)
 target_link_libraries(mnlc_simple_costmap ${catkin_LIBRARIES})
@@ -163,20 +163,17 @@ target_link_libraries(mnlc_meanshift_frontier_filter ${catkin_LIBRARIES} pybind1
 add_executable(mnlc_hdbscan_frontier_filter src/mnlc_hdbscan_frontier_filter.cpp)
 target_link_libraries(mnlc_hdbscan_frontier_filter ${catkin_LIBRARIES} Eigen3::Eigen)
 
+add_executable(mnlc_frontier_assigner src/mnlc_frontier_assigner.cpp)
+target_link_libraries(mnlc_frontier_assigner ${catkin_LIBRARIES})
+
 add_executable(mnlc_global_rrt_detector src/mnlc_global_rrt_detector.cpp src/mersenne_twister.cpp)
 target_link_libraries(mnlc_global_rrt_detector ${catkin_LIBRARIES})
 
 add_executable(mnlc_local_rrt_detector src/mnlc_local_rrt_detector.cpp src/mersenne_twister.cpp)
 target_link_libraries(mnlc_local_rrt_detector ${catkin_LIBRARIES})
 
-add_executable(terster  src/terster.cpp src/hdbscan/Distance/EuclideanDistance.cpp 
-                        src/hdbscan/Distance/IDistanceCalculator.cpp src/hdbscan/Distance/ManhattanDistance.cpp 
-                        src/hdbscan/Distance/ManhattanDistance.cpp src/hdbscan/Hdbscan/hdbscan.cpp src/hdbscan/HdbscanStar/cluster.cpp
-                        src/hdbscan/HdbscanStar/hdbscanAlgorithm.cpp src/hdbscan/HdbscanStar/hdbscanConstraint.cpp
-                        src/hdbscan/HdbscanStar/outlierScore.cpp src/hdbscan/HdbscanStar/undirectedGraph.cpp
-                        src/hdbscan/Runner/hdbscanParameters.cpp src/hdbscan/Runner/hdbscanResult.cpp
-                        src/hdbscan/Runner/hdbscanRunner.cpp src/hdbscan/Utils/bitSet.cpp)
-target_link_libraries(terster ${catkin_LIBRARIES})
+add_executable(mnlc_vornoi_visualizer src/mnlc_vornoi_visualizer.cpp src/mersenne_twister.cpp)
+target_link_libraries(mnlc_vornoi_visualizer ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
 
 ## Declare a C++ library

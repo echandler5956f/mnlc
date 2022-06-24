@@ -52,6 +52,10 @@ public:
 		fileName = readFileName;
 	}
 
+	Hdbscan()
+	{
+	}
+
 	string getFileName() {
 	return this->fileName;
 }
@@ -100,7 +104,7 @@ void execute(int minPoints, int minClusterSize, string distanceMetric) {
 	parameters.minPoints = minPoints;
 	parameters.minClusterSize = minClusterSize;
 	parameters.distanceFunction = distanceMetric;
-    	this->result = runner.run(parameters);
+    this->result = runner.run(parameters);
 	this->labels_ = result.labels;
 	this->outlierScores_ = result.outliersScores;
 	for (uint32_t i = 0; i < result.labels.size(); i++) {
@@ -135,11 +139,13 @@ void execute(int minPoints, int minClusterSize, string distanceMetric) {
 
 	cout << "HDBSCAN clustering for " << this->dataset.size() << " objects." << endl;
 
-	for (uint32_t i = 0; i < result.labels.size(); i++) {
-		cout << result.labels[i] << " ";
-	}
+	// for (uint32_t i = 0; i < this->normalizedLabels_.size(); i++) {
+	// 	printf("%f\t%f\t%d\n", this->dataset[i][0], this->dataset[i][1], this->normalizedLabels_[i]);
+	// 	// cout << this->dataset[i] << " ";
+	// 	// cout << this->normalizedLabels_[i] << " ";
+	// }
 
-	cout << endl << endl;
+	// cout << endl << endl;
 
 	cout << "The Clustering contains " << this->numClusters_ << " clusters with " << this->noisyPoints_ << " noise Points." << endl;
 

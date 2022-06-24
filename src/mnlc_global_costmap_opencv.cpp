@@ -2,7 +2,7 @@
 
 void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
 {
-  ros::Time time_init = ros::Time(0);
+  ros::Time time_init = ros::Time::now();
   double ti = time_init.toSec();
   nav_msgs::OccupancyGrid m = *map;
   mapdata = m;
@@ -95,13 +95,13 @@ int main(int argc, char **argv)
   int detector_padding = (int)(padding / 2);
   visualization_msgs::Marker points;
   points.header.frame_id = "/map";
-  points.header.stamp = ros::Time(0);
+  points.header.stamp = ros::Time::now();
   points.ns = "markers";
   points.id = 9;
   points.type = visualization_msgs::Marker::POINTS;
   points.action = visualization_msgs::Marker::ADD;
   points.pose.orientation.w = 1.0;
-  points.scale.x = points.scale.y = 0.3;
+  points.scale.x = points.scale.y = 0.05;
   points.color.r = 255.0 / 255.0;
   points.color.g = 0.0 / 255.0;
   points.color.b = 0.0 / 255.0;
@@ -137,8 +137,9 @@ int main(int argc, char **argv)
   double goy = initial_map_metadata.info.origin.position.y;
   ros::Publisher rtab_map_pub = n.advertise<nav_msgs::OccupancyGrid>("/latest_map", 1);
   ros::Publisher cspace_pub = n.advertise<nav_msgs::OccupancyGrid>("/mnlc_global_costmap_opencv/cspace", 1);
-  ros::Publisher detected_opencv_pub = n.advertise<geometry_msgs::PointStamped>("/opencv_points", 1);
-  ros::Publisher shapes_pub = n.advertise<visualization_msgs::Marker>("/OpenCVFrontierDetector/shapes", 1);
+  ros::Publisher detected_opencv_pub = n.advertise<geometry_msgs::PointStamped>("/opencv_points", 10);
+  ros::Publisher detected_opencv_arr_pub = n.advertise<PointArray>("/opencv_points_arr", 1);
+  ros::Publisher shapes_pub = n.advertise<visualization_msgs::Marker>("/OpenCVFrontierDetector/shapes", 10);
   cspace_pub.publish(initial_map_metadata);
   image = cv::Mat::ones(width, height, CV_8UC1);
   ros::Subscriber rtabmap_sub = n.subscribe("/map", 10, update_map);
@@ -161,7 +162,7 @@ int main(int argc, char **argv)
   listener.waitForTransform("/odom", "/base_footprint", ros::Time(0), ros::Duration(timeout));
   nav_msgs::OccupancyGrid cspace;
   cspace.header.frame_id = "/map";
-  cspace.header.stamp = ros::Time(0);
+  cspace.header.stamp = ros::Time::now();
   cspace.info.width = width;
   cspace.info.height = height;
   cspace.info.resolution = resolution;
@@ -175,6 +176,7 @@ int main(int argc, char **argv)
   geometry_msgs::PointStamped exploration_goal;
   exploration_goal.header.frame_id = "/map";
   exploration_goal.point.z = 0;
+  PointArray point_array;
   ros::Rate loop_rate(60);
   while (ros::ok())
   {
@@ -204,22 +206,24 @@ int main(int argc, char **argv)
         }
       }
     }
+    point_array.points.clear();
     BOOST_FOREACH (cv::Point2f &frontier, frontiers)
     {
       exploration_goal.header.stamp = ros::Time(0);
       exploration_goal.point.x = frontier.y;
       exploration_goal.point.y = frontier.x;
       detected_opencv_pub.publish(exploration_goal);
-      std::vector<geometry_msgs::Point> p_arr;
+      point_array.points.push_back(exploration_goal);
       geometry_msgs::Point p;
       p.x = exploration_goal.point.x;
       p.y = exploration_goal.point.y;
-      p_arr.push_back(p);
-      points.points = p_arr;
-      shapes_pub.publish(points);
+      points.points.push_back(p);
     }
-    cspace.header.stamp = ros::Time(0);
-    mapdata.header.stamp = ros::Time(0);
+    detected_opencv_arr_pub.publish(point_array);
+    shapes_pub.publish(points);
+    points.points.clear();
+    cspace.header.stamp = ros::Time::now();
+    mapdata.header.stamp = ros::Time::now();
     cspace.data = data_from_grid_c;
     cspace_pub.publish(cspace);
     rtab_map_pub.publish(mapdata);

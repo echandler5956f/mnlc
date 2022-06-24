@@ -4,12 +4,9 @@ void update_frontiers(const geometry_msgs::PointStamped::ConstPtr &frontier)
 {
     if (first_map == false)
     {
-        // frontiers.conservativeResize(frontiers.rows() + 1, 2);
-        // frontiers(frontiers.rows() - 1, 0) = frontier->point.x;
-        // frontiers(frontiers.rows() - 1, 1) = frontier->point.y;
-        frontiers.conservativeResize(2, frontiers.cols() + 1);
-        frontiers(0, frontiers.cols() - 1) = frontier->point.x;
-        frontiers(1, frontiers.cols() - 1) = frontier->point.y;
+        frontiers.conservativeResize(frontiers.rows() + 1, 2);
+        frontiers(frontiers.rows() - 1, 0) = frontier->point.x;
+        frontiers(frontiers.rows() - 1, 1) = frontier->point.y;
     }
     else
     {
@@ -27,8 +24,8 @@ void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
     mapdata = *map;
     if (ros::Time(0).toSec() >= next_time)
     {
-        // frontiers.resize(0, 2);
-        frontiers.resize(2, 0);
+        frontiers.resize(0, 2);
+        // frontiers.resize(2, 0);
         next_time = ros::Time(0).toSec() + frontier_clear;
     }
 }
@@ -39,11 +36,6 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
     py::scoped_interpreter guard{};
     auto cluster = py::module::import("sklearn.cluster");
-    // Equivalent to "from sklearn.cluster import MeanShift"
-    // auto MeanShift = py::module::import("sklearn.cluster").attr("MeanShift");
-    // py::object Decimal = py::module_::import("decimal").attr("Decimal");
-    // py::module sys = py::module::import("sys");
-    // py::print(sys.attr("path"));
     n.getParam("/frontier_filter/start_time", start_time);
     n.getParam("/frontier_filter/obstacle_cost", obstacle_cost);
     n.getParam("/controller/timeout", timeout);
@@ -101,7 +93,7 @@ int main(int argc, char **argv)
     marker.type = visualization_msgs::Marker::POINTS;
     marker.action = visualization_msgs::Marker::ADD;
     marker.pose.orientation.w = 1.0;
-    marker.scale.x = marker.scale.y = 0.3;
+    marker.scale.x = marker.scale.y = 0.05;
     marker.color.r = 255.0 / 255.0;
     marker.color.g = 255.0 / 255.0;
     marker.color.b = 0.0 / 255.0;
@@ -115,7 +107,7 @@ int main(int argc, char **argv)
     rbe3002::PointArray point_array;
     geometry_msgs::PointStamped point_stamped;
     point_stamped.header.frame_id = "/map";
-    ros::Rate loop_rate(120);
+    ros::Rate loop_rate(500);
     while (ros::ok())
     {
         ros::spinOnce();
@@ -131,30 +123,19 @@ int main(int argc, char **argv)
             //     bandwidth = 0.3;
             // }
             auto ms = cluster.attr("MeanShift")("bandwidth"_a = 0.3, "bin_seeding"_a = true);
-            frontiers.transposeInPlace();
             ms.attr("fit")("X"_a = frontiers);
-            frontiers.transposeInPlace();
             auto c = ms.attr("cluster_centers_");
             RowMatrixXd centroids = c.cast<RowMatrixXd>();
-            centroids.transposeInPlace();
             // printf("Centroids inner size: %ld\t Centroids outer size: %ld\n", centroids.innerSize(), centroids.outerSize());
             int i = 0;
-            while (i < centroids.innerSize())
+            while (i < centroids.outerSize())
             {
-                Eigen::Vector2i grid((int)(std::floor(centroids(0, i) - gox) / res), (int)(std::floor(centroids(1, i) - goy) / res));
-                // int gindex = grid(0) + (grid(1) * width);
-                // int cost = data[gindex];
-                bool cond = (data[grid(0) + (grid(1) * width)] >= obstacle_cost) || data[grid(0) + (grid(1) * width)] == -1;
-                // if (cond)
-                // {
-                //     printf("Cond is TRUE\n");
-                // }
-                // else
-                // {
-                //     printf("Cond is FALSE\n");
-                // }
+                Eigen::Vector2i grid((int)(std::floor(centroids(i, 0) - gox) / res), (int)(std::floor(centroids(i, 1) - goy) / res));
+                int gindex = grid(0) + (grid(1) * width);
+                int cost = data[gindex];
+                bool cond = (cost >= obstacle_cost) || (cost == -1);
                 float info_gain = 0.0;
-                int index = (int)((std::floor((centroids(0, i) - gox) / res)) + (std::floor((centroids(1, i) - goy) / res)) * width);
+                int index = (int)((std::floor((centroids(i, 0) - gox) / res)) + (std::floor((centroids(i, 1) - goy) / res)) * width);
                 int r_region = (int)(info_radius / res);
                 int init_index = index - r_region * (width + 1);
                 for (int n = 0; n < 2 * r_region + 1; n++)
@@ -169,7 +150,7 @@ int main(int argc, char **argv)
                         {
                             Eigen::Vector2d p(gox + (j - (j / width) * width) * res, goy + (j / width) * res);
                             // printf("Cost: %d.\t Radius: %f.\n", data[j], std::sqrt(std::pow(centroids(i, 0) - p(0), 2) + std::pow(centroids(i, 1) - p(1), 2)));
-                            if ((data[j] == -1) && (std::sqrt(std::pow(centroids(0, i) - p(0), 2) + std::pow(centroids(1, i) - p(1), 2)) <= info_radius))
+                            if ((data[j] == -1) && (std::sqrt(std::pow(centroids(i, 0) - p(0), 2) + std::pow(centroids(i, 1) - p(1), 2)) <= info_radius))
                             {
                                 info_gain = info_gain + 1;
                             }
@@ -177,40 +158,43 @@ int main(int argc, char **argv)
                     }
                 }
                 info_gain = info_gain * (std::pow(res, 2));
-                if (centroids.cols() - 1 <= 2)
-                {
-                    break;
-                }
-                printf("Info gain: %f\n", info_gain);
-                if (cond || (info_gain < 1.25))
-                {
-                    // printf("Rows before: %ld.\t Collumns before: %ld.\n", centroids.rows(), centroids.cols());
-                    centroids(0, i) = centroids(0, centroids.cols());
-                    centroids(1, i) = centroids(1, centroids.cols());
-                    centroids.resize(2, centroids.cols() - 1);
-                    // printf("Rows after: %ld.\t Collumns after: %ld.\n", centroids.rows(), centroids.cols());
-                    // printf("i = %d\n", i);
-                    i = i - 1;
-                }
+                // if (centroids.rows() - 1 <= 2)
+                // {
+                //     break;
+                // }
+                // printf("Info gain: %f\n", info_gain);
+                // if (cond || (info_gain < 0.8125))
+                // {
+                //     // printf("Rows before: %ld.\t Collumns before: %ld.\n", centroids.rows(), centroids.cols());
+                //     centroids(i, 0) = centroids(centroids.rows(), 0);
+                //     centroids(i, 1) = centroids(centroids.rows(), 1);
+                //     centroids.resize(centroids.rows() - 1, 2);
+                //     // printf("Rows after: %ld.\t Collumns after: %ld.\n", centroids.rows(), centroids.cols());
+                //     // printf("i = %d\n", i);
+                //     i = i - 1;
+                // }
                 i = i + 1;
             }
             point_array.points.clear();
             marker.points.clear();
-            if (centroids.innerSize() > 2)
+            if (centroids.outerSize() > 2)
             {
-                for (int k = 0; k < centroids.innerSize(); k++)
+                for (int k = 0; k < centroids.outerSize(); k++)
                 {
-                    point_stamped.point.x = centroids(0, k);
-                    point_stamped.point.y = centroids(1, k);
-                    point_stamped.header.stamp = ros::Time(0);
-                    point_array.points.push_back(point_stamped);
-                    marker.points.push_back(point_stamped.point);
+                    // if (!((centroids(k, 0) == 0.0) && (centroids(k, 1) == 0.0)))
+                    // {
+                        point_stamped.point.x = centroids(k, 0);
+                        point_stamped.point.y = centroids(k, 1);
+                        point_stamped.header.stamp = ros::Time(0);
+                        point_array.points.push_back(point_stamped);
+                        marker.points.push_back(point_stamped.point);
+                    // }
                 }
                 filtered_points.publish(point_array);
                 shapes.publish(marker);
             }
         }
-        // loop_rate.sleep();
+        loop_rate.sleep();
     }
     return 0;
 }

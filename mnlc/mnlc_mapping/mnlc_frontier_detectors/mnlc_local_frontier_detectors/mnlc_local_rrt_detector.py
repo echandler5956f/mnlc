@@ -74,7 +74,7 @@ class mnlc_local_rrt_detector():
         rospy.loginfo("Begin phase1 service call successful.")
         temp = tmp()
         self.rtab_map_sub = rospy.Subscriber(
-            '/mnlc_simple_costmap/cspace', OccupancyGrid, self.update_map, queue_size=1)
+            '/latest_map', OccupancyGrid, self.update_map, queue_size=1)
         self.detected_points_pub = rospy.Publisher(
             '/detected_points', PointStamped, queue_size=1000)
         self.shapes_pub = rospy.Publisher(
@@ -93,7 +93,7 @@ class mnlc_local_rrt_detector():
         points.action, line.action = points.ADD, line.ADD
         points.pose.orientation.w, line.pose.orientation.w = 1.0, 1.0
         line.scale.x, line.scale.y = 0.01, 0.01
-        points.scale.x, points.scale.y = 0.1, 0.1
+        points.scale.x, points.scale.y = 0.05, 0.05
         points.color.r, points.color.g, points.color.b, points.color.a = 0.0 / \
             255.0, 0.0/255.0, 153.0/255.0, 1.0
         line.color.r, line.color.g, line.color.b, line.color.a = 124.0 / \
@@ -194,11 +194,10 @@ class mnlc_local_rrt_detector():
                 while flag == 0:
                     try:
                         (trans, rot) = listener.lookupTransform(
-                            '/map', '/base_footprint', rospy.Time(0))
+                            '/map', 'base_footprint', rospy.Time(0))
                         flag = 1
                     except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                         flag = 0
-                        # print("Python Local RRT Detector (main loop) TF EXCEPTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 rnew[0] = trans[0]
                 rnew[1] = trans[1]
                 v.append(rnew)

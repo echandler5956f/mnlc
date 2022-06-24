@@ -87,34 +87,6 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/LaserScan
-      Color: 0; 0; 255
-      Color Transformer: FlatColor
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Min Color: 0; 0; 0
-      Name: LaserScan
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.009999999776482582
-      Style: Flat Squares
-      Topic: /scan_filtered
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
       Enabled: true
@@ -304,22 +276,22 @@ Visualization Manager:
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: false
+      Enabled: true
       Name: Map
       Topic: /mnlc_simple_costmap/cspace
       Unreliable: false
       Use Timestamp: false
-      Value: false
+      Value: true
     - Alpha: 0.699999988079071
       Class: rviz/Map
       Color Scheme: costmap
       Draw Behind: false
-      Enabled: false
+      Enabled: true
       Name: Map
       Topic: /mnlc_global_costmap_opencv/cspace
       Unreliable: false
       Use Timestamp: false
-      Value: false
+      Value: true
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -450,8 +422,8 @@ Visualization Manager:
       Marker Topic: /frontier_filter/filtered_points_markers
       Name: Marker
       Namespaces:
-        filtered_markers: true
-      Queue Size: 1
+        {}
+      Queue Size: 10
       Value: true
     - Alpha: 1
       Class: rviz/PointStamped
@@ -489,7 +461,7 @@ Visualization Manager:
       Name: Marker
       Namespaces:
         markers: true
-      Queue Size: 25
+      Queue Size: 250
       Value: true
     - Alpha: 1
       Class: rviz/PointStamped
@@ -508,22 +480,6 @@ Visualization Manager:
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /local_detector_shapes
-      Name: Marker
-      Namespaces:
-        {}
-      Queue Size: 25
-      Value: true
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /global_detector_shapes
-      Name: Marker
-      Namespaces:
-        {}
-      Queue Size: 250
       Value: true
     - Alpha: 1
       Class: rviz/PointStamped
@@ -561,14 +517,14 @@ Visualization Manager:
       Name: Marker
       Namespaces:
         markers: true
-      Queue Size: 25
+      Queue Size: 250
       Value: true
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /assigned_frontiers
       Name: Marker
       Namespaces:
-        goal_markers: true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true

@@ -73,13 +73,13 @@ class mnlc_global_rrt_detector():
         rospy.loginfo("Begin phase1 service call successful.")
         temp = tmp()
         self.rtab_map_sub = rospy.Subscriber(
-            '/mnlc_simple_costmap/cspace', OccupancyGrid, self.update_map, queue_size=1)
+            '/latest_map', OccupancyGrid, self.update_map, queue_size=1)
         self.detected_points_pub = rospy.Publisher(
             '/detected_points', PointStamped, queue_size=1000)
         self.shapes_pub = rospy.Publisher(
-            '/mnlc_global_rrt_detector/shapes', Marker, queue_size=1000)
+            'mnlc_global_rrt_detector/shapes', Marker, queue_size=1000)
         self.state_machine = rospy.Subscriber(
-            '/mnlc_state_machine', std_msgs.msg.Int8, self.update_state_machine, queue_size=1)
+            'mnlc_state_machine', std_msgs.msg.Int8, self.update_state_machine, queue_size=1)
 
     def detect_frontiers(self):
         points, line = Marker(), Marker()
@@ -92,7 +92,7 @@ class mnlc_global_rrt_detector():
         points.action, line.action = points.ADD, line.ADD
         points.pose.orientation.w, line.pose.orientation.w = 1.0, 1.0
         line.scale.x, line.scale.y = 0.01, 0.01
-        points.scale.x, points.scale.y = 0.1, 0.1
+        points.scale.x, points.scale.y = 0.05, 0.05
         points.color.r, points.color.g, points.color.b, points.color.a = 153.0 / \
             255.0, 0.0/255.0, 0.0/255.0, 1.0
         line.color.r, line.color.g, line.color.b, line.color.a = 163.0 / \
@@ -115,7 +115,6 @@ class mnlc_global_rrt_detector():
         p = Point()
         res = self.latest_map.info.resolution
         ox = self.latest_map.info.origin.position.x
-        oy = self.latest_map.info.origin.position.y
         obstacle_cost = self.obstacle_cost
         next_time = rospy.get_time()
         while self.state != 2 and not rospy.is_shutdown() and self.error == False:
@@ -173,7 +172,7 @@ class mnlc_global_rrt_detector():
                         new[1] = xi[1] + rez
                 xi = new
                 c_data = data[int(
-                    (math.floor((xi[1] - oy) / res) * width) + (math.floor((xi[0] - ox) / res)))]
+                    (math.floor((xi[1] - ox) / res) * width) + (math.floor((xi[0] - ox) / res)))]
                 if c_data >= obstacle_cost:
                     obstacle = 1
                 if c_data == -1:
@@ -182,13 +181,6 @@ class mnlc_global_rrt_detector():
             rnew = xi
             obs_free = 1 if obstacle != 1 and unkown != 1 else 0 if obstacle == 1 else - \
                 1 if unkown == 1 else 0
-            # obs_free = 0
-            # if unkown == 1:
-            #     obs_free = -1
-            # if obstacle == 1:
-            #     obs_free = 0
-            # if obstacle != 1 and unkown != 1:
-            #     obs_free = 1
             if obs_free == -1:
                 point.header.stamp = rospy.Time(0)
                 point.point.x, point.point.y, point.point.z = rnew[0], rnew[1], 0.0

@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
+from sklearn.cluster import MeanShift, estimate_bandwidth
 from geometry_msgs.msg import PointStamped
 from visualization_msgs.msg import Marker
 from nav_msgs.msg import OccupancyGrid
-from sklearn.cluster import MeanShift
 from rbe3002.msg import PointArray
 from nav_msgs.srv import GetMap
-from sklearn import cluster
 import std_srvs.srv
 import std_msgs.msg
 import numpy as np
@@ -17,50 +16,51 @@ import copy
 
 roslib.load_manifest('rbe3002')
 
-class mnlc_meanshift_frontier_filter():
-    
+
+class mnlc_sklearn_frontier_filter():
+
     def __init__(self):
         self.state = 1
         self.error = False
-        rospy.loginfo("Initializing mnlc_meanshift_frontier_filter.")
-        rospy.init_node("mnlc_meanshift_frontier_filter")
+        rospy.loginfo("Initializing mnlc_sklearn_frontier_filter.")
+        rospy.init_node("mnlc_sklearn_frontier_filter")
         self.initialize_params()
         rospy.sleep(self.start_time)
         # give gazebo a chance to warm up so rtabmap doesnt raise an error about not having a map
-        rospy.loginfo("mnlc_meanshift_frontier_filter node ready.")
+        rospy.loginfo("mnlc_sklearn_frontier_filter node ready.")
         self.safe_start()
 
     def initialize_params(self):
-        
         self.start_time = rospy.get_param('/frontier_filter/start_time')
         # grid cost to be considered an obstacle
         self.obstacle_cost = rospy.get_param('/frontier_filter/obstacle_cost')
         self.timeout = rospy.get_param('/controller/timeout')
+        self.filter_clear = rospy.get_param('/frontier_filter/filter_clear')
         self.info_radius = rospy.get_param('/frontier_filter/info_radius')
         self.marker = Marker()
         self.latest_map = OccupancyGrid()
         self.frontiers = []
         self.next_time = rospy.get_time()
         self.detected_points_sub = rospy.Subscriber(
-            '/detected_points', PointStamped, self.update_frontiers, queue_size=1000)
+            '/detected_points', PointStamped, self.update_frontiers, queue_size=250)
         self.rtab_map_sub = rospy.Subscriber(
             '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_map, queue_size=1)
-        self.state_machine_sub = rospy.Subscriber(
-            '/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
         self.assigned_points_pub = rospy.Publisher(
             '/frontier_filter/filtered_points_markers', Marker, queue_size=10)
         self.filter_pub = rospy.Publisher(
             '/frontier_filter/filtered_points', PointArray, queue_size=10)
+        self.state_machine_sub = rospy.Subscriber(
+            '/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
 
     def initialize_marker(self, map):
         self.marker.header.frame_id = map.header.frame_id
-        self.marker.header.stamp = rospy.Time(0)
+        self.marker.header.stamp = rospy.Time.now()
         self.marker.ns = "filtered_markers"
-        self.marker.id = 3
+        self.marker.id = 4
         self.marker.type = Marker.POINTS
         self.marker.action = Marker.ADD
         self.marker.pose.orientation.w = 1.0
-        self.marker.scale.x = self.marker.scale.y = 0.3
+        self.marker.scale.x = self.marker.scale.y = 0.05
         (self.marker.color.r, self.marker.color.g, self.marker.color.b,
          self.marker.color.a) = (255.0/255.0, 255.0/255.0, 0.0/255.0, 1)
         self.marker.lifetime == rospy.Duration()
@@ -111,7 +111,7 @@ class mnlc_meanshift_frontier_filter():
             centroids = []
             front = copy.copy(self.frontiers)
             if len(front) > 1:
-                bandwidth = cluster.estimate_bandwidth(front, quantile=0.3)
+                bandwidth = estimate_bandwidth(front, quantile=0.3)
                 if bandwidth == 0.0:
                     bandwidth = 0.3
                 ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
@@ -150,6 +150,7 @@ class mnlc_meanshift_frontier_filter():
                             if (mapdata.data[j] == -1 and np.linalg.norm(centroid-p) <= radius):
                                 info_gain += 1
                 info_gain = info_gain * (res ** 2)
+                print(info_gain)
                 if cond or info_gain < 0.125:
                     centroids = np.delete(centroids, (i), axis=0)
                     i = i - 1
@@ -190,6 +191,6 @@ class mnlc_meanshift_frontier_filter():
 
 if __name__ == '__main__':
     try:
-        mnlc_meanshift_frontier_filter().run()
+        mnlc_sklearn_frontier_filter().run()
     except rospy.ROSInterruptException:
         pass

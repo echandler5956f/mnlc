@@ -43,7 +43,7 @@ class mnlc_assigner():
             '/frontier_assigner/hysteresis_radius')
         self.hysteresis_gain = rospy.get_param(
             '/frontier_assigner/hysteresis_gain')
-        self.filter_clear = rospy.get_param('/frontier_assigner/filter_clear')
+        self.filter_clear = rospy.get_param('/frontier_assigner/frontier_clear')
         self.filter_limit = rospy.get_param('/frontier_assigner/filter_limit')
         self.marker = Marker()
         self.latest_map = OccupancyGrid()
@@ -74,7 +74,7 @@ class mnlc_assigner():
         self.points.type = Marker.POINTS
         self.points.action = Marker.ADD
         self.points.pose.orientation.w = 1.0
-        self.points.scale.x = self.points.scale.y = 0.3
+        self.points.scale.x = self.points.scale.y = 0.05
         (self.points.color.r, self.points.color.g, self.points.color.b,
          self.points.color.a) = (0.0/255.0, 255.0/255.0, 136.0/255.0, 1)
         self.points.lifetime == rospy.Duration()

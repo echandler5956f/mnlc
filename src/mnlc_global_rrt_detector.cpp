@@ -32,15 +32,17 @@ int main(int argc, char **argv)
     n.getParam("/controller/timeout", timeout);
     n.getParam("/controller/obstacle_cost", obstacle_cost);
     n.getParam("/global_rrt_detector/eta", eta);
+    n.getParam("/global_rrt_detector/re_root", re_root);
     tf::TransformListener listener;
     // ros::Subscriber cspace_sub = n.subscribe("/latest_map", 1, update_map);
     ros::Subscriber cspace_sub = n.subscribe("/mnlc_simple_costmap/cspace", 1, update_map);
     ros::Subscriber state_machine = n.subscribe("/mnlc_state_machine", 1, update_state_machine);
     ros::Subscriber update_bounding_points = n.subscribe("/bounding_points", 10, set_bounding_points);
+    ros::Publisher global_tree_pub = n.advertise<geometry_msgs::Point>("/detected_global_tree", 250);
     ros::Publisher detected_points = n.advertise<geometry_msgs::PointStamped>("/detected_points", 250);
-    ros::Publisher shapes = n.advertise<visualization_msgs::Marker>("/mnlc_global_rrt_detector/shapes", 25);
+    ros::Publisher shapes = n.advertise<visualization_msgs::Marker>("/mnlc_global_rrt_detector/shapes", 250);
     ros::Time st1;
-    st1.fromSec(controller_start_time);
+    st1.fromSec(controller_start_time * 1.5);
     ros::Time::sleepUntil(st1);
     ros::service::waitForService("/rtabmap/get_map", ros::Duration(timeout));
     ros::ServiceClient client1 = n.serviceClient<const nav_msgs::GetMap>("/rtabmap/get_map");
@@ -84,7 +86,7 @@ int main(int argc, char **argv)
     line.action = visualization_msgs::Marker::ADD;
     points.pose.orientation.w = line.pose.orientation.w = 1.0;
     line.scale.x = line.scale.y = 0.01;
-    points.scale.x = points.scale.y = 0.1;
+    points.scale.x = points.scale.y = 0.05;
     points.color.r = 153.0 / 255.0;
     points.color.g = 0.0 / 255.0;
     points.color.b = 0.0 / 255.0;
@@ -96,6 +98,9 @@ int main(int argc, char **argv)
     points.lifetime = line.lifetime = ros::Duration();
     geometry_msgs::Point p;
     geometry_msgs::PointStamped frontier;
+    // ros::Time st2;
+    // st2.fromSec(start_time);
+    // ros::Time::sleepUntil(st2);
     while (points.points.size() < 5)
     {
         ros::spinOnce();
@@ -119,13 +124,15 @@ int main(int argc, char **argv)
     points.points.clear();
     shapes.publish(points);
     float xr, yr;
+    geometry_msgs::Point rrt_search_point;
     std::vector<float> x_rand, x_nearest, x_new;
-    ros::Rate loop_rate(100);
+    double next_time = ros::Time::now().toSec() + re_root;
+    ros::Rate loop_rate(10);
     while (ros::ok())
     {
         x_rand.clear();
         xr = (drand() * ix) - (ix * 0.5) + sx;
-        yr = (drand() * iy) - (iy * 0.5) + sy;
+        yr = (drand() * iy) - (iy * 0.5) + sx;
         x_rand.push_back(xr);
         x_rand.push_back(yr);
         float min = pow((pow((x_rand[0] - v[0][0]), 2) + pow((x_rand[1] - v[0][1]), 2)), 0.5);
@@ -141,23 +148,25 @@ int main(int argc, char **argv)
             }
         }
         x_nearest = v[min_index];
+        std::vector<float> x_newer;
         if (pow((pow((x_rand[0] - x_nearest[0]), 2) + pow((x_rand[1] - x_nearest[1]), 2)), 0.5) <= eta)
         {
-            x_new = x_rand;
+            x_newer = x_rand;
         }
         else
         {
             float m = (x_rand[1] - x_nearest[1]) / (x_rand[0] - x_nearest[0]);
-            int sign = (x_rand[0] - x_nearest[0] < 0.0) ? -1 : 1;
-            x_new.push_back(sign * (sqrt((pow(eta, 2)) / ((pow(m, 2)) + 1))) + x_nearest[0]);
-            x_new.push_back(m * (x_new[0] - x_nearest[0]) + x_nearest[1]);
+            float sign = (x_rand[0] - x_nearest[0] < 0.0) ? -1.0 : 1.0;
+            x_newer.push_back(sign * (sqrt((pow(eta, 2)) / ((pow(m, 2)) + 1))) + x_nearest[0]);
+            x_newer.push_back(m * (x_newer[0] - x_nearest[0]) + x_nearest[1]);
             if (x_rand[0] == x_nearest[0])
             {
-                x_new[0] = x_nearest[0];
-                x_new[1] = x_nearest[1] + eta;
+                x_newer[0] = x_nearest[0];
+                x_newer[1] = x_nearest[1] + eta;
             }
         }
-        float rez = res * 0.2;
+        x_new = x_newer;
+        float rez = res * 0.1;
         int stepz = int(ceil(pow((pow((x_nearest[0] - x_new[0]), 2) + pow((x_nearest[1] - x_new[1]), 2)), 0.5)) / rez);
         std::vector<float> xi = x_nearest;
         char obs = 0;
@@ -212,6 +221,9 @@ int main(int argc, char **argv)
         {
             out = 1;
         }
+        rrt_search_point.x = x_new[0];
+        rrt_search_point.y = x_new[1];
+        global_tree_pub.publish(rrt_search_point);
         if (out == -1)
         {
             frontier.header.stamp = ros::Time(0);
@@ -223,9 +235,33 @@ int main(int argc, char **argv)
             p.y = x_new[1];
             p.z = 0.0;
             points.points.push_back(p);
-            shapes.publish(points);
+            // shapes.publish(points);
             detected_points.publish(frontier);
             points.points.clear();
+            // if (ros::Time::now().toSec() > next_time)
+            // {
+            //     v.clear();
+            //     tf::StampedTransform transform;
+            //     int temp = 0;
+            //     while (temp == 0)
+            //     {
+            //         try
+            //         {
+            //             temp = 1;
+            //             listener.lookupTransform("/map", "/base_footprint", ros::Time(0), transform);
+            //         }
+            //         catch (tf::TransformException ex)
+            //         {
+            //             temp = 0;
+            //             ros::Duration(0.01).sleep();
+            //         }
+            //     }
+            //     x_new[0] = transform.getOrigin().x();
+            //     x_new[1] = transform.getOrigin().y();
+            //     v.push_back(x_new);
+            //     line.points.clear();
+            //     next_time += re_root;
+            // }
         }
         else if (out == 1)
         {
@@ -239,8 +275,7 @@ int main(int argc, char **argv)
             p.z = 0.0;
             line.points.push_back(p);
         }
-
-        shapes.publish(line);
+        // shapes.publish(line);
         ros::spinOnce();
         loop_rate.sleep();
     }
