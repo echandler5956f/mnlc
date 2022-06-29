@@ -148,6 +148,9 @@ include_directories(include ${EXTERNAL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${Op
 add_executable(mnlc_a_star src/mnlc_a_star.cpp)
 target_link_libraries(mnlc_a_star ${catkin_LIBRARIES})
 
+add_executable(mnlc_d_star_lite src/mnlc_d_star_lite.cpp)
+target_link_libraries(mnlc_d_star_lite ${catkin_LIBRARIES} Eigen3::Eigen)
+
 add_executable(mnlc_field_d_star src/mnlc_field_d_star.cpp src/mnlc_lexi_queue.cpp)
 target_link_libraries(mnlc_field_d_star ${catkin_LIBRARIES})
 
@@ -172,7 +175,7 @@ target_link_libraries(mnlc_global_rrt_detector ${catkin_LIBRARIES})
 add_executable(mnlc_local_rrt_detector src/mnlc_local_rrt_detector.cpp src/mersenne_twister.cpp)
 target_link_libraries(mnlc_local_rrt_detector ${catkin_LIBRARIES})
 
-add_executable(mnlc_vornoi_visualizer src/mnlc_vornoi_visualizer.cpp src/mersenne_twister.cpp)
+add_executable(mnlc_vornoi_visualizer src/mnlc_vornoi_visualizer.cpp)
 target_link_libraries(mnlc_vornoi_visualizer ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
 

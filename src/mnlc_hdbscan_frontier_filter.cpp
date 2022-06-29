@@ -122,7 +122,7 @@ int main(int argc, char **argv)
         {
             std::vector<int8_t, std::allocator<int8_t>> data = mapdata.data;
             hdbscan.execute(25, 25, "Euclidean");
-            hdbscan.displayResult();
+            // hdbscan.displayResult();
             int num_clusters = hdbscan.numClusters_;
             std::vector<ClusterPoint> cluster_groups;
             for (int i = 0; i < hdbscan.normalizedLabels_.size(); i++)

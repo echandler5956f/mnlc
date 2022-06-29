@@ -124,10 +124,9 @@ int main(int argc, char **argv)
     points.points.clear();
     shapes.publish(points);
     float xr, yr;
-    geometry_msgs::Point rrt_search_point;
     std::vector<float> x_rand, x_nearest, x_new;
     double next_time = ros::Time::now().toSec() + re_root;
-    ros::Rate loop_rate(10);
+    ros::Rate loop_rate(500);
     while (ros::ok())
     {
         x_rand.clear();
@@ -221,9 +220,6 @@ int main(int argc, char **argv)
         {
             out = 1;
         }
-        rrt_search_point.x = x_new[0];
-        rrt_search_point.y = x_new[1];
-        global_tree_pub.publish(rrt_search_point);
         if (out == -1)
         {
             frontier.header.stamp = ros::Time(0);
@@ -236,6 +232,7 @@ int main(int argc, char **argv)
             p.z = 0.0;
             points.points.push_back(p);
             // shapes.publish(points);
+            global_tree_pub.publish(p);
             detected_points.publish(frontier);
             points.points.clear();
             // if (ros::Time::now().toSec() > next_time)
@@ -277,7 +274,7 @@ int main(int argc, char **argv)
         }
         // shapes.publish(line);
         ros::spinOnce();
-        loop_rate.sleep();
+        // loop_rate.sleep();
     }
     return 0;
 }

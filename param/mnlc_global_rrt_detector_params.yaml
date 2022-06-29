@@ -1,4 +1,4 @@
 global_rrt_detector:
   start_time: 7.5
-  eta: 15.0 # how greedy the search is
+  eta: 6.0 # how greedy the search is
   re_root: 45.0 # how often in seconds the tree re-roots

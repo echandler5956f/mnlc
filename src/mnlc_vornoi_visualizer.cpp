@@ -1,16 +1,13 @@
 #include "mnlc_vornoi_visualizer.h"
 
-rdm r; // for genrating random numbers
-
 void update_global_tree_map(const geometry_msgs::Point::ConstPtr &point)
 {
     if (first_map == false)
     {
         int x = (int)(std::floor((point->x - gox) / res));
         int y = (int)(std::floor((point->y - goy) / res));
-        cv::Point p((int)(x * (263/261)), (int)(y * (263/261)));
-        rrt_detector_points.push_back(p);
-        image.ptr<unsigned char>(x)[y] = 255;
+        cv::Point2f p((float)y, (float)x);
+        subdiv.insert(p);
     }
 }
 
@@ -34,7 +31,7 @@ void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
         row = i / mapdata.info.width;
         col = i % mapdata.info.width;
         cost = mapdata.data[i];
-        if (cost == 100 || cost == -1)
+        if (cost == 100)
         {
             map_img.ptr<unsigned char>(col)[row] = 0;
         }
@@ -47,9 +44,6 @@ void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
 
 int main(int argc, char **argv)
 {
-    unsigned long init[4] = {0x123, 0x234, 0x345, 0x456}, length = 7;
-    MTRand_int32 irand(init, length);
-    MTRand drand;
     ros::init(argc, argv, "mnlc_vornoi_visualizer");
     ros::NodeHandle n;
     n.getParam("/global_rrt_detector/start_time", start_time);
@@ -82,6 +76,10 @@ int main(int argc, char **argv)
     sr.fromSec(timeout);
     ros::Time::sleepUntil(sr);
     map_img = cv::Mat::zeros(261, 261, CV_8UC1);
+    image = cv::Mat::zeros(261, 261, CV_8UC3);
+    cv::Mat flipped = cv::Mat::zeros(261, 261, CV_8UC3);
+    cv::Mat masked = cv::Mat::zeros(261, 261, CV_8UC3);
+    cv::Mat resized = cv::Mat::zeros(1305, 1305, CV_8UC3);
     ros::spinOnce();
     ros::service::waitForService("/begin_phase1", ros::Duration(timeout));
     ros::ServiceClient client2 = n.serviceClient<const std_srvs::Empty>("/begin_phase1");
@@ -101,35 +99,17 @@ int main(int argc, char **argv)
     goy = mapdata.info.origin.position.y;
     width = mapdata.info.width;
     height = mapdata.info.height;
-    image = cv::Mat::zeros(261, 261, CV_8UC1);
-    cv::Mat inverse_image = cv::Mat::zeros(261, 261, CV_8UC1);
-    cv::Mat distance_transform_output = cv::Mat::zeros(261, 261, CV_32FC1);
-    cv::Mat vornoi_labels = cv::Mat::zeros(261, 261, CV_32SC1);
-    cv::Mat vornoi_corrected = cv::Mat::zeros(261, 261, CV_32FC1);
-    cv::Mat vornoi_colorspaced = cv::Mat::zeros(261, 261, CV_32FC3);
-    cv::Mat vornoi_float_normalized = cv::Mat::zeros(261, 261, CV_32FC3);
-    cv::Mat vornoi_masked = cv::Mat::zeros(261, 261, CV_32FC3);
-    cv::Mat vornoi_resized = cv::Mat::zeros(1827, 1827, CV_32FC3);
-    cv::Mat flipped_image = cv::Mat::zeros(1827, 1827, CV_32FC3);
     ros::Subscriber detected_tree_sub = n.subscribe("/detected_global_tree", 250, update_global_tree_map);
     ros::spinOnce();
     ros::Rate loop_rate(500);
     while (ros::ok())
     {
-        cv::bitwise_not(image, inverse_image);
-        cv::distanceTransform(inverse_image, distance_transform_output, vornoi_labels, CV_DIST_L2, CV_DIST_MASK_5, cv::DistanceTransformLabelTypes::DIST_LABEL_CCOMP);
-        vornoi_labels.convertTo(vornoi_corrected, CV_32FC1);
-        cv::cvtColor(vornoi_corrected, vornoi_colorspaced, cv::COLOR_GRAY2BGR);
-        cv::normalize(vornoi_colorspaced, vornoi_float_normalized, 0.0, 1.0, cv::NORM_MINMAX);
-        cv::Mat flood_mask = cv::Mat::zeros(263, 263, CV_8UC1);
-        for (int i = 0; i < rrt_detector_points.size(); i++) {
-            cv::floodFill(vornoi_float_normalized, flood_mask, rrt_detector_points[i], cv::Scalar(drand(), drand(), drand()), (cv::Rect *)0, cv::Scalar(0.0025, 0.0025, 0.0025), cv::Scalar(0.0025, 0.0025, 0.0025), 8 | cv::FLOODFILL_FIXED_RANGE);
-        }
-        cv::bitwise_and(vornoi_float_normalized, vornoi_float_normalized, vornoi_masked, map_img);
-        cv::resize(vornoi_masked, vornoi_resized, vornoi_resized.size(), 0, 0, CV_INTER_CUBIC);
-        cv::flip(vornoi_resized, flipped_image, -1);
-        cv::imshow("Vornoi Diagram", flipped_image);
-        cv::waitKey(3);
+        draw_voronoi(image, subdiv);
+        cv::bitwise_and(image, image, masked, map_img);
+        cv::flip(masked, flipped, -1);
+        cv::resize(flipped, resized, resized.size(), 0, 0, CV_INTER_CUBIC);
+        cv::imshow("Vornoi Diagram", resized);
+        cv::waitKey(2);
         ros::spinOnce();
         // loop_rate.sleep();
     }

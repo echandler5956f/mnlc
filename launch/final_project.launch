@@ -45,8 +45,9 @@
   <node name="mnlc_controller"                      pkg="rbe3002" type="mnlc_controller.py"                      output="screen"/>
 
   <!-- Global Planners -->
-  <!-- <node name="mnlc_a_star"                          pkg="rbe3002" type="mnlc_a_star.py"                          output="screen"/> -->
+  <node name="mnlc_d_star_lite"                     pkg="rbe3002" type="mnlc_d_star_lite"                        output="screen"/>
   <node name="mnlc_a_star"                          pkg="rbe3002" type="mnlc_a_star"                             output="screen"/>
+  <!-- <node name="mnlc_a_star"                          pkg="rbe3002" type="mnlc_a_star.py"                          output="screen"/> -->
 
   <!-- Local Planners -->
   <node name="mnlc_pure_pursuit"                    pkg="rbe3002" type="mnlc_pure_pursuit.py"                    output="screen"/>
@@ -69,6 +70,11 @@
   <node name="mnlc_local_rrt_detector1"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
   <node name="mnlc_local_rrt_detector2"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
   <node name="mnlc_local_rrt_detector3"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
+  <node name="mnlc_local_rrt_detector4"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
+  <node name="mnlc_local_rrt_detector5"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
+  <!-- <node name="mnlc_local_rrt_detector6"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/> -->
+  <!-- <node name="mnlc_local_rrt_detector7"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
+  <node name="mnlc_local_rrt_detector8"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/> -->
 
   <!-- <node name="mnlc_local_rrt_detector1"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
   <node name="mnlc_local_rrt_detector2"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
@@ -81,10 +87,11 @@
   <!-- <node name="mnlc_local_costmap_opencv"            pkg="rbe3002" type="mnlc_local_costmap_opencv.py"            output="screen"/> -->
 
   <!-- Visualization -->
-  <node name="mnlc_vornoi_visualizer"               pkg="rbe3002" type="mnlc_vornoi_visualizer"                  output="screen"/>
+  <!-- <node name="mnlc_vornoi_visualizer"               pkg="rbe3002" type="mnlc_vornoi_visualizer"                  output="screen"/> -->
 
   <!-- Parameters-->
   <rosparam file="$(find rbe3002)/param/mnlc_controller_params.yaml"                      command="load"/>
+  <rosparam file="$(find rbe3002)/param/mnlc_d_star_lite_params.yaml"                     command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_a_star_params.yaml"                          command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_pure_pursuit_params.yaml"                    command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_frontier_assigner_params.yaml"               command="load"/>
