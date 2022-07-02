@@ -18,7 +18,7 @@ Planner::Planner(Map *map, Map::Cell *start, Map::Cell *goal)
 	_open_list.clear();
 	_open_hash.clear();
 	_path.clear();
-	// _path_hash.clear();
+	_path_lu.clear();
 
 	_km = 0;
 
@@ -74,7 +74,7 @@ Map::Cell *Planner::goal(Map::Cell *u)
 bool Planner::replan()
 {
 	_path.clear();
-	// _path_hash.clear();
+	_path_lu.clear();
 
 	bool result = _compute();
 
@@ -83,23 +83,19 @@ bool Planner::replan()
 		return false;
 
 	Map::Cell *current = _start;
-	// pair<Map::Cell *, double> res;
-	// _path_hash[current] = true;
-	_path.push_back(current);
-	printf("Starting path:\n");
+
 	// Follow the path with the least cost until goal is reached
 	while (current != _goal)
 	{
 		if (current == NULL || _g(current) == Math::INF)
 			return false;
-		current = _min_succ(current).first;
-		// current = res.first;
-		// _path_hash[current] = true;
+		_path_lu.insert(current);
 		_path.push_back(current);
-		printf("[%u, %u] ", current->x(), current->y());
-		// printf("Min cost: %lf ", res.second);
+		current = _min_succ(current, true).first;
 	}
-	printf("\nFinished path.\n");
+	_path_lu.insert(current);
+	_path.push_back(current);
+
 	return true;
 }
 
@@ -337,14 +333,8 @@ double Planner::_cost(Map::Cell *a, Map::Cell *b)
 
 	unsigned int dx = labs(a->x() - b->x());
 	unsigned int dy = labs(a->y() - b->y());
-	double scale = 1.0;
 
-	if ((dx + dy) > 1)
-	{
-		scale = Math::SQRT2;
-	}
-
-	return scale * ((a->cost + b->cost) / 2);
+	return ((a->cost + b->cost) / 2);
 }
 
 /**
@@ -368,28 +358,6 @@ double Planner::_g(Map::Cell *u, double value)
 }
 
 /**
- * Calculates heuristic between two cells (manhattan distance).
- *
- * @param Map::Cell* cell a
- * @param Map::Cell* cell b
- * @return double heuristic value
- */
-// double Planner::_h(Map::Cell *a, Map::Cell *b)
-// {
-// 	unsigned int min = labs(a->x() - b->x());
-// 	unsigned int max = labs(a->y() - b->y());
-
-// 	if (min > max)
-// 	{
-// 		unsigned int tmp = min;
-// 		min = max;
-// 		max = tmp;
-// 	}
-
-// 	return ((Math::SQRT2 - 1.0) * min + max);
-// }
-
-/**
  * Calculates heuristic between two cells (euclidean distance).
  *
  * @param Map::Cell* cell a
@@ -398,7 +366,7 @@ double Planner::_g(Map::Cell *u, double value)
  */
 double Planner::_h(Map::Cell *a, Map::Cell *b)
 {
-	return (std::sqrt(std::pow(b->x() - a->x(), 2) + std::pow(b->y() - a->y(), 2)));
+	return (0.5 * std::sqrt(std::pow(b->x() - a->x(), 2) + std::pow(b->y() - a->y(), 2)));
 }
 
 /**
@@ -485,22 +453,22 @@ pair<Map::Cell *, double> Planner::_min_succ(Map::Cell *u, bool ph_chk)
 	{
 		if (nbrs[i] != NULL)
 		{
-			// if (!ph_chk || _path_hash.find(nbrs[i]) == _path_hash.end())
-			// {
-			tmp_cost = _cost(u, nbrs[i]);
-			tmp_g = _g(nbrs[i]);
-
-			if (tmp_cost == Math::INF || tmp_g == Math::INF)
-				continue;
-
-			tmp_cost += tmp_g;
-
-			if (tmp_cost < min_cost)
+			if (!ph_chk || _path_lu.find(nbrs[i]) == _path_lu.end())
 			{
-				min_cell = nbrs[i];
-				min_cost = tmp_cost;
+				tmp_cost = _cost(u, nbrs[i]);
+				tmp_g = _g(nbrs[i]);
+
+				if (tmp_cost == Math::INF || tmp_g == Math::INF)
+					continue;
+
+				tmp_cost += tmp_g;
+
+				if (tmp_cost < min_cost)
+				{
+					min_cell = nbrs[i];
+					min_cost = tmp_cost;
+				}
 			}
-			// }
 		}
 	}
 

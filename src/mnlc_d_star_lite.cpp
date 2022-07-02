@@ -1,4 +1,3 @@
-// #include "mnlc_d_star_lite.h"
 #include "d_star_lite_ros.h"
 
 void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
@@ -21,7 +20,7 @@ int main(int argc, char **argv)
     n.getParam("/d_star_lite/max_its", max_its);
     nav_msgs::OccupancyGrid global_costmap;
     tf::TransformListener listener;
-    ros::Subscriber cspace_sub = n.subscribe("/mnlc_simple_costmap/cspace", 1, update_map);
+    ros::Subscriber cspace_sub = n.subscribe("/mnlc_global_costmap_opencv/cspace", 1, update_map);
     ros::Time st;
     st.fromSec(start_time);
     ros::Time::sleepUntil(st);
@@ -60,20 +59,8 @@ int main(int argc, char **argv)
         exit(0);
     }
     listener.waitForTransform("/odom", "/base_footprint", ros::Time(0), ros::Duration(timeout));
-    // Node start;
-    // start.coords = std::make_pair(138, 138);
-    // Node goal;
-    // goal.coords = std::make_pair(145, 138);
-    // nav_msgs::OccupancyGrid test_data = mapdata;
-    // for (int i = 0; i < test_data.data.size(); i++)
-    // {
-    //     test_data.data[i] = 0;
-    // }
-    // DStarLite ds(mapdata, start, goal, obstacle_cost, unknown_cost, scan_radius, true, heuristic_weight, obstacle_tolerance, search_tolerance, max_its);
-    // ds.init();
-    // ds.construct_path(mapdata.data);
     pair<unsigned int, unsigned int> start = std::make_pair(138, 138);
-    pair<unsigned int, unsigned int> goal = std::make_pair(138, 145);
+    pair<unsigned int, unsigned int> goal = std::make_pair(198, 161);
     DStarLite::DStarLiteROS::Config config(mapdata, start, goal, obstacle_cost, unknown_cost, scan_radius,
                                            true, heuristic_weight, obstacle_tolerance, search_tolerance, max_its);
     DStarLite::DStarLiteROS ds(config);
@@ -85,5 +72,6 @@ int main(int argc, char **argv)
         ros::spinOnce();
         // loop_rate.sleep();
     }
+    ds.~DStarLiteROS();
     return 0;
 }

@@ -3,7 +3,7 @@ d_star_lite:
   obstacle_cost: 70
   unknown_cost: 20
   scan_radius: 3.0
-  heuristic_weight: 1.0
+  heuristic_weight: 0.5
   obstacle_tolerance: 1
   search_tolerance: 1
   max_its: 500

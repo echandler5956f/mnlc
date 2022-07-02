@@ -10,6 +10,7 @@
 #endif
 #include "map.h"
 #include "math.h"
+#include <bits/stdc++.h>
 
 using namespace std;
 using namespace DStarLite;
@@ -121,10 +122,9 @@ namespace DStarLite
 		OH _open_hash;
 
 		/**
-		 * @var unordered_map path hash (stores cells already in the path)
+		 * @var unordered_set path lookup (stores cells already in the path)
 		 */
-		// typedef tr1::unordered_map<Map::Cell *, bool, Map::Cell::Hash> PH;
-		// PH _path_hash;
+		unordered_set<Map::Cell *> _path_lu;
 
 		/**
 		 * @var Map::Cell* start, goal, and last start tile
@@ -167,7 +167,7 @@ namespace DStarLite
 		double _g(Map::Cell *u, double value = DBL_MIN);
 
 		/**
-		 * Calculates heuristic between two cells (manhattan distance).
+		 * Calculates heuristic between two cells (euclidean distance).
 		 *
 		 * @param Map::Cell* cell a
 		 * @param Map::Cell* cell b

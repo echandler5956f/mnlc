@@ -187,8 +187,8 @@ namespace DStarLite
             _map = new Map(height, width);
 
             // Set current and goal position
-            Map::Cell *_current = (*_map)(_config._start.first, _config._start.second);
-            Map::Cell *_goal = (*_map)(_config._goal.first, _config._goal.second);
+            Map::Cell *_current = (*_map)(_config._start.second, _config._start.first);
+            Map::Cell *_goal = (*_map)(_config._goal.second, _config._goal.first);
 
             // Build map
             for (int i = 0; i < height; i++)
@@ -245,7 +245,7 @@ namespace DStarLite
         list<Map::Cell *> execute(pair<unsigned int, unsigned int> current)
         {
             // Step
-            // _planner->start((*_map)(current.first, current.second));
+            _planner->start((*_map)(current.second, current.first));
 
             // Check if map was updated
             if (_map_updated)
@@ -255,19 +255,18 @@ namespace DStarLite
                 if (!_planner->replan())
                 {
                     ROS_ERROR("No Solution Found!");
-                    throw;
                 }
 
                 _path = _planner->path();
-                // if (_config._verbose)
-                // {
-                //     printf("Path from [%u, %u] to [%u, %u]: { ", current.first, current.second, _config._goal.first, _config._goal.second);
-                //     for (auto &cell : _path)
-                //     {
-                //         printf("[%u, %u] ", cell->x(), cell->y());
-                //     }
-                //     printf("}\n");
-                // }
+                if (_config._verbose)
+                {
+                    printf("Path start:\n{");
+                    for (auto &cell : _path)
+                    {
+                        printf("[%u, %u]", cell->x(), cell->y());
+                    }
+                    printf("}\n");
+                }
             }
             return _path;
         }
