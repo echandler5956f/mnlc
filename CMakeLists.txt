@@ -148,7 +148,7 @@ include_directories(include ${EXTERNAL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${Op
 add_executable(mnlc_a_star src/mnlc_a_star.cpp)
 target_link_libraries(mnlc_a_star ${catkin_LIBRARIES})
 
-add_executable(mnlc_d_star_lite src/mnlc_d_star_lite.cpp)
+add_executable(mnlc_d_star_lite src/mnlc_d_star_lite.cpp src/planner.cpp src/map.cpp src/math.cpp)
 target_link_libraries(mnlc_d_star_lite ${catkin_LIBRARIES} Eigen3::Eigen)
 
 add_executable(mnlc_field_d_star src/mnlc_field_d_star.cpp src/mnlc_lexi_queue.cpp)
