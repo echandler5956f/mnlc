@@ -252,6 +252,7 @@ namespace DStarLite
             {
                 _map_updated = false;
                 // Replan the path
+
                 if (!_planner->replan())
                 {
                     ROS_ERROR("No Solution Found!");
@@ -310,18 +311,10 @@ namespace DStarLite
                         {
                             v = (double)c;
                         }
-                        // if (_config._verbose)
-                        // {
-                        //     printf("Updating index %u!\n", k);
-                        // }
                         _planner->update((*_map)(i, j), v);
                     }
                 }
             }
-            // if (_config._verbose)
-            // {
-            //     printf("Done updating map!\n");
-            // }
         }
     };
 };
