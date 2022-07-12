@@ -13,6 +13,11 @@ const double Math::INF = DBL_MAX;
 const double Math::PI = 3.14159265;
 
 /**
+ * @var double EUL
+ */
+const double Math::EUL = 2.71828182845904;
+
+/**
  * @var double SQRT2
  */
 const double Math::SQRT2 = 1.41421356237309504880;

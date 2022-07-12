@@ -259,15 +259,15 @@ namespace DStarLite
                 }
 
                 _path = _planner->path();
-                if (_config._verbose)
-                {
-                    printf("Path start:\n{");
-                    for (auto &cell : _path)
-                    {
-                        printf("[%u, %u]", cell->x(), cell->y());
-                    }
-                    printf("}\n");
-                }
+                // if (_config._verbose)
+                // {
+                //     printf("Path start:\n{");
+                //     for (auto &cell : _path)
+                //     {
+                //         printf("[%u, %u]", cell->x(), cell->y());
+                //     }
+                //     printf("}\n");
+                // }
             }
             return _path;
         }
@@ -311,7 +311,7 @@ namespace DStarLite
                         {
                             v = (double)c;
                         }
-                        _planner->update((*_map)(i, j), v);
+                        _planner->update_cell_cost((*_map)(i, j), v);
                     }
                 }
             }

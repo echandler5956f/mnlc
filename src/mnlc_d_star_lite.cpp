@@ -62,17 +62,15 @@ int main(int argc, char **argv)
     pair<unsigned int, unsigned int> start = std::make_pair(138, 138);
     pair<unsigned int, unsigned int> goal = std::make_pair(198, 161);
     DStarLite::DStarLiteROS::Config config(mapdata, start, goal, obstacle_cost, unknown_cost, scan_radius,
-                                           false, heuristic_weight, obstacle_tolerance, search_tolerance, max_its);
+                                           true, heuristic_weight, obstacle_tolerance, search_tolerance, max_its);
     DStarLite::DStarLiteROS ds(config);
-    uint64_t strt;
-    uint64_t stp;
     ros::Rate loop_rate(60);
     while (ros::ok())
     {
         ds.update_map(mapdata.data);
         list<Map::Cell *> path = ds.execute(start);
         ros::spinOnce();
-        // loop_rate.sleep();
+        loop_rate.sleep();
     }
     ds.~DStarLiteROS();
     return 0;

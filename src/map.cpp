@@ -9,6 +9,16 @@ using namespace DStarLite;
 const unsigned int Map::Cell::NUM_NBRS = 8;
 
 /**
+ * @var unsigned int number of cell corners
+ */
+const unsigned int Map::Cell::NUM_CNRS = 4;
+
+/**
+ * @var unsigned int number of distinct traversal costs
+ */
+const unsigned int Map::Cell::DIST_TRAV_COSTS = 70;
+
+/**
  * @var double cost of an unwalkable tile
  */
 const double Map::Cell::COST_UNWALKABLE = DBL_MAX;
@@ -50,7 +60,13 @@ Map::Map(unsigned int rows, unsigned int cols)
 			Cell **nbrs = new Cell *[Cell::NUM_NBRS];
 			for (unsigned int k = 0; k < Cell::NUM_NBRS; k++)
 			{
-				nbrs[k] = NULL;
+				nbrs[k] = nullptr;
+			}
+
+			Cell **cnrs = new Cell *[Cell::NUM_CNRS];
+			for (unsigned int k = 0; k < Cell::NUM_CNRS; k++)
+			{
+				cnrs[k] = nullptr;
 			}
 
 			// Top
@@ -64,11 +80,13 @@ Map::Map(unsigned int rows, unsigned int cols)
 
 				// Top middle
 				nbrs[1] = _cells[i - 1][j];
+				cnrs[0] = _cells[i - 1][j];
 
 				if (j < cols - 1)
 				{
 					// Top right
 					nbrs[2] = _cells[i - 1][j + 1];
+					cnrs[1] = _cells[i - 1][j + 1];
 				}
 			}
 
@@ -76,6 +94,7 @@ Map::Map(unsigned int rows, unsigned int cols)
 			{
 				// Middle right
 				nbrs[3] = _cells[i][j + 1];
+				cnrs[2] = _cells[i][j + 1];
 			}
 
 			// Bottom
@@ -103,7 +122,8 @@ Map::Map(unsigned int rows, unsigned int cols)
 				nbrs[7] = _cells[i][j - 1];
 			}
 
-			_cells[i][j]->init(nbrs);
+			cnrs[3] = _cells[i][j];
+			_cells[i][j]->init(nbrs, cnrs);
 		}
 	}
 }
@@ -181,7 +201,10 @@ Map::Cell::Cell(unsigned int x, unsigned int y, double cost)
 {
 	_init = false;
 
-	_nbrs = NULL;
+	_bptr = nullptr;
+
+	_nbrs = nullptr;
+	_cnrs = nullptr;
 
 	_x = x;
 	_y = y;
@@ -194,17 +217,20 @@ Map::Cell::Cell(unsigned int x, unsigned int y, double cost)
  */
 Map::Cell::~Cell()
 {
-	if (_nbrs != NULL)
+	if (_nbrs != nullptr)
 		delete[] _nbrs;
+	if (_cnrs != nullptr)
+		delete[] _cnrs;
 }
 
 /**
  * Initialize.
  *
  * @param Cell** cell neighbors
+ * @param Cell** cell corners
  * @return void
  */
-void Map::Cell::init(Cell **nbrs)
+void Map::Cell::init(Cell **nbrs, Cell **cnrs)
 {
 	if (_init)
 		return;
@@ -212,6 +238,147 @@ void Map::Cell::init(Cell **nbrs)
 	_init = true;
 
 	_nbrs = nbrs;
+	_cnrs = cnrs;
+}
+
+/**
+ * Check if cnr is a corner of ->this
+ *
+ * @param Cell *cnr
+ * @return true or false
+ */
+bool Map::Cell::is_corner(Cell *cnr)
+{
+	if (cnr == nullptr)
+	{
+		return false;
+	}
+	int dx = cnr->_x - _x;
+	int dy = cnr->_y - _y;
+	return ((dx == 0 && dy == 1) || (dx == 1 && dy == 1) || (dx == 1 && dy == 0) || (dx == 0 && dy == 0));
+}
+
+/**
+ * Gets clockwise neighbor relative to some neighbor at neighbor s1.
+ *
+ * @param Cell *
+ * @return Cell*
+ */
+Map::Cell *Map::Cell::cknbr(Cell *s1)
+{
+	if (s1 == nullptr)
+	{
+		return nullptr;
+	}
+	int dx = s1->_x - _x;
+	int dy = s1->_y - _y;
+	if (dx == 1 && dy == 0)
+	{
+		return _nbrs[4];
+	}
+	else if (dx == 1 && dy == -1)
+	{
+		return _nbrs[5];
+	}
+	else if (dx == 0 && dy == -1)
+	{
+		return _nbrs[6];
+	}
+	else if (dx == -1 && dy == -1)
+	{
+		return _nbrs[7];
+	}
+	else if (dx == -1 && dy == 0)
+	{
+		return _nbrs[0];
+	}
+	else if (dx == -1 && dy == 1)
+	{
+		return _nbrs[1];
+	}
+	else if (dx == 0 && dy == 1)
+	{
+		return _nbrs[2];
+	}
+	else if (dx == 1 && dy == 1)
+	{
+		return _nbrs[3];
+	}
+	else
+	{
+		printf("Invalid call to cknbr\n");
+		return nullptr;
+	}
+}
+
+/**
+ * Gets counterclockwise neighbor relative to some neighbor at neighbor s1.
+ *
+ * @param Cell * s1
+ * @return Cell*
+ */
+Map::Cell *Map::Cell::ccknbr(Cell *s1)
+{
+	if (s1 == nullptr)
+	{
+		return nullptr;
+	}
+	int dx = s1->_x - _x;
+	int dy = s1->_y - _y;
+	if (dx == 1 && dy == 0)
+	{
+		return _nbrs[2];
+	}
+	else if (dx == 1 && dy == -1)
+	{
+		return _nbrs[3];
+	}
+	else if (dx == 0 && dy == -1)
+	{
+		return _nbrs[4];
+	}
+	else if (dx == -1 && dy == -1)
+	{
+		return _nbrs[5];
+	}
+	else if (dx == -1 && dy == 0)
+	{
+		return _nbrs[6];
+	}
+	else if (dx == -1 && dy == 1)
+	{
+		return _nbrs[7];
+	}
+	else if (dx == 0 && dy == 1)
+	{
+		return _nbrs[0];
+	}
+	else if (dx == 1 && dy == 1)
+	{
+		return _nbrs[1];
+	}
+	else
+	{
+		printf("Invalid call to ccknbr\n");
+		return nullptr;
+	}
+}
+
+/**
+ * Gets/sets cell backpointer from which ->this cell derives its path cost.
+ *
+ * Cell* [optional] backpointer
+ * @return Cell*
+ */
+Map::Cell *Map::Cell::bptr(Cell *backpointer)
+{
+	if (backpointer == nullptr)
+	{
+		return _bptr;
+	}
+	_bptr = backpointer;
+
+	return _bptr;
 }
 
 /**
@@ -222,6 +389,16 @@ void Map::Cell::init(Cell **nbrs)
 Map::Cell **Map::Cell::nbrs()
 {
 	return _nbrs;
+}
+
+/**
+ * Gets cell corners.
+ *
+ * @return Cell**
+ */
+Map::Cell **Map::Cell::cnrs()
+{
+	return _cnrs;
 }
 
 /**

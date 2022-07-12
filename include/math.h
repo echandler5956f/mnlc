@@ -20,6 +20,11 @@ namespace DStarLite
 		static const double PI;
 
 		/**
+		 * @var double EUL
+		 */
+		static const double EUL;
+
+		/**
 		 * @var double SQRT2
 		 */
 		static const double SQRT2;

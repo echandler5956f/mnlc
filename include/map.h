@@ -37,9 +37,19 @@ namespace DStarLite
 			};
 
 			/**
-			 * @var static const int number of cell neighbors
+			 * @var static const unsigned int number of cell neighbors
 			 */
 			static const unsigned int NUM_NBRS;
+
+			/**
+			 * @var static const unsigned int number of cell corners
+			 */
+			static const unsigned int NUM_CNRS;
+
+			/**
+			 * @var static const unsigned int number of distinct traversal costs
+			 */
+			static const unsigned int DIST_TRAV_COSTS;
 
 			/**
 			 * @var static const double cost of an unwalkable cell
@@ -69,9 +79,42 @@ namespace DStarLite
 			 * Initialize.
 			 *
 			 * @param Cell** cell neighbors
+			 * @param Cell** cell corners
 			 * @return void
 			 */
-			void init(Cell **nbrs);
+			void init(Cell **nbrs, Cell **cnrs);
+
+			/**
+			 * Check if cnr is a corner of ->this cell
+			 *
+			 * @param Cell *cnr
+			 * @return true or false
+			 */
+			bool is_corner(Cell *cnr);
+
+			/**
+			 * Gets clockwise neighbor relative to some neighbor at neighbor s1.
+			 *
+			 * @param Cell *
+			 * @return Cell*
+			 */
+			Cell *cknbr(Cell *s1);
+
+			/**
+			 * Gets counterclockwise neighbor relative to some neighbor at neighbor s1.
+			 *
+			 * @param Cell * s1
+			 * @return Cell*
+			 */
+			Cell *ccknbr(Cell *s1);
+
+			/**
+			 * Gets/sets cell backpointer from which ->this cell derives its path cost.
+			 *
+			 * Cell* [optional] backpointer
+			 * @return Cell*
+			 */
+			Cell *bptr(Cell *backpointer = nullptr);
 
 			/**
 			 * Gets cell neighbors.
@@ -79,6 +122,13 @@ namespace DStarLite
 			 * @return Cell**
 			 */
 			Cell **nbrs();
+
+			/**
+			 * Gets cell corners.
+			 *
+			 * @return Cell**
+			 */
+			Cell **cnrs();
 
 			/**
 			 * Gets x-coordinate.
@@ -101,9 +151,19 @@ namespace DStarLite
 			bool _init;
 
 			/**
+			 * @var Cell* points to the cell from which ->this cell derives its path cost
+			 */
+			Cell *_bptr;
+
+			/**
 			 * @var Cell** neighbors
 			 */
 			Cell **_nbrs;
+
+			/**
+			 * @var Cell** corners
+			 */
+			Cell **_cnrs;
 
 			/**
 			 * @var unsigned int x-coordinate

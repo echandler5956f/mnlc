@@ -60,7 +60,7 @@ namespace DStarLite
 		 * @param Map::Cell* [optional] goal
 		 * @return Map::Cell* new goal
 		 */
-		Map::Cell *goal(Map::Cell *u = NULL);
+		Map::Cell *goal(Map::Cell *u = nullptr);
 
 		/**
 		 * Replans the path.
@@ -75,7 +75,7 @@ namespace DStarLite
 		 * @param Map::Cell* [optional] new start
 		 * @return Map::Cell* start
 		 */
-		Map::Cell *start(Map::Cell *u = NULL);
+		Map::Cell *start(Map::Cell *u = nullptr);
 
 		/**
 		 * Update map.
@@ -84,7 +84,7 @@ namespace DStarLite
 		 * @param double new cost of the cell
 		 * @return void
 		 */
-		void update(Map::Cell *u, double cost);
+		void update_cell_cost(Map::Cell *u, double cost);
 
 	protected:
 		/**
@@ -92,11 +92,6 @@ namespace DStarLite
 		 */
 		typedef tr1::unordered_map<Map::Cell *, pair<double, double>, Map::Cell::Hash> CH;
 		CH _cell_hash;
-
-		/**
-		 * @var double accumulated heuristic value
-		 */
-		double _km;
 
 		/**
 		 * @var Map* map
@@ -122,16 +117,20 @@ namespace DStarLite
 		OH _open_hash;
 
 		/**
-		 * @var unordered_set path lookup (stores cells already in the path)
-		 */
-		unordered_set<Map::Cell *> _path_lu;
-
-		/**
-		 * @var Map::Cell* start, goal, and last start tile
+		 * @var Map::Cell* start and goal tile
 		 */
 		Map::Cell *_start;
 		Map::Cell *_goal;
-		Map::Cell *_last;
+
+		/**
+		 * @var double* cellcosts with indices representing original cell costs which map to non-linearly spaced cell costs
+		 */
+		double _cellcosts[70];
+
+		/**
+		 * @var double*** interpolation lookup table for quickly aquiring cell costs.
+		 */
+		double _I[70][70][69];
 
 		/**
 		 * Generates a cell.
@@ -142,20 +141,38 @@ namespace DStarLite
 		void _cell(Map::Cell *u);
 
 		/**
-		 * Computes shortest path.
+		 * Initializes cell cost table, which indices representing original cell costs which map to non-lineraly space cell costs
+		 *
+		 * @param unsigned int Nc number of distinct traversal costs (including the infinite cost of traversing an obstacle cell)
+		 * @return void
+		 */
+		void _construct_cellcosts(unsigned int Nc);
+
+		/**
+		 * Generates interpolation lookup table for quickly aquiring cell costs.
+		 *
+		 * @param unsigned int Nc number of distinct traversal costs (including the infinite cost of traversing an obstacle cell)
+		 * @param unsigned int Mc maximum traversal cost of any traversable (i.e. non-obstacle) cell
+		 * @return void
+		 */
+		void _construct_interpolation_table(unsigned int Nc, unsigned int Mc);
+
+		/**
+		 * Computes shortest interpolated path.
 		 *
 		 * @return bool successful
 		 */
-		bool _compute();
+		bool _compute_shortest_path();
 
 		/**
-		 * Calculates the cost from one cell to another cell.
+		 * Calculates the interpolated cost of 's' given any two consecutive neighbors 'sa' and 'sb'.
 		 *
-		 * @param Map::Cell* cell a
-		 * @param Map::Cell* cell b
-		 * @return double cost between a and b
+		 * @param Map::Cell* cell s
+		 * @param Map::Cell* cell sa
+		 * @param Map::Cell* cell sb
+		 * @return double cost of s
 		 */
-		double _cost(Map::Cell *a, Map::Cell *b);
+		double _compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb);
 
 		/**
 		 * Gets/Sets g value for a cell.
@@ -210,13 +227,12 @@ namespace DStarLite
 		void _list_update(Map::Cell *u, pair<double, double> k);
 
 		/**
-		 * Finds the minimum successor cell.
+		 * Finds the minimum successor cell using interpolated costs.
 		 *
 		 * @param Map::Cell* root
-		 * @param bool [optional] check path hash
-		 * @return pair<Map::Cell*,double> successor
+		 * @return <Map::Cell*,double> successor
 		 */
-		pair<Map::Cell *, double> _min_succ(Map::Cell *u, bool ph_chk = false);
+		pair<Map::Cell *, double> _min_interpol_succ(Map::Cell *u);
 
 		/**
 		 * Gets/Sets rhs value for a cell.
@@ -233,7 +249,7 @@ namespace DStarLite
 		 * @param Map::Cell* cell to update
 		 * @return void
 		 */
-		void _update(Map::Cell *u);
+		void _update_state(Map::Cell *u);
 	};
 };
 
