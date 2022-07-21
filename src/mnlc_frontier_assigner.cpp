@@ -236,6 +236,10 @@ int main(int argc, char **argv)
             goal_pose.pose.position.y = assigned_goal.y = best_frontier[1];
             goal_publisher.publish(goal_pose);
             marker.points.clear();
+            // assigned_goal.x = (198 * mapdata.info.resolution) + \
+            // mapdata.info.origin.position.x + (mapdata.info.resolution/2);
+            // assigned_goal.y = (161 * mapdata.info.resolution) + \
+            // mapdata.info.origin.position.y + (mapdata.info.resolution/2);
             marker.points.push_back(assigned_goal);
             shapes.publish(marker);
         }
