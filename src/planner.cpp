@@ -73,69 +73,6 @@ Map::Cell *Planner::goal(Map::Cell *u)
  */
 bool Planner::replan()
 {
-	unordered_set<Map::Cell *> _path_lu;
-	Map::Cell **nbrs;
-	Map::Cell *current;
-	Map::Cell *min_cell;
-	double min_cost, tmp_cost;
-
-	// _path.clear();
-
-	// bool result = _compute_shortest_path();
-
-	// // Couldn't find a solution
-	// if (!result)
-	// 	return false;
-
-	// current = _start;
-
-	// printf("\nPath start:\n{");
-	// while (current != _goal)
-	// {
-	// 	if (current == nullptr)
-	// 	{
-	// 		printf("\nInvalid cell.\n");
-	// 		return false;
-	// 	}
-	// 	printf("[%u, %u], ", current->x(), current->y());
-	// 	_path_lu.insert(current);
-	// 	_path.push_back(current);
-	// 	nbrs = current->nbrs();
-	// 	min_cost = Math::INF;
-	// 	min_cell = nullptr;
-	// 	for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
-	// 	{
-	// 		if (nbrs[i] != nullptr)
-	// 		{
-	// 			if (_path_lu.find(nbrs[i]) == _path_lu.end())
-	// 			{
-	// 				tmp_cost = _compute_cost(current, nbrs[i], current->ccknbr(nbrs[i]));
-
-	// 				if (Math::less(tmp_cost, min_cost))
-	// 				{
-	// 					min_cell = nbrs[i];
-	// 					min_cost = tmp_cost;
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// 	if (min_cell == nullptr || Math::equals(min_cost, Math::INF))
-	// 	{
-	// 		printf("Minimum cell was not found or had infinite cost.\n");
-	// 		return false;
-	// 	}
-	// 	else
-	// 	{
-	// 		current = min_cell;
-	// 	}
-	// }
-	// printf("[%u, %u]", current->x(), current->y());
-	// printf("}\n");
-
-	// _path.push_back(current);
-
-	// return true;
-
 	_path.clear();
 
 	bool result = _compute_shortest_path();
@@ -147,7 +84,7 @@ bool Planner::replan()
 		return false;
 	}
 
-	current = _start;
+	Map::Cell *current = _start;
 	printf("\nPath start:\n{");
 	// Follow the path with the least cost until goal is reached
 	while (current != _goal)
@@ -157,11 +94,10 @@ bool Planner::replan()
 			printf("\nInvalid cell.\n");
 			return false;
 		}
-		printf("[%u, %u], ", current->x(), current->y());
+		printf("[%u, %u]", current->x(), current->y());
 		_path.push_back(current);
 		current = current->bptr();
 	}
-	printf("[%u, %u]", current->x(), current->y());
 	printf("}\n");
 
 	_path.push_back(current);
@@ -195,127 +131,77 @@ Map::Cell *Planner::start(Map::Cell *u)
 void Planner::update_cell_cost(Map::Cell *u, double cost)
 {
 	// printf("Updating cell cost.\n");
-	_cell(u);
+	double c_old = u->cost;
 	u->cost = cost;
+	_cell(u);
 
+	double rhs_min;
+
+	Map::Cell *u_new;
 	Map::Cell **cnrs = u->cnrs();
-	Map::Cell **nbrs = u->nbrs();
-	double min_cost, tmp_cost;
-	for (unsigned int i = 0; i < Map::Cell::NUM_CNRS; i++)
+	// printf("(ux: %u, uy: %u), (cnrs0x: %u, cnrs0y: %u), (cnrs1x: %u, cnrs1y: %u), , (cnrs2x: %u, cnrs2y: %u), (cnrs3x: %u, cnrs3y: %u\n)", u->x(), u->y(), cnrs[0]->x(), cnrs[0]->y(), cnrs[1]->x(), cnrs[1]->y(), cnrs[2]->x(), cnrs[2]->y(), cnrs[3]->x(), cnrs[3]->y());
+	pair<Map::Cell *, double> argmin_min;
+
+	if (Math::greater(cost, c_old))
 	{
-		if (cnrs[i] != nullptr)
+		// printf("Entering If statement of updating cell cost.\n");
+		for (unsigned int i = 0; i < Map::Cell::NUM_CNRS; i++)
 		{
-			if (_cell_hash.find(cnrs[i]) == _cell_hash.end())
+			// printf("Entering For Loop of If statement of updating cell cost.\n");
+			if (cnrs[i] != nullptr)
+			// if (cnrs[i] != nullptr && cnrs[i]->bptr() != nullptr && cnrs[i]->ccknbr(cnrs[i]->bptr()) != nullptr)
 			{
-				_cell(cnrs[i]);
-			}
-			if (cnrs[i] != _goal)
-			{
-				min_cost = Math::INF;
-				for (unsigned int j = 0; j < Map::Cell::NUM_NBRS; j++)
+				if (u->is_corner(cnrs[i]->bptr()) || u->is_corner(cnrs[i]->ccknbr(cnrs[i]->bptr())))
 				{
-					if (nbrs[j] != nullptr)
+					// printf("Entering If statement of For Loop of If statement of updating cell cost.\n");
+					// printf("_compute_cost(cnrs[i], cnrs[i]->bptr(), cnrs[i]->ccknbr(cnrs[i]->bptr()))\n");
+					if (!Math::equals(_rhs(cnrs[i]), _compute_cost(cnrs[i], cnrs[i]->bptr(), cnrs[i]->ccknbr(cnrs[i]->bptr()))))
 					{
-						tmp_cost = _compute_cost(cnrs[i], nbrs[j], cnrs[i]->ccknbr(nbrs[j]));
-						if (Math::less(tmp_cost, min_cost))
+						if (Math::less(_g(cnrs[i]), _rhs(cnrs[i])) || _open_hash.find(cnrs[i]) == _open_hash.end())
 						{
-							min_cost = tmp_cost;
+							// printf("Entering If statement of If statement of For Loop of If statement of updating cell cost.\n");
+							_rhs(cnrs[i], Math::INF);
+							_update_state(cnrs[i]);
+						}
+						else
+						{
+							// printf("Entering Else statement of If statement of For Loop of If statement of updating cell cost.\n");
+							argmin_min = _min_interpol_succ(cnrs[i]);
+							_rhs(cnrs[i], argmin_min.second);
+							cnrs[i]->bptr(argmin_min.first);
+							_update_state(cnrs[i]);
 						}
 					}
 				}
-				if (Math::equals(min_cost, Math::INF))
-				{
-					// printf("Update Cell Cost - Minimum cell was not found or had infinite cost.\n");
-				}
-				_rhs(cnrs[i], min_cost);
-				_update_state(cnrs[i]);
 			}
 		}
 	}
-
-	// _cell(u);
-	// u->cost = cost;
-
-	// Map::Cell **cnrs = u->cnrs();
-	// for (unsigned int i = 0; i < Map::Cell::NUM_CNRS; i++)
-	// {
-	// 	if (cnrs[i] != nullptr)
-	// 	{
-	// 		_update_state(cnrs[i]);
-	// 	}
-	// }
-
-	// double c_old = u->cost;
-	// u->cost = cost;
-	// _cell(u);
-
-	// double rhs_min;
-
-	// Map::Cell *u_new;
-	// Map::Cell **cnrs = u->cnrs();
-	// // printf("(ux: %u, uy: %u), (cnrs0x: %u, cnrs0y: %u), (cnrs1x: %u, cnrs1y: %u), , (cnrs2x: %u, cnrs2y: %u), (cnrs3x: %u, cnrs3y: %u\n)", u->x(), u->y(), cnrs[0]->x(), cnrs[0]->y(), cnrs[1]->x(), cnrs[1]->y(), cnrs[2]->x(), cnrs[2]->y(), cnrs[3]->x(), cnrs[3]->y());
-	// pair<Map::Cell *, double> argmin_min;
-
-	// if (Math::greater(cost, c_old))
-	// {
-	// 	printf("Entering If statement of updating cell cost.\n");
-	// 	for (unsigned int i = 0; i < Map::Cell::NUM_CNRS; i++)
-	// 	{
-	// 		printf("Entering For Loop of If statement of updating cell cost.\n");
-	// 		if (cnrs[i] != nullptr)
-	// 		// if (cnrs[i] != nullptr && cnrs[i]->bptr() != nullptr && cnrs[i]->ccknbr(cnrs[i]->bptr()) != nullptr)
-	// 		{
-	// 			if (u->is_corner(cnrs[i]->bptr()) || u->is_corner(cnrs[i]->ccknbr(cnrs[i]->bptr())))
-	// 			{
-	// 				printf("Entering If statement of For Loop of If statement of updating cell cost.\n");
-	// 				// printf("_compute_cost(cnrs[i], cnrs[i]->bptr(), cnrs[i]->ccknbr(cnrs[i]->bptr()))\n");
-	// 				if (!Math::equals(_rhs(cnrs[i]), _compute_cost(cnrs[i], cnrs[i]->bptr(), cnrs[i]->ccknbr(cnrs[i]->bptr()))))
-	// 				{
-	// 					if (Math::less(_g(cnrs[i]), _rhs(cnrs[i])) || _open_hash.find(cnrs[i]) == _open_hash.end())
-	// 					{
-	// 						printf("Entering If statement of If statement of For Loop of If statement of updating cell cost.\n");
-	// 						_rhs(cnrs[i], Math::INF);
-	// 						_update_state(cnrs[i]);
-	// 					}
-	// 					else
-	// 					{
-	// 						printf("Entering Else statement of If statement of For Loop of If statement of updating cell cost.\n");
-	// 						argmin_min = _min_interpol_succ(cnrs[i]);
-	// 						_rhs(cnrs[i], argmin_min.second);
-	// 						cnrs[i]->bptr(argmin_min.first);
-	// 						_update_state(cnrs[i]);
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
-	// else
-	// {
-	// 	printf("Entering Else statement of updating cell cost.\n");
-	// 	rhs_min = Math::INF;
-	// 	for (unsigned int i = 0; i < Map::Cell::NUM_CNRS; i++)
-	// 	{
-	// 		printf("Entering For Loop of Else statement of updating cell cost.\n");
-	// 		if (cnrs[i] != nullptr)
-	// 		{
-	// 			if (_cell_hash.find(cnrs[i]) == _cell_hash.end())
-	// 			{
-	// 				_cell(cnrs[i]);
-	// 			}
-	// 			else if (Math::less(_rhs(cnrs[i]), rhs_min))
-	// 			{
-	// 				printf("Entering Else If statement of For Loop of Else statement of updating cell cost.\n");
-	// 				rhs_min = _rhs(cnrs[i]);
-	// 				u_new = cnrs[i];
-	// 			}
-	// 		}
-	// 	}
-	// 	if (!Math::equals(rhs_min, Math::INF))
-	// 	{
-	// 		_list_insert(u_new, _k(u_new));
-	// 	}
-	// }
+	else
+	{
+		// printf("Entering Else statement of updating cell cost.\n");
+		rhs_min = Math::INF;
+		for (unsigned int i = 0; i < Map::Cell::NUM_CNRS; i++)
+		{
+			// printf("Entering For Loop of Else statement of updating cell cost.\n");
+			if (cnrs[i] != nullptr)
+			{
+				if (_cell_hash.find(cnrs[i]) == _cell_hash.end())
+				{
+					_cell(cnrs[i]);
+				}
+				else if (Math::less(_rhs(cnrs[i]), rhs_min))
+				{
+					// printf("Entering Else If statement of For Loop of Else statement of updating cell cost.\n");
+					rhs_min = _rhs(cnrs[i]);
+					u_new = cnrs[i];
+				}
+			}
+		}
+		if (!Math::equals(rhs_min, Math::INF))
+		{
+			_list_insert(u_new, _k(u_new));
+		}
+	}
 	// printf("Finished updating cell cost.\n");
 }
 
@@ -426,10 +312,8 @@ bool Planner::_compute_shortest_path()
 	int attempts = 0;
 
 	Map::Cell *u;
-	Map::Cell *min_cell;
 	Map::Cell **nbrs;
-	Map::Cell **nbrsnbrs;
-	double rhs_old, cost_interpol, min_cost, tmp_cost;
+	double rhs_old, cost_interpol;
 	pair<Map::Cell *, double> argmin_min;
 
 	while ((!_open_list.empty() && key_compare(_open_list.begin()->first, _k(_start))) || !Math::equals(_rhs(_start), _g(_start)))
@@ -440,12 +324,15 @@ bool Planner::_compute_shortest_path()
 			printf("Reached maximum planner attempts!\n");
 			return false;
 		}
+
 		u = _open_list.begin()->second;
-		nbrs = u->nbrs();
-		if (Math::greater(_g(u), _rhs(u)))
+		if (Math::greater(_g(u), _rhs(u)) || Math::equals(_g(u), _rhs(u)))
 		{
+			// printf("Entering If statement of _compute_shortest_path.\n");
 			_g(u, _rhs(u));
 			_list_remove(u);
+			nbrs = u->nbrs();
+			// printf("Entering For loop of If statement of _compute_shortest_path.\n");
 			for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
 			{
 				if (nbrs[i] != nullptr)
@@ -454,8 +341,10 @@ bool Planner::_compute_shortest_path()
 					{
 						_cell(nbrs[i]);
 					}
+					rhs_old = _rhs(nbrs[i]);
 					if (nbrs[i]->ccknbr(u) != nullptr)
 					{
+						// printf("_compute_cost(nbrs[i], u, nbrs[i]->ccknbr(u))\n"); //marked
 						cost_interpol = _compute_cost(nbrs[i], u, nbrs[i]->ccknbr(u));
 						if (Math::greater(_rhs(nbrs[i]), cost_interpol))
 						{
@@ -465,168 +354,63 @@ bool Planner::_compute_shortest_path()
 					}
 					if (nbrs[i]->cknbr(u) != nullptr)
 					{
+						// printf("_compute_cost(nbrs[i], u, nbrs[i]->cknbr(u))\n"); //marked
 						cost_interpol = _compute_cost(nbrs[i], u, nbrs[i]->cknbr(u));
 						if (Math::greater(_rhs(nbrs[i]), cost_interpol))
 						{
+							// printf("_compute_cost(nbrs[i], nbrs[i]->cknbr(u), u)\n"); // marked
 							_rhs(nbrs[i], _compute_cost(nbrs[i], nbrs[i]->cknbr(u), u));
 							nbrs[i]->bptr(nbrs[i]->cknbr(u));
 						}
 					}
-					_update_state(nbrs[i]);
-				}
-			}
-		}
-		else
-		{
-			_g(u, Math::INF);
-			for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
-			{
-				if (nbrs[i] != nullptr)
-				{
-					if (nbrs[i]->bptr() == u || nbrs[i]->bptr() == nbrs[i]->cknbr(u))
+					if (!Math::equals(_rhs(u), rhs_old))
 					{
-						nbrsnbrs = nbrs[i]->nbrs();
-						min_cost = Math::INF;
-						min_cell = nullptr;
-						for (unsigned int j = 0; j < Map::Cell::NUM_NBRS; j++)
-						{
-							if (nbrsnbrs[j] != nullptr)
-							{
-								tmp_cost = _compute_cost(nbrs[i], nbrsnbrs[j], nbrs[i]->ccknbr(nbrsnbrs[j]));
-
-								if (Math::less(tmp_cost, min_cost))
-								{
-									min_cell = nbrsnbrs[j];
-									min_cost = tmp_cost;
-								}
-							}
-						}
-						if (min_cell == nullptr || Math::equals(min_cost, Math::INF))
-						{
-							// printf("Compute Shortest Path - Minimum cell was not found or had infinite cost.\n");
-						}
-						_rhs(nbrs[i], min_cost);
-						nbrs[i]->bptr(min_cell);
 						_update_state(nbrs[i]);
 					}
 				}
 			}
-			_update_state(u);
+			// printf("Exiting If statement of _compute_shortest_path.\n");
 		}
-
-		// u = _open_list.begin()->second;
-		// nbrs = u->nbrs();
-		// _list_remove(u);
-		// if (Math::greater(_g(u), _rhs(u)))
-		// {
-		// 	_g(u, _rhs(u));
-		// 	for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
-		// 	{
-		// 		if (nbrs[i] != nullptr)
-		// 		{
-		// 			_update_state(nbrs[i]);
-		// 		}
-		// 	}
-		// }
-		// else
-		// {
-		// 	_g(u, Math::INF);
-		// 	for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
-		// 	{
-		// 		if (nbrs[i] != nullptr)
-		// 		{
-		// 			_update_state(nbrs[i]);
-		// 		}
-		// 	}
-		// 	_update_state(u);
-		// }
-
-		// u = _open_list.begin()->second;
-		// if (Math::greater(_g(u), _rhs(u)) || Math::equals(_g(u), _rhs(u)))
-		// {
-		// 	printf("Entering If statement of _compute_shortest_path.\n");
-		// 	_g(u, _rhs(u));
-		// 	_list_remove(u);
-		// 	nbrs = u->nbrs();
-		// 	printf("Entering For loop of If statement of _compute_shortest_path.\n");
-		// 	for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
-		// 	{
-		// 		if (nbrs[i] != nullptr)
-		// 		{
-		// 			if (_cell_hash.find(nbrs[i]) == _cell_hash.end())
-		// 			{
-		// 				_cell(nbrs[i]);
-		// 			}
-		// 			rhs_old = _rhs(nbrs[i]);
-		// 			if (nbrs[i]->ccknbr(u) != nullptr)
-		// 			{
-		// 				// printf("_compute_cost(nbrs[i], u, nbrs[i]->ccknbr(u))\n"); //marked
-		// 				cost_interpol = _compute_cost(nbrs[i], u, nbrs[i]->ccknbr(u));
-		// 				if (Math::greater(_rhs(nbrs[i]), cost_interpol))
-		// 				{
-		// 					_rhs(nbrs[i], cost_interpol);
-		// 					nbrs[i]->bptr(u);
-		// 				}
-		// 			}
-		// 			if (nbrs[i]->cknbr(u) != nullptr)
-		// 			{
-		// 				// printf("_compute_cost(nbrs[i], u, nbrs[i]->cknbr(u))\n"); //marked
-		// 				cost_interpol = _compute_cost(nbrs[i], u, nbrs[i]->cknbr(u));
-		// 				if (Math::greater(_rhs(nbrs[i]), cost_interpol))
-		// 				{
-		// 					// printf("_compute_cost(nbrs[i], nbrs[i]->cknbr(u), u)\n"); // marked
-		// 					_rhs(nbrs[i], _compute_cost(nbrs[i], nbrs[i]->cknbr(u), u));
-		// 					nbrs[i]->bptr(nbrs[i]->cknbr(u));
-		// 				}
-		// 			}
-		// 			if (!Math::equals(_rhs(u), rhs_old))
-		// 			{
-		// 				_update_state(nbrs[i]);
-		// 			}
-		// 		}
-		// 	}
-		// 	printf("Exiting If statement of _compute_shortest_path.\n");
-		// }
-		// else
-		// {
-		// 	printf("Entering ELSE statement of _compute_shortest_path!!!\n");
-		// 	argmin_min = _min_interpol_succ(u);
-		// 	_rhs(u, argmin_min.second);
-		// 	u->bptr(argmin_min.first);
-		// 	if (Math::less(_g(u), _rhs(u)))
-		// 	{
-		// 		_g(u, Math::INF);
-		// 		nbrs = u->nbrs();
-		// 		for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
-		// 		{
-		// 			if (nbrs[i] != nullptr)
-		// 			// if (nbrs[i] != nullptr && nbrs[i]->bptr() != nullptr && nbrs[i]->cknbr(u) != nullptr && nbrs[i]->ccknbr(nbrs[i]->bptr()) != nullptr)
-		// 			{
-		// 				if (nbrs[i]->bptr() == u || nbrs[i]->bptr() == nbrs[i]->cknbr(u))
-		// 				{
-		// 					// printf("_compute_cost(nbrs[i], nbrs[i]->bptr(), nbrs[i]->ccknbr(nbrs[i]->bptr()))\n");
-		// 					if (!Math::equals(_rhs(nbrs[i]), _compute_cost(nbrs[i], nbrs[i]->bptr(), nbrs[i]->ccknbr(nbrs[i]->bptr()))))
-		// 					{
-		// 						if (Math::less(_g(nbrs[i]), _rhs(nbrs[i])) || _open_hash.find(nbrs[i]) == _open_hash.end())
-		// 						{
-		// 							_rhs(nbrs[i], Math::INF);
-		// 							_update_state(nbrs[i]);
-		// 						}
-		// 						else
-		// 						{
-		// 							argmin_min = _min_interpol_succ(nbrs[i]);
-		// 							_rhs(nbrs[i], argmin_min.second);
-		// 							nbrs[i]->bptr(argmin_min.first);
-		// 							_update_state(nbrs[i]);
-		// 						}
-		// 					}
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// 	_update_state(u);
-		// 	printf("Exiting ELSE statement of _compute_shortest_path!!!\n");
-		// }
+		else
+		{
+			// printf("Entering ELSE statement of _compute_shortest_path!!!\n");
+			argmin_min = _min_interpol_succ(u);
+			_rhs(u, argmin_min.second);
+			u->bptr(argmin_min.first);
+			if (Math::less(_g(u), _rhs(u)))
+			{
+				_g(u, Math::INF);
+				nbrs = u->nbrs();
+				for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
+				{
+					if (nbrs[i] != nullptr)
+					// if (nbrs[i] != nullptr && nbrs[i]->bptr() != nullptr && nbrs[i]->cknbr(u) != nullptr && nbrs[i]->ccknbr(nbrs[i]->bptr()) != nullptr)
+					{
+						if (nbrs[i]->bptr() == u || nbrs[i]->bptr() == nbrs[i]->cknbr(u))
+						{
+							// printf("_compute_cost(nbrs[i], nbrs[i]->bptr(), nbrs[i]->ccknbr(nbrs[i]->bptr()))\n");
+							if (!Math::equals(_rhs(nbrs[i]), _compute_cost(nbrs[i], nbrs[i]->bptr(), nbrs[i]->ccknbr(nbrs[i]->bptr()))))
+							{
+								if (Math::less(_g(nbrs[i]), _rhs(nbrs[i])) || _open_hash.find(nbrs[i]) == _open_hash.end())
+								{
+									_rhs(nbrs[i], Math::INF);
+									_update_state(nbrs[i]);
+								}
+								else
+								{
+									argmin_min = _min_interpol_succ(nbrs[i]);
+									_rhs(nbrs[i], argmin_min.second);
+									nbrs[i]->bptr(argmin_min.first);
+									_update_state(nbrs[i]);
+								}
+							}
+						}
+					}
+				}
+			}
+			_update_state(u);
+			// printf("Exiting ELSE statement of _compute_shortest_path!!!\n");
+		}
 	}
 	// if (_open_list.empty())
 	// {
@@ -882,7 +666,7 @@ void Planner::_list_update(Map::Cell *u, pair<double, double> k)
  */
 pair<Map::Cell *, double> Planner::_min_interpol_succ(Map::Cell *u)
 {
-	printf("Finding minimum interpolated successor.\n");
+	// printf("Finding minimum interpolated successor.\n");
 	Map::Cell **nbrs = u->nbrs();
 
 	double tmp_cost, tmp_g;
@@ -907,7 +691,7 @@ pair<Map::Cell *, double> Planner::_min_interpol_succ(Map::Cell *u)
 	}
 	if (min_cell != nullptr)
 	{
-		printf("Found minimum interpolated successor.\n");
+		// printf("Found minimum interpolated successor.\n");
 	}
 	else
 	{
@@ -947,50 +731,19 @@ double Planner::_rhs(Map::Cell *u, double value)
  */
 void Planner::_update_state(Map::Cell *u)
 {
-	// if (_cell_hash.find(u) == _cell_hash.end())
-	// {
-	// 	_cell(u);
-	// }
-	// if (u != _goal)
-	// {
-	// 	Map::Cell **nbrs = u->nbrs();
 
-	// 	double tmp_cost;
+	bool diff = !Math::equals(_g(u), _rhs(u));
+	bool exists = (_open_hash.find(u) != _open_hash.end());
 
-	// 	double min_cost = Math::INF;
-
-	// 	for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
-	// 	{
-	// 		if (nbrs[i] != nullptr)
-	// 		{
-	// 			tmp_cost = _compute_cost(u, nbrs[i], u->ccknbr(nbrs[i]));
-
-	// 			if (Math::less(tmp_cost, min_cost))
-	// 			{
-	// 				min_cost = tmp_cost;
-	// 			}
-	// 		}
-	// 	}
-	// 	_rhs(u, min_cost);
-	// }
-	// if (_open_hash.find(u) != _open_hash.end())
-	// {
-	// 	_list_remove(u);
-	// }
-	// if (!Math::equals(_g(u), _rhs(u)))
-	// {
-	// 	_list_insert(u, _k(u));
-	// }
-
-	if (!Math::equals(_g(u), _rhs(u)) && _open_hash.find(u) != _open_hash.end())
+	if (diff && exists)
 	{
 		_list_update(u, _k(u));
 	}
-	else if (!Math::equals(_g(u), _rhs(u)) && _open_hash.find(u) == _open_hash.end())
+	else if (diff && !exists)
 	{
 		_list_insert(u, _k(u));
 	}
-	else if (Math::equals(_g(u), _rhs(u)) && _open_hash.find(u) != _open_hash.end())
+	else if (!diff && exists)
 	{
 		_list_remove(u);
 	}
