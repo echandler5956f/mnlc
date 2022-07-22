@@ -67,8 +67,8 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(60);
     while (ros::ok())
     {
-        ds.update_map(mapdata.data);
         list<Map::Cell *> path = ds.execute(start);
+        ds.update_map(mapdata.data);
         ros::spinOnce();
         loop_rate.sleep();
     }

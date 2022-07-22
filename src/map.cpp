@@ -80,7 +80,6 @@ Map::Map(unsigned int rows, unsigned int cols)
 
 				// Top middle
 				nbrs[1] = _cells[i - 1][j];
-				cnrs[0] = _cells[i - 1][j];
 
 				if (j < cols - 1)
 				{
@@ -94,7 +93,7 @@ Map::Map(unsigned int rows, unsigned int cols)
 			{
 				// Middle right
 				nbrs[3] = _cells[i][j + 1];
-				cnrs[2] = _cells[i][j + 1];
+				cnrs[0] = _cells[i][j + 1];
 			}
 
 			// Bottom
@@ -104,10 +103,12 @@ Map::Map(unsigned int rows, unsigned int cols)
 				{
 					// Bottom right
 					nbrs[4] = _cells[i + 1][j + 1];
+					cnrs[1] = _cells[i + 1][j + 1];
 				}
 
 				// Bottom middle
 				nbrs[5] = _cells[i + 1][j];
+				cnrs[2] = _cells[i + 1][j];
 
 				if (j != 0)
 				{
@@ -251,12 +252,11 @@ bool Map::Cell::is_corner(Cell *cnr)
 {
 	if (cnr == nullptr)
 	{
-		printf("CORNER CELL WAS INVALID!\n");
+		// printf("CORNER CELL WAS INVALID!\n");
 		return false;
 	}
-	int dx = cnr->_x - _x;
-	int dy = cnr->_y - _y;
-	return ((dx == 0 && dy == 1) || (dx == 1 && dy == 1) || (dx == 1 && dy == 0) || (dx == 0 && dy == 0));
+
+	return ((cnr->x() == _cnrs[0]->x() && cnr->y() == _cnrs[0]->y()) || (cnr->x() == _cnrs[1]->x() && cnr->y() == _cnrs[1]->y()) || (cnr->x() == _cnrs[2]->x() && cnr->y() == _cnrs[2]->y()) || (cnr->x() == _cnrs[3]->x() && cnr->y() == _cnrs[3]->y()));
 }
 
 /**
@@ -269,7 +269,7 @@ Map::Cell *Map::Cell::cknbr(Cell *s1)
 {
 	if (s1 == nullptr)
 	{
-		printf("Invalid call to cknbr1!\n");
+		// printf("Invalid call to cknbr1!\n");
 		return nullptr;
 	}
 	int dx = s1->_x - _x;
@@ -323,7 +323,7 @@ Map::Cell *Map::Cell::cknbr(Cell *s1)
 	}
 	else
 	{
-		printf("Invalid call to cknbr2!\n");
+		// printf("Invalid call to cknbr2!\n");
 		return nullptr;
 	}
 }
@@ -338,7 +338,7 @@ Map::Cell *Map::Cell::ccknbr(Cell *s1)
 {
 	if (s1 == nullptr)
 	{
-		printf("Invalid call to ccknbr1!\n");
+		// printf("Invalid call to ccknbr1!\n");
 		return nullptr;
 	}
 	int dx = s1->_x - _x;
@@ -392,7 +392,7 @@ Map::Cell *Map::Cell::ccknbr(Cell *s1)
 	}
 	else
 	{
-		printf("Invalid call to ccknbr2!\n");
+		// printf("Invalid call to ccknbr2!\n");
 		return nullptr;
 	}
 }

@@ -24,9 +24,7 @@ Planner::Planner(Map *map, Map::Cell *start, Map::Cell *goal)
 	_goal = goal;
 
 	// _construct_interpolation_table(Map::Cell::DIST_TRAV_COSTS, Map::Cell::DIST_TRAV_COSTS - 1);
-	// _g(_start, Math::INF);
-	// _rhs(_start, Math::INF);
-	// _g(_goal, Math::INF);
+
 	_rhs(_goal, 0.0);
 
 	_list_insert(_goal, pair<double, double>(_h(_start, _goal), 0));
@@ -80,12 +78,11 @@ bool Planner::replan()
 	// Couldn't find a solution
 	if (!result)
 	{
-		printf("Max steps reached.\n");
 		return false;
 	}
 
 	Map::Cell *current = _start;
-	printf("\nPath start:\n{");
+	printf("Path start:\n{");
 	// Follow the path with the least cost until goal is reached
 	while (current != _goal)
 	{
@@ -148,8 +145,8 @@ void Planner::update_cell_cost(Map::Cell *u, double cost)
 		for (unsigned int i = 0; i < Map::Cell::NUM_CNRS; i++)
 		{
 			// printf("Entering For Loop of If statement of updating cell cost.\n");
-			if (cnrs[i] != nullptr)
-			// if (cnrs[i] != nullptr && cnrs[i]->bptr() != nullptr && cnrs[i]->ccknbr(cnrs[i]->bptr()) != nullptr)
+			// if (cnrs[i] != nullptr)
+			if (cnrs[i] != nullptr && cnrs[i]->bptr() != nullptr && cnrs[i]->ccknbr(cnrs[i]->bptr()) != nullptr)
 			{
 				if (u->is_corner(cnrs[i]->bptr()) || u->is_corner(cnrs[i]->ccknbr(cnrs[i]->bptr())))
 				{
@@ -199,7 +196,7 @@ void Planner::update_cell_cost(Map::Cell *u, double cost)
 		}
 		if (!Math::equals(rhs_min, Math::INF))
 		{
-			_list_insert(u_new, _k(u_new));
+			_update_state(u_new);
 		}
 	}
 	// printf("Finished updating cell cost.\n");
@@ -303,7 +300,7 @@ bool Planner::_compute_shortest_path()
 {
 	if (_open_list.empty())
 	{
-		printf("Open list is empty!\n");
+		printf("ERROR: OPEN LIST IS EMPTY\n");
 		return false;
 	}
 
@@ -321,18 +318,17 @@ bool Planner::_compute_shortest_path()
 		// Reached max steps, quit
 		if (++attempts > Planner::MAX_STEPS)
 		{
-			printf("Reached maximum planner attempts!\n");
+			printf("ERROR: REACHED MAXIMUM PLANNER ATTEMPTS\n");
 			return false;
 		}
 
 		u = _open_list.begin()->second;
 		if (Math::greater(_g(u), _rhs(u)) || Math::equals(_g(u), _rhs(u)))
 		{
-			// printf("Entering If statement of _compute_shortest_path.\n");
+			// check bptrs for oscillation, figure out whats wrong with open list and why sometimes it dies at the start and cant add new elements
 			_g(u, _rhs(u));
 			_list_remove(u);
 			nbrs = u->nbrs();
-			// printf("Entering For loop of If statement of _compute_shortest_path.\n");
 			for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
 			{
 				if (nbrs[i] != nullptr)
@@ -373,7 +369,7 @@ bool Planner::_compute_shortest_path()
 		}
 		else
 		{
-			// printf("Entering ELSE statement of _compute_shortest_path!!!\n");
+			// printf("Entering ELSE statement of _compute_shortest_path.\n");
 			argmin_min = _min_interpol_succ(u);
 			_rhs(u, argmin_min.second);
 			u->bptr(argmin_min.first);
@@ -383,8 +379,8 @@ bool Planner::_compute_shortest_path()
 				nbrs = u->nbrs();
 				for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
 				{
-					if (nbrs[i] != nullptr)
-					// if (nbrs[i] != nullptr && nbrs[i]->bptr() != nullptr && nbrs[i]->cknbr(u) != nullptr && nbrs[i]->ccknbr(nbrs[i]->bptr()) != nullptr)
+					// if (nbrs[i] != nullptr)
+					if (nbrs[i] != nullptr && nbrs[i]->bptr() != nullptr && nbrs[i]->ccknbr(nbrs[i]->bptr()) != nullptr)
 					{
 						if (nbrs[i]->bptr() == u || nbrs[i]->bptr() == nbrs[i]->cknbr(u))
 						{
@@ -409,7 +405,7 @@ bool Planner::_compute_shortest_path()
 				}
 			}
 			_update_state(u);
-			// printf("Exiting ELSE statement of _compute_shortest_path!!!\n");
+			// printf("Exiting ELSE statement of _compute_shortest_path.\n");
 		}
 	}
 	// if (_open_list.empty())
@@ -424,7 +420,7 @@ bool Planner::_compute_shortest_path()
 	// {
 	// 	printf("_rhs(_start) = %lf\t_g(_start) = %lf\n", _rhs(_start), _g(_start));
 	// }
-	printf("Attempts: %d", attempts);
+	printf("Planner Attempts: %d\n", attempts);
 	return true;
 }
 
@@ -441,7 +437,7 @@ double Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 	// printf("Computing interpolated cost.\n");
 	if (s == nullptr || sa == nullptr || sb == nullptr)
 	{
-		printf("NULL CELL WHEN COMPUTING COST!\n");
+		printf("ERROR: NULL CELL FOUND WHEN COMPUTING COST\n");
 		return Math::INF;
 	}
 	Map::Cell **nbrs = s->nbrs();
@@ -510,7 +506,7 @@ double Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 	{
 		// printf("sx: %u sy: %u sax: %u say: %u sbx: %u sby: %u\n", s->x(), s->y(), sa->x(), sa->y(), sb->x(), sb->y());
 		// printf("dx1: %d\tdy1: %d\tdx2: %d\tdy2: %d\n", dx1, dy1, dx2, dy2);
-		printf("ERROR COMPUTING COST!\n");
+		printf("ERROR: INVALID CELL COORDINATES FOUND WHEN COMPUTING COST\n");
 		return Math::INF;
 	}
 	double g1 = _g(s1);
@@ -519,11 +515,19 @@ double Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 	if (Math::equals(min(c, b), Map::Cell::COST_UNWALKABLE))
 	{
 		vs = Math::INF;
+		// printf("Finished computing interpolated cost1: INFINITE.\n");
 	}
 	else if (Math::less(g1, g2) || Math::equals(g1, g2))
 	{
 		vs = min(c, b) + g1;
-		// printf("Interpolation cost: %lf\n", vs);
+		// if (Math::equals(vs, Math::INF))
+		// {
+		// 	printf("Finished computing interpolated cost1: INFINITE.\n");
+		// }
+		// else
+		// {
+		// 	printf("Finished computing interpolated cost1: %lf.\n", vs);
+		// }
 	}
 	else
 	{
@@ -533,13 +537,27 @@ double Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 			if (Math::less(c, f) || Math::equals(c, f))
 			{
 				vs = c * Math::SQRT2 + g2;
-				// printf("Interpolation cost: %lf\n", vs);
+				// if (Math::equals(vs, Math::INF))
+				// {
+				// 	printf("Finished computing interpolated cost2: INFINITE.\n");
+				// }
+				// else
+				// {
+				// 	printf("Finished computing interpolated cost2: %lf.\n", vs);
+				// }
 			}
 			else
 			{
 				double y = min(f / (sqrt(pow(c, 2) - pow(f, 2))), 1.0);
 				vs = c * sqrt(1.0 + pow(y, 2)) + f * (1.0 - y) + g2;
-				// printf("Interpolation cost: %lf\n", vs);
+				// if (Math::equals(vs, Math::INF))
+				// {
+				// 	printf("Finished computing interpolated cost3: INFINITE.\n");
+				// }
+				// else
+				// {
+				// 	printf("Finished computing interpolated cost3: %lf.\n", vs);
+				// }
 			}
 		}
 		else
@@ -547,18 +565,38 @@ double Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 			if (Math::less(c, b) || Math::equals(c, b))
 			{
 				vs = c * Math::SQRT2 + g2;
-				// printf("Interpolation cost: %lf\n", vs);
+				// if (Math::equals(vs, Math::INF))
+				// {
+				// 	printf("Finished computing interpolated cost4: INFINITE.\n");
+				// }
+				// else
+				// {
+				// 	printf("Finished computing interpolated cost4: %lf.\n", vs);
+				// }
 			}
 			else
 			{
 				double x = 1.0 - min(b / (sqrt(pow(c, 2) - pow(b, 2))), 1.0);
 				vs = c * sqrt(1.0 + pow((1.0 - x), 2)) + b * x + g2;
-				// printf("Interpolation cost: %lf\n", vs);
+				// if (Math::equals(vs, Math::INF))
+				// {
+				// 	printf("Finished computing interpolated cost5: INFINITE.\n");
+				// }
+				// else
+				// {
+				// 	printf("Finished computing interpolated cost5: %lf.\n", vs);
+				// }
 			}
 		}
 	}
-
-	// printf("Finished computing interpolated cost.\n");
+	// if (Math::equals(vs, Math::INF))
+	// {
+	// 	printf("Finished computing interpolated cost: INFINITE.\n");
+	// }
+	// else
+	// {
+	// 	printf("Finished computing interpolated cost: %lf.\n", vs);
+	// }
 	return vs;
 }
 
@@ -676,8 +714,8 @@ pair<Map::Cell *, double> Planner::_min_interpol_succ(Map::Cell *u)
 
 	for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
 	{
-		if (nbrs[i] != nullptr)
-		// if (nbrs[i] != nullptr && u->ccknbr(nbrs[i]) != nullptr)
+		// if (nbrs[i] != nullptr)
+		if (nbrs[i] != nullptr && u->ccknbr(nbrs[i]) != nullptr)
 		{
 			// printf("_compute_cost(u, nbrs[i], u->ccknbr(nbrs[i]))\n");
 			tmp_cost = _compute_cost(u, nbrs[i], u->ccknbr(nbrs[i]));
@@ -689,13 +727,9 @@ pair<Map::Cell *, double> Planner::_min_interpol_succ(Map::Cell *u)
 			}
 		}
 	}
-	if (min_cell != nullptr)
+	if (min_cell == nullptr || min_cost == Math::INF)
 	{
-		// printf("Found minimum interpolated successor.\n");
-	}
-	else
-	{
-		printf("Minimum interpolated successor was nullptr!\n");
+		// printf("Warning: Minimum interpolated successor was NULL or cost was infinite\n");
 	}
 	return pair<Map::Cell *, double>(min_cell, min_cost);
 }

@@ -113,7 +113,7 @@ namespace DStarLite
                 _mapdata = mapdata;
                 _start = start;
                 _goal = goal;
-                _obstacle_cost = _obstacle_cost;
+                _obstacle_cost = obstacle_cost;
                 _unknown_cost = unknown_cost;
                 _scan_radius = scan_radius;
                 _verbose = verbose;
