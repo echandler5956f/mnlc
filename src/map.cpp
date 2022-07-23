@@ -252,7 +252,6 @@ bool Map::Cell::is_corner(Cell *cnr)
 {
 	if (cnr == nullptr)
 	{
-		// printf("CORNER CELL WAS INVALID!\n");
 		return false;
 	}
 
@@ -269,61 +268,45 @@ Map::Cell *Map::Cell::cknbr(Cell *s1)
 {
 	if (s1 == nullptr)
 	{
-		// printf("Invalid call to cknbr1!\n");
 		return nullptr;
 	}
 	int dx = s1->_x - _x;
 	int dy = -(s1->_y - _y);
 	if (dx == 1 && dy == 0)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->cknbr2(s1)x: %u, s->cknbr2(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[2]->x(), _nbrs[2]->y());
 		return _nbrs[2];
 	}
 	else if (dx == 1 && dy == -1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->cknbr3(s1)x: %u, s->cknbr3(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[3]->x(), _nbrs[3]->y());
-
 		return _nbrs[3];
 	}
 	else if (dx == 0 && dy == -1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->cknbr4(s1)x: %u, s->cknbr4(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[4]->x(), _nbrs[4]->y());
-
 		return _nbrs[4];
 	}
 	else if (dx == -1 && dy == -1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->cknbr5(s1)x: %u, s->cknbr5(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[5]->x(), _nbrs[5]->y());
-
 		return _nbrs[5];
 	}
 	else if (dx == -1 && dy == 0)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->cknbr6(s1)x: %u, s->cknbr6(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[6]->x(), _nbrs[6]->y());
 
 		return _nbrs[6];
 	}
 	else if (dx == -1 && dy == 1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->cknbr7(s1)x: %u, s->cknbr7(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[7]->x(), _nbrs[7]->y());
-
 		return _nbrs[7];
 	}
 	else if (dx == 0 && dy == 1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->cknbr0(s1)x: %u, s->cknbr0(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[0]->x(), _nbrs[0]->y());
-
 		return _nbrs[0];
 	}
 	else if (dx == 1 && dy == 1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->cknbr1(s1)x: %u, s->cknbr1(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[1]->x(), _nbrs[1]->y());
-
 		return _nbrs[1];
 	}
 	else
 	{
-		// printf("Invalid call to cknbr2!\n");
 		return nullptr;
 	}
 }
@@ -338,61 +321,46 @@ Map::Cell *Map::Cell::ccknbr(Cell *s1)
 {
 	if (s1 == nullptr)
 	{
-		// printf("Invalid call to ccknbr1!\n");
 		return nullptr;
 	}
 	int dx = s1->_x - _x;
 	int dy = -(s1->_y - _y);
 	if (dx == 1 && dy == 0)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->ccknbr4(s1)x: %u, s->ccknbr4(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[4]->x(), _nbrs[4]->y());
 		return _nbrs[4];
 	}
 	else if (dx == 1 && dy == -1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->ccknbr5(s1)x: %u, s->ccknbr5(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[5]->x(), _nbrs[5]->y());
-
 		return _nbrs[5];
 	}
 	else if (dx == 0 && dy == -1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->ccknbr6(s1)x: %u, s->ccknbr6(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[6]->x(), _nbrs[6]->y());
-
 		return _nbrs[6];
 	}
 	else if (dx == -1 && dy == -1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->ccknbr7(s1)x: %u, s->ccknbr7(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[7]->x(), _nbrs[7]->y());
-
 		return _nbrs[7];
 	}
 	else if (dx == -1 && dy == 0)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->ccknbr0(s1)x: %u, s->ccknbr0(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[0]->x(), _nbrs[0]->y());
-
 		return _nbrs[0];
 	}
 	else if (dx == -1 && dy == 1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->ccknbr1(s1)x: %u, s->ccknbr1(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[1]->x(), _nbrs[1]->y());
 
 		return _nbrs[1];
 	}
 	else if (dx == 0 && dy == 1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->ccknbr2(s1)x: %u, s->ccknbr2(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[2]->x(), _nbrs[2]->y());
-
 		return _nbrs[2];
 	}
 	else if (dx == 1 && dy == 1)
 	{
-		// printf("(sx: %u, sy: %u), (s1x: %u, s1y: %u), (s->ccknbr3(s1)x: %u, s->ccknbr3(s1)y: %u)\n", _x, _y, s1->x(), s1->y(), _nbrs[3]->x(), _nbrs[3]->y());
 
 		return _nbrs[3];
 	}
 	else
 	{
-		// printf("Invalid call to ccknbr2!\n");
 		return nullptr;
 	}
 }
