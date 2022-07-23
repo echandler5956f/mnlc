@@ -59,16 +59,16 @@ namespace DStarLite
 			/**
 			 * @var double cost of cell
 			 */
-			double cost;
+			int cost;
 
 			/**
 			 * Constructor.
 			 *
 			 * @param unsigned int x-coordinate
 			 * @param unsigned int y-coordinate
-			 * @param double [optional] cost of the cell
+			 * @param int [optional] cost of the cell
 			 */
-			Cell(unsigned int x, unsigned int y, double cost = 1.0);
+			Cell(unsigned int x, unsigned int y, int cost = 0);
 
 			/**
 			 * Deconstructor.

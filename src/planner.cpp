@@ -11,8 +11,9 @@ const double Planner::MAX_STEPS = 1000000;
  * @param Map* map
  * @param Map::Cell* start cell
  * @param Map::Cell* goal cell
+ * @param int Nc
  */
-Planner::Planner(Map *map, Map::Cell *start, Map::Cell *goal)
+Planner::Planner(Map *map, Map::Cell *start, Map::Cell *goal, int Nc)
 {
 	// Clear lists
 	_open_list.clear();
@@ -22,8 +23,11 @@ Planner::Planner(Map *map, Map::Cell *start, Map::Cell *goal)
 	_map = map;
 	_start = start;
 	_goal = goal;
+	_Nc = Nc;
+	_Mc = Nc - 1;
 
-	// _construct_interpolation_table(Map::Cell::DIST_TRAV_COSTS, Map::Cell::DIST_TRAV_COSTS - 1);
+	_construct_cellcosts(_Nc);
+	// _construct_interpolation_table(_Nc, _Mc);
 
 	_rhs(_goal, 0.0);
 
@@ -122,12 +126,12 @@ Map::Cell *Planner::start(Map::Cell *u)
  * Update map.
  *
  * @param Map::Cell* cell to update
- * @param double new cost of the cell
+ * @param int new cost of the cell
  * @return void
  */
-void Planner::update_cell_cost(Map::Cell *u, double cost)
+void Planner::update_cell_cost(Map::Cell *u, int cost)
 {
-	double c_old = u->cost;
+	int c_old = u->cost;
 	u->cost = cost;
 	_cell(u);
 
@@ -137,9 +141,8 @@ void Planner::update_cell_cost(Map::Cell *u, double cost)
 	Map::Cell **cnrs = u->cnrs();
 	pair<Map::Cell *, double> argmin_min;
 
-	if (Math::greater(cost, c_old))
+	if (cost > c_old)
 	{
-		// printf("Entering If statement of updating cell cost.\n");
 		for (unsigned int i = 0; i < Map::Cell::NUM_CNRS; i++)
 		{
 			if (cnrs[i] != nullptr && cnrs[i]->bptr() != nullptr && cnrs[i]->ccknbr(cnrs[i]->bptr()) != nullptr)
@@ -188,7 +191,6 @@ void Planner::update_cell_cost(Map::Cell *u, double cost)
 			_update_state(u_new);
 		}
 	}
-	// printf("Finished updating cell cost.\n");
 }
 
 /**
@@ -214,11 +216,13 @@ void Planner::_cell(Map::Cell *u)
  */
 void Planner::_construct_cellcosts(unsigned int Nc)
 {
-	for (unsigned int i = 0; i < Nc - 1; i++)
+	_cellcosts.resize(Nc);
+
+	for (unsigned int i = 0; i < _cellcosts.size() - 1; i++)
 	{
-		_cellcosts[i] = 255.34 * pow(Math::EUL, 0.0283 * (i - 1) / (101 - 1) * (7 - 1) + 1);
+		_cellcosts[i] = i + 1;
 	}
-	_cellcosts[Nc - 1] = Map::Cell::COST_UNWALKABLE;
+	_cellcosts[_cellcosts.size() - 1] = Map::Cell::COST_UNWALKABLE;
 }
 
 /**
@@ -230,6 +234,7 @@ void Planner::_construct_cellcosts(unsigned int Nc)
  */
 void Planner::_construct_interpolation_table(unsigned int Nc, unsigned int Mc)
 {
+
 	_construct_cellcosts(Nc);
 
 	unsigned int ci, bi, f;
@@ -421,7 +426,7 @@ double Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 		s1 = sa;
 		s2 = sb;
 	}
-
+	int bi, ci;
 	double b, c;
 	int dx1 = s1->x() - s->x();
 	int dy1 = -(s1->y() - s->y());
@@ -429,49 +434,51 @@ double Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 	int dy2 = -(s2->y() - s->y());
 	if (dx1 == 1 && dy1 == 0 && dx2 == 1 && dy2 == 1)
 	{
-		c = s->cost;
-		b = nbrs[1]->cost;
+		ci = s->cost;
+		bi = nbrs[1]->cost;
 	}
 	else if (dx1 == 0 && dy1 == 1 && dx2 == 1 && dy2 == 1)
 	{
-		c = s->cost;
-		b = nbrs[7]->cost;
+		ci = s->cost;
+		bi = nbrs[7]->cost;
 	}
 	else if (dx1 == 0 && dy1 == 1 && dx2 == -1 && dy2 == 1)
 	{
-		c = nbrs[7]->cost;
-		b = s->cost;
+		ci = nbrs[7]->cost;
+		bi = s->cost;
 	}
 	else if (dx1 == -1 && dy1 == 0 && dx2 == -1 && dy2 == 1)
 	{
-		c = nbrs[7]->cost;
-		b = nbrs[0]->cost;
+		ci = nbrs[7]->cost;
+		bi = nbrs[0]->cost;
 	}
 	else if (dx1 == -1 && dy1 == 0 && dx2 == -1 && dy2 == -1)
 	{
-		c = nbrs[0]->cost;
-		b = nbrs[7]->cost;
+		ci = nbrs[0]->cost;
+		bi = nbrs[7]->cost;
 	}
 	else if (dx1 == 0 && dy1 == -1 && dx2 == -1 && dy2 == -1)
 	{
-		c = nbrs[0]->cost;
-		b = nbrs[1]->cost;
+		ci = nbrs[0]->cost;
+		bi = nbrs[1]->cost;
 	}
 	else if (dx1 == 0 && dy1 == -1 && dx2 == 1 && dy2 == -1)
 	{
-		c = nbrs[1]->cost;
-		b = nbrs[0]->cost;
+		ci = nbrs[1]->cost;
+		bi = nbrs[0]->cost;
 	}
 	else if (dx1 == 1 && dy1 == 0 && dx2 == 1 && dy2 == -1)
 	{
-		c = nbrs[1]->cost;
-		b = s->cost;
+		ci = nbrs[1]->cost;
+		bi = s->cost;
 	}
 	else
 	{
 		printf("ERROR: INVALID CELL COORDINATES FOUND WHEN COMPUTING COST\n");
 		return Math::INF;
 	}
+	c = _cellcosts[ci];
+	b = _cellcosts[bi];
 	double g1 = _g(s1);
 	double g2 = _g(s2);
 	double vs;

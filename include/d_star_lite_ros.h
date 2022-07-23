@@ -189,32 +189,28 @@ namespace DStarLite
             // Set current and goal position
             Map::Cell *_current = (*_map)(_config._start.second, _config._start.first);
             Map::Cell *_goal = (*_map)(_config._goal.second, _config._goal.first);
+            int k, c, v;
 
             // Build map
-            for (int i = 0; i < height; i++)
+            for (unsigned int i = 0; i < height; i++)
             {
-                for (int j = 0; j < width; j++)
+                for (unsigned int j = 0; j < width; j++)
                 {
-                    int k = (i * width) + j;
-                    int c = _data[k];
-                    double v;
+                    k = (i * width) + j;
+                    c = _data[k];
 
                     // Cell is unwalkable
                     if (c >= _config._obstacle_cost)
                     {
-                        v = Map::Cell::COST_UNWALKABLE;
+                        v = _config._obstacle_cost;
                     }
                     else if (c < 0)
                     {
-                        v = (double)_config._unknown_cost;
-                    }
-                    else if (c == 0)
-                    {
-                        v = 1.0;
+                        v = _config._unknown_cost;
                     }
                     else
                     {
-                        v = (double)c;
+                        v = c;
                     }
 
                     (*_map)(i, j)->cost = v;
@@ -222,7 +218,7 @@ namespace DStarLite
             }
 
             // Make planner
-            _planner = new Planner(_map, _current, _goal);
+            _planner = new Planner(_map, _current, _goal, _config._obstacle_cost);
         }
         /**
          * Deconstructor.
@@ -282,34 +278,32 @@ namespace DStarLite
             unsigned int rows, cols;
             rows = _map->rows();
             cols = _map->cols();
+            int k, c, v;
+
             for (unsigned int i = 0; i < rows; i++)
             {
                 for (unsigned int j = 0; j < cols; j++)
                 {
-                    unsigned int k = (i * cols) + j;
+                    k = (i * cols) + j;
                     // Check if an update is required
                     if (_data[k] != new_data[k])
                     {
                         _map_updated = true;
                         _data[k] = new_data[k];
-                        int c = _data[k];
-                        double v;
+                        c = _data[k];
+
                         // Cell is unwalkable
                         if (c >= _config._obstacle_cost)
                         {
-                            v = Map::Cell::COST_UNWALKABLE;
+                            v = _config._obstacle_cost;
                         }
                         else if (c < 0)
                         {
-                            v = (double)_config._unknown_cost;
-                        }
-                        else if (c == 0)
-                        {
-                            v = 1.0;
+                            v = _config._unknown_cost;
                         }
                         else
                         {
-                            v = (double)c;
+                            v = c;
                         }
                         _planner->update_cell_cost((*_map)(i, j), v);
                     }

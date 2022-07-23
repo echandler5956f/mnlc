@@ -196,9 +196,9 @@ unsigned int Map::rows()
  *
  * @param unsigned int x-coordinate
  * @param unsigned int y-coordinate
- * @param double [optional] cost of the cell
+ * @param int [optional] cost of the cell
  */
-Map::Cell::Cell(unsigned int x, unsigned int y, double cost)
+Map::Cell::Cell(unsigned int x, unsigned int y, int cost)
 {
 	_init = false;
 

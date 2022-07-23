@@ -39,8 +39,9 @@ namespace DStarLite
 		 * @param Map* map
 		 * @param Map::Cell* start cell
 		 * @param Map::Cell* goal cell
+		 * @param int Nc
 		 */
-		Planner(Map *map, Map::Cell *start, Map::Cell *goal);
+		Planner(Map *map, Map::Cell *start, Map::Cell *goal, int Nc);
 
 		/**
 		 * Deconstructor.
@@ -81,10 +82,10 @@ namespace DStarLite
 		 * Update map.
 		 *
 		 * @param Map::Cell* cell to update
-		 * @param double new cost of the cell
+		 * @param int new cost of the cell
 		 * @return void
 		 */
-		void update_cell_cost(Map::Cell *u, double cost);
+		void update_cell_cost(Map::Cell *u, int cost);
 
 	protected:
 		/**
@@ -123,9 +124,14 @@ namespace DStarLite
 		Map::Cell *_goal;
 
 		/**
-		 * @var double* cellcosts with indices representing original cell costs which map to non-linearly spaced cell costs
+		 * @var int Nc: all distinct traversal costs including infinite cost of traversing an obstacle and Mc: distinct traversable cell costs
 		 */
-		double _cellcosts[70];
+		int _Nc, _Mc;
+
+		/**
+		 * @var std::vector<double> cellcosts with indices representing original cell costs which map to non-linearly spaced cell costs
+		 */
+		std::vector<double> _cellcosts;
 
 		/**
 		 * @var double*** interpolation lookup table for quickly aquiring cell costs.
