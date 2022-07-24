@@ -26,8 +26,7 @@ Planner::Planner(Map *map, Map::Cell *start, Map::Cell *goal, int Nc)
 	_Nc = Nc;
 	_Mc = Nc - 1;
 
-	_construct_cellcosts(_Nc);
-	// _construct_interpolation_table(_Nc, _Mc);
+	_construct_interpolation_table(_Nc, _Mc);
 
 	_rhs(_goal, 0.0);
 
@@ -86,20 +85,20 @@ bool Planner::replan()
 	}
 
 	Map::Cell *current = _start;
-	printf("Path start:\n{");
-	// Follow the path with the least cost until goal is reached
-	while (current != _goal)
-	{
-		if (current == nullptr)
-		{
-			printf("\nInvalid cell.\n");
-			return false;
-		}
-		printf("[%u, %u]", current->x(), current->y());
-		_path.push_back(current);
-		current = current->bptr();
-	}
-	printf("}\n");
+	// printf("Path start:\n{");
+	// // Follow the path with the least cost until goal is reached
+	// while (current != _goal)
+	// {
+	// 	if (current == nullptr)
+	// 	{
+	// 		printf("\nInvalid cell.\n");
+	// 		return false;
+	// 	}
+	// 	printf("[%u, %u]", current->x(), current->y());
+	// 	_path.push_back(current);
+	// 	current = current->bptr();
+	// }
+	// printf("}\n");
 
 	_path.push_back(current);
 
@@ -237,7 +236,7 @@ void Planner::_construct_interpolation_table(unsigned int Nc, unsigned int Mc)
 
 	_construct_cellcosts(Nc);
 
-	unsigned int ci, bi, f;
+	int ci, bi, f;
 	double c, b, x, y;
 
 	ci = 0;
@@ -253,16 +252,16 @@ void Planner::_construct_interpolation_table(unsigned int Nc, unsigned int Mc)
 			f = 1;
 			while (f <= Mc)
 			{
-				if (f < b)
+				if (Math::less((double)(f), b))
 				{
-					if (c <= f)
+					if (Math::less(c, (double)(f)) || Math::equals(c, (double)(f)))
 					{
 						_I[ci][bi][f] = c * Math::SQRT2;
 					}
 					else
 					{
-						y = min((double)(f) / (sqrt(pow(c, 2) - pow(f, 2))), 1.0);
-						_I[ci][bi][f] = c * sqrt(1.0 + pow(y, 2)) + f * (1.0 - y);
+						y = min(((double)(f)) / (sqrt(pow(c, 2) - pow((double)(f), 2))), 1.0);
+						_I[ci][bi][f] = (c * sqrt(1.0 + pow(y, 2))) + (((double)(f)) * (1.0 - y));
 					}
 				}
 				else
@@ -274,7 +273,7 @@ void Planner::_construct_interpolation_table(unsigned int Nc, unsigned int Mc)
 					else
 					{
 						x = 1.0 - min(b / (sqrt(pow(c, 2) - pow(b, 2))), 1.0);
-						_I[ci][bi][f] = c * sqrt(1.0 + pow((1.0 - x), 2));
+						_I[ci][bi][f] = (c * sqrt(1.0 + pow((1.0 - x), 2))) + (b * x);
 					}
 				}
 				f++;
@@ -493,29 +492,13 @@ double Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 	else
 	{
 		double f = g1 - g2;
-		if (Math::less(f, b) || Math::equals(f, b))
+		if (Math::greater(f, min(c, b)))
 		{
-			if (Math::less(c, f) || Math::equals(c, f))
-			{
-				vs = c * Math::SQRT2 + g2;
-			}
-			else
-			{
-				double y = min(f / (sqrt(pow(c, 2) - pow(f, 2))), 1.0);
-				vs = c * sqrt(1.0 + pow(y, 2)) + f * (1.0 - y) + g2;
-			}
+			vs = _I[ci][bi][_Mc] + g2;
 		}
 		else
 		{
-			if (Math::less(c, b) || Math::equals(c, b))
-			{
-				vs = c * Math::SQRT2 + g2;
-			}
-			else
-			{
-				double x = 1.0 - min(b / (sqrt(pow(c, 2) - pow(b, 2))), 1.0);
-				vs = c * sqrt(1.0 + pow((1.0 - x), 2)) + b * x + g2;
-			}
+			vs = _I[ci][bi][(int)f] + g2;
 		}
 	}
 	return vs;

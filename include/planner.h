@@ -134,7 +134,7 @@ namespace DStarLite
 		std::vector<double> _cellcosts;
 
 		/**
-		 * @var double*** interpolation lookup table for quickly aquiring cell costs.
+		 * @var double*** interpolation lookup table for quickly aquiring cell costs
 		 */
 		double _I[70][70][69];
 

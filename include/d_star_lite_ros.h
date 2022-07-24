@@ -14,6 +14,7 @@
 #include <std_srvs/Empty.h>
 #include <nav_msgs/Path.h>
 #include <Eigen/Dense>
+#include <inttypes.h>
 #include <functional>
 #include <algorithm>
 #include "ros/ros.h"

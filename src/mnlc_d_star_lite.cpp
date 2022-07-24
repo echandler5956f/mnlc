@@ -64,11 +64,18 @@ int main(int argc, char **argv)
     DStarLite::DStarLiteROS::Config config(mapdata, start, goal, obstacle_cost, unknown_cost, scan_radius,
                                            true, heuristic_weight, obstacle_tolerance, search_tolerance, max_its);
     DStarLite::DStarLiteROS ds(config);
+    uint64_t timer_start, timer_end;
     ros::Rate loop_rate(60);
     while (ros::ok())
     {
+        // timer_start = ros::Time::now().toNSec();
         list<Map::Cell *> path = ds.execute(start);
+        // timer_end = ros::Time::now().toNSec();
+        // printf("Execute Field D* took: %" PRIu64 "\n", timer_end - timer_start);
+        // timer_start = ros::Time::now().toNSec();
         ds.update_map(mapdata.data);
+        // timer_end = ros::Time::now().toNSec();
+        // printf("Update map of Field D* took: %" PRIu64 "\n", timer_end - timer_start);
         ros::spinOnce();
         loop_rate.sleep();
     }
