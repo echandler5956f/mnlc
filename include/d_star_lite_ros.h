@@ -26,6 +26,7 @@
 nav_msgs::OccupancyGrid mapdata;
 _Float32 heuristic_weight;
 int obstacle_tolerance;
+nav_msgs::Path path_p;
 int search_tolerance;
 _Float32 scan_radius;
 _Float32 start_time;
@@ -151,9 +152,9 @@ namespace DStarLite
          */
         Map *_map;
         /**
-         * @var list<Map::Cell *> latest path
+         * @var vector<pair<double, double>> latest path
          */
-        list<Map::Cell *> _path;
+        vector<pair<double, double>> _path;
         /**
          * @var Planner* planner
          */
@@ -228,18 +229,14 @@ namespace DStarLite
         {
             delete _map;
             delete _planner;
-            for (auto &cell : _path)
-            {
-                delete cell;
-            }
         }
         /**
          * Main execution method.
          *
          * @param Map::Cell* current cell
-         * @return list<Map::Cell *> path
+         * @return vector<pair<double, double>> path
          */
-        list<Map::Cell *> execute(pair<unsigned int, unsigned int> current)
+        vector<pair<double, double>> execute(pair<unsigned int, unsigned int> current)
         {
             // Step
             _planner->start((*_map)(current.second, current.first));
@@ -256,15 +253,6 @@ namespace DStarLite
                 }
 
                 _path = _planner->path();
-                // if (_config._verbose)
-                // {
-                //     printf("Path start:\n{");
-                //     for (auto &cell : _path)
-                //     {
-                //         printf("[%u, %u]", cell->x(), cell->y());
-                //     }
-                //     printf("}\n");
-                // }
             }
             return _path;
         }

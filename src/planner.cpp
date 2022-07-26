@@ -43,11 +43,11 @@ Planner::~Planner()
 /**
  * Returns the generated path.
  *
- * @return list<Map::Cell*>
+ * @return vector<pair<double, double>>
  */
-list<Map::Cell *> Planner::path()
+vector<pair<double, double>> Planner::path()
 {
-	return _path;
+	return _interpol_path;
 }
 
 /**
@@ -84,23 +84,13 @@ bool Planner::replan()
 		return false;
 	}
 
-	Map::Cell *current = _start;
-	// printf("Path start:\n{");
-	// // Follow the path with the least cost until goal is reached
-	// while (current != _goal)
-	// {
-	// 	if (current == nullptr)
-	// 	{
-	// 		printf("\nInvalid cell.\n");
-	// 		return false;
-	// 	}
-	// 	printf("[%u, %u]", current->x(), current->y());
-	// 	_path.push_back(current);
-	// 	current = current->bptr();
-	// }
-	// printf("}\n");
+	result = _extract_path();
 
-	_path.push_back(current);
+	// Couldn't find a path
+	if (!result)
+	{
+		return false;
+	}
 
 	return true;
 }
@@ -148,7 +138,7 @@ void Planner::update_cell_cost(Map::Cell *u, int cost)
 			{
 				if (u->is_corner(cnrs[i]->bptr()) || u->is_corner(cnrs[i]->ccknbr(cnrs[i]->bptr())))
 				{
-					if (!Math::equals(_rhs(cnrs[i]), _compute_cost(cnrs[i], cnrs[i]->bptr(), cnrs[i]->ccknbr(cnrs[i]->bptr()))))
+					if (!Math::equals(_rhs(cnrs[i]), _compute_cost(cnrs[i], cnrs[i]->bptr(), cnrs[i]->ccknbr(cnrs[i]->bptr())).first))
 					{
 						if (Math::less(_g(cnrs[i]), _rhs(cnrs[i])) || _open_hash.find(cnrs[i]) == _open_hash.end())
 						{
@@ -256,24 +246,32 @@ void Planner::_construct_interpolation_table(unsigned int Nc, unsigned int Mc)
 				{
 					if (Math::less(c, (double)(f)) || Math::equals(c, (double)(f)))
 					{
-						_I[ci][bi][f] = c * Math::SQRT2;
+						_I[ci][bi][f][0] = c * Math::SQRT2;
+						_I[ci][bi][f][1] = 1.0;
+						_I[ci][bi][f][2] = 0.0;
 					}
 					else
 					{
 						y = min(((double)(f)) / (sqrt(pow(c, 2) - pow((double)(f), 2))), 1.0);
-						_I[ci][bi][f] = (c * sqrt(1.0 + pow(y, 2))) + (((double)(f)) * (1.0 - y));
+						_I[ci][bi][f][0] = (c * sqrt(1.0 + pow(y, 2))) + (((double)(f)) * (1.0 - y));
+						_I[ci][bi][f][1] = 1.0;
+						_I[ci][bi][f][2] = y;
 					}
 				}
 				else
 				{
 					if (Math::less(c, b) || Math::equals(c, b))
 					{
-						_I[ci][bi][f] = c * Math::SQRT2;
+						_I[ci][bi][f][0] = c * Math::SQRT2;
+						_I[ci][bi][f][1] = 1.0;
+						_I[ci][bi][f][2] = 0.0;
 					}
 					else
 					{
 						x = 1.0 - min(b / (sqrt(pow(c, 2) - pow(b, 2))), 1.0);
-						_I[ci][bi][f] = (c * sqrt(1.0 + pow((1.0 - x), 2))) + (b * x);
+						_I[ci][bi][f][0] = (c * sqrt(1.0 + pow((1.0 - x), 2))) + (b * x);
+						_I[ci][bi][f][1] = x;
+						_I[ci][bi][f][2] = 1.0;
 					}
 				}
 				f++;
@@ -332,7 +330,7 @@ bool Planner::_compute_shortest_path()
 					rhs_old = _rhs(nbrs[i]);
 					if (nbrs[i]->ccknbr(u) != nullptr)
 					{
-						cost_interpol = _compute_cost(nbrs[i], u, nbrs[i]->ccknbr(u));
+						cost_interpol = _compute_cost(nbrs[i], u, nbrs[i]->ccknbr(u)).first;
 						if (Math::greater(_rhs(nbrs[i]), cost_interpol))
 						{
 							_rhs(nbrs[i], cost_interpol);
@@ -341,10 +339,10 @@ bool Planner::_compute_shortest_path()
 					}
 					if (nbrs[i]->cknbr(u) != nullptr)
 					{
-						cost_interpol = _compute_cost(nbrs[i], u, nbrs[i]->cknbr(u));
+						cost_interpol = _compute_cost(nbrs[i], u, nbrs[i]->cknbr(u)).first;
 						if (Math::greater(_rhs(nbrs[i]), cost_interpol))
 						{
-							_rhs(nbrs[i], _compute_cost(nbrs[i], nbrs[i]->cknbr(u), u));
+							_rhs(nbrs[i], _compute_cost(nbrs[i], nbrs[i]->cknbr(u), u).first);
 							nbrs[i]->bptr(nbrs[i]->cknbr(u));
 						}
 					}
@@ -370,7 +368,7 @@ bool Planner::_compute_shortest_path()
 					{
 						if (nbrs[i]->bptr() == u || nbrs[i]->bptr() == nbrs[i]->cknbr(u))
 						{
-							if (!Math::equals(_rhs(nbrs[i]), _compute_cost(nbrs[i], nbrs[i]->bptr(), nbrs[i]->ccknbr(nbrs[i]->bptr()))))
+							if (!Math::equals(_rhs(nbrs[i]), _compute_cost(nbrs[i], nbrs[i]->bptr(), nbrs[i]->ccknbr(nbrs[i]->bptr())).first))
 							{
 								if (Math::less(_g(nbrs[i]), _rhs(nbrs[i])) || _open_hash.find(nbrs[i]) == _open_hash.end())
 								{
@@ -402,14 +400,14 @@ bool Planner::_compute_shortest_path()
  * @param Map::Cell* cell s
  * @param Map::Cell* cell sa
  * @param Map::Cell* cell sb
- * @return double cost of s
+ * @return pair<double, pair<pair<double, double>, pair<double, double>>> cost of s and point1 x,y and point2 x,y
  */
-double Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
+pair<double, pair<pair<double, double>, pair<double, double>>> Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 {
 	if (s == nullptr || sa == nullptr || sb == nullptr)
 	{
 		printf("ERROR: NULL CELL FOUND WHEN COMPUTING COST\n");
-		return Math::INF;
+		return make_pair(Math::INF, make_pair(make_pair(Math::INF, Math::INF), make_pair(Math::INF, Math::INF)));
 	}
 	Map::Cell **nbrs = s->nbrs();
 	Map::Cell *s1;
@@ -425,7 +423,7 @@ double Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 		s1 = sa;
 		s2 = sb;
 	}
-	int bi, ci;
+	int bi, ci, edge;
 	double b, c;
 	int dx1 = s1->x() - s->x();
 	int dy1 = -(s1->y() - s->y());
@@ -433,75 +431,204 @@ double Planner::_compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 	int dy2 = -(s2->y() - s->y());
 	if (dx1 == 1 && dy1 == 0 && dx2 == 1 && dy2 == 1)
 	{
+		edge = 1;
 		ci = s->cost;
 		bi = nbrs[1]->cost;
 	}
 	else if (dx1 == 0 && dy1 == 1 && dx2 == 1 && dy2 == 1)
 	{
+		edge = 2;
 		ci = s->cost;
 		bi = nbrs[7]->cost;
 	}
 	else if (dx1 == 0 && dy1 == 1 && dx2 == -1 && dy2 == 1)
 	{
+		edge = 3;
 		ci = nbrs[7]->cost;
 		bi = s->cost;
 	}
 	else if (dx1 == -1 && dy1 == 0 && dx2 == -1 && dy2 == 1)
 	{
+		edge = 4;
 		ci = nbrs[7]->cost;
 		bi = nbrs[0]->cost;
 	}
 	else if (dx1 == -1 && dy1 == 0 && dx2 == -1 && dy2 == -1)
 	{
+		edge = 5;
 		ci = nbrs[0]->cost;
 		bi = nbrs[7]->cost;
 	}
 	else if (dx1 == 0 && dy1 == -1 && dx2 == -1 && dy2 == -1)
 	{
+		edge = 6;
 		ci = nbrs[0]->cost;
 		bi = nbrs[1]->cost;
 	}
 	else if (dx1 == 0 && dy1 == -1 && dx2 == 1 && dy2 == -1)
 	{
+		edge = 7;
 		ci = nbrs[1]->cost;
 		bi = nbrs[0]->cost;
 	}
 	else if (dx1 == 1 && dy1 == 0 && dx2 == 1 && dy2 == -1)
 	{
+		edge = 8;
 		ci = nbrs[1]->cost;
 		bi = s->cost;
 	}
 	else
 	{
 		printf("ERROR: INVALID CELL COORDINATES FOUND WHEN COMPUTING COST\n");
-		return Math::INF;
+		return make_pair(Math::INF, make_pair(make_pair(Math::INF, Math::INF), make_pair(Math::INF, Math::INF)));
 	}
 	c = _cellcosts[ci];
 	b = _cellcosts[bi];
 	double g1 = _g(s1);
 	double g2 = _g(s2);
-	double vs;
+	double vs, x1, y1, x2, y2, tx, ty;
 	if (Math::equals(min(c, b), Map::Cell::COST_UNWALKABLE))
 	{
-		vs = Math::INF;
+		// no valid path
+		return make_pair(Math::INF, make_pair(make_pair(Math::INF, Math::INF), make_pair(Math::INF, Math::INF)));
 	}
 	else if (Math::less(g1, g2) || Math::equals(g1, g2))
 	{
+		// goes straight to s1
 		vs = min(c, b) + g1;
+		tx = 1.0;
+		ty = 0.0;
+		x2 = 0.0;
+		y2 = 0.0;
 	}
 	else
 	{
+		// f is the cost of traversing the right edge
 		double f = g1 - g2;
 		if (Math::greater(f, min(c, b)))
 		{
-			vs = _I[ci][bi][_Mc] + g2;
+			// take a straight-line path from s to some point sy on the right edge
+			vs = _I[ci][bi][_Mc][0] + g2;
+			tx = 1.0;
+			ty = _I[ci][bi][_Mc][2];
+			x2 = 0.0;
+			y2 = 0.0;
 		}
 		else
 		{
-			vs = _I[ci][bi][(int)f] + g2;
+			// travel a distance x along the bottom edge then take a straight-line path to s2
+			vs = _I[ci][bi][(int)f][0] + g2;
+			tx = _I[ci][bi][(int)f][1];
+			ty = 0.0;
+			x2 = 1.0;
+			y2 = 1.0;
 		}
 	}
-	return vs;
+
+	switch (edge)
+	{
+	case 1:
+		x1 = tx;
+		y1 = ty;
+		break;
+	case 2:
+		x1 = ty;
+		y1 = tx;
+		break;
+	case 3:
+		x1 = -ty;
+		y1 = tx;
+		x2 = -x2;
+		break;
+	case 4:
+		x1 = -tx;
+		y1 = ty;
+		x2 = -x2;
+		break;
+	case 5:
+		x1 = -tx;
+		y1 = -ty;
+		x2 = -x2;
+		y2 = -y2;
+		break;
+	case 6:
+		x1 = -ty;
+		y1 = -tx;
+		x2 = -x2;
+		y2 = -y2;
+		break;
+	case 7:
+		x1 = ty;
+		y1 = -tx;
+		y2 = -y2;
+		break;
+	case 8:
+		x1 = tx;
+		y1 = -ty;
+		y2 = -y2;
+		break;
+	default:
+		printf("ERROR: INVALID EDGE\n"); // should never reach here
+		return make_pair(Math::INF, make_pair(make_pair(Math::INF, Math::INF), make_pair(Math::INF, Math::INF)));
+		break;
+	}
+	return make_pair(vs, make_pair(make_pair(x1, y1), make_pair(x2, y2)));
+}
+
+/**
+ * Extracts interpolated path
+ *
+ * @return bool successful
+ */
+bool Planner::_extract_path()
+{
+	pair<pair<double, double>, pair<double, double>> points;
+	pair<double, double> point, tpoint;
+	double x, y;
+	Map::Cell *current = _start;
+	printf("Path start:\n{");
+	// Follow the path with the least cost until goal is reached
+	while (current != _goal)
+	{
+		if (current == nullptr)
+		{
+			printf("\nInvalid cell.\n");
+			return false;
+		}
+		printf("[%u, %u]", current->x(), current->y());
+		_path.push_back(current);
+		current = current->bptr();
+	}
+	printf("}\n");
+
+	_path.push_back(current);
+	point = make_pair(_path[0]->x(), _path[0]->y());
+	_interpol_path.push_back(point);
+	for (unsigned int i = 0; i < _path.size() - 1; i++)
+	{
+		if (_path[i] == nullptr || _path[i]->bptr() == nullptr || _path[i]->ccknbr(_path[i]->bptr()) == nullptr)
+		{
+			printf("ERROR: A CELL NEEDED TO COMPUTE THE INTERPOLATED PATH WAS NULL\n"); // this should not be possible
+			return false;
+		}
+		points = _compute_cost(_path[i], _path[i]->bptr(), _path[i]->ccknbr(_path[i]->bptr())).second;
+		if (Math::equals(points.first.first, Math::INF) || Math::equals(points.first.second, Math::INF) || Math::equals(points.second.first, Math::INF) || Math::equals(points.second.second, Math::INF))
+		{
+			printf("ERROR: PATH POINT WAS INFINITE\n"); // this should not be possible
+			return false;
+		}
+		tpoint = make_pair(_path[i]->x(), _path[i]->y());
+		point = make_pair(tpoint.first + points.first.first, tpoint.second + points.first.second);
+		_interpol_path.push_back(point);
+		if (!Math::equals(points.second.first, 0.0) || !Math::equals(points.second.second, 0.0))
+		{
+			point = make_pair(tpoint.first + points.second.first, tpoint.second + points.second.second);
+			_interpol_path.push_back(point);
+		}
+	}
+	point = make_pair(_path[_path.size() - 1]->x(), _path[_path.size() - 1]->y());
+	_interpol_path.push_back(point);
+	return true;
 }
 
 /**
@@ -533,7 +660,7 @@ double Planner::_g(Map::Cell *u, double value)
  */
 double Planner::_h(Map::Cell *a, Map::Cell *b)
 {
-	return (0.5 * std::sqrt(std::pow(b->x() - a->x(), 2) + std::pow(b->y() - a->y(), 2)));
+	return (0.5 * sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)));
 }
 
 /**
@@ -619,7 +746,7 @@ pair<Map::Cell *, double> Planner::_min_interpol_succ(Map::Cell *u)
 	{
 		if (nbrs[i] != nullptr && u->ccknbr(nbrs[i]) != nullptr)
 		{
-			tmp_cost = _compute_cost(u, nbrs[i], u->ccknbr(nbrs[i]));
+			tmp_cost = _compute_cost(u, nbrs[i], u->ccknbr(nbrs[i])).first;
 
 			if (Math::less(tmp_cost, min_cost))
 			{

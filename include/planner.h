@@ -51,9 +51,9 @@ namespace DStarLite
 		/**
 		 * Returns the generated path.
 		 *
-		 * @return list<Map::Cell*> path
+		 * @return vector<pair<double, double>> path
 		 */
-		list<Map::Cell *> path();
+		vector<pair<double, double>> path();
 
 		/**
 		 * Gets/Sets a new goal.
@@ -100,9 +100,14 @@ namespace DStarLite
 		Map *_map;
 
 		/**
-		 * @var list<Map::Cell*> path
+		 * @var vector<Map::Cell*> path
 		 */
-		list<Map::Cell *> _path;
+		vector<Map::Cell *> _path;
+
+		/**
+		 * @var vector<pair<double, double>> interpolated path
+		 */
+		vector<pair<double, double>> _interpol_path;
 
 		/**
 		 * @var multimap open list
@@ -129,14 +134,14 @@ namespace DStarLite
 		int _Nc, _Mc;
 
 		/**
-		 * @var std::vector<double> cellcosts with indices representing original cell costs which map to non-linearly spaced cell costs
+		 * @var vector<double> cellcosts with indices representing original cell costs which map to non-linearly spaced cell costs
 		 */
-		std::vector<double> _cellcosts;
+		vector<double> _cellcosts;
 
 		/**
-		 * @var double*** interpolation lookup table for quickly aquiring cell costs
+		 * @var double**** interpolation lookup table for quickly aquiring cell costs and optimal XY given a cell and two consecutive neighbors.
 		 */
-		double _I[70][70][69];
+		double _I[70][70][69][3];
 
 		/**
 		 * Generates a cell.
@@ -176,9 +181,16 @@ namespace DStarLite
 		 * @param Map::Cell* cell s
 		 * @param Map::Cell* cell sa
 		 * @param Map::Cell* cell sb
-		 * @return double cost of s
+		 * @return pair<double, pair<pair<double, double>, pair<double, double>>> cost of s and point1 x,y and point2 x,y
 		 */
-		double _compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb);
+		pair<double, pair<pair<double, double>, pair<double, double>>> _compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb);
+
+		/**
+		 * Extracts interpolated path
+		 *
+		 * @return bool successful
+		 */
+		bool _extract_path();
 
 		/**
 		 * Gets/Sets g value for a cell.

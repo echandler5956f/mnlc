@@ -21,6 +21,7 @@ int main(int argc, char **argv)
     nav_msgs::OccupancyGrid global_costmap;
     tf::TransformListener listener;
     ros::Subscriber cspace_sub = n.subscribe("/mnlc_global_costmap_opencv/cspace", 1, update_map);
+    ros::Publisher path_pub = n.advertise<nav_msgs::Path>("/Field_D_Star", 1);
     ros::Time st;
     st.fromSec(start_time);
     ros::Time::sleepUntil(st);
@@ -59,6 +60,10 @@ int main(int argc, char **argv)
         exit(0);
     }
     listener.waitForTransform("/odom", "/base_footprint", ros::Time(0), ros::Duration(timeout));
+    geometry_msgs::PoseStamped ps;
+    ps.header.frame_id = mapdata.header.frame_id;
+    ps.pose.orientation.w = 1.0;
+    path_p.header.frame_id = mapdata.header.frame_id;
     pair<unsigned int, unsigned int> start = std::make_pair(138, 138);
     pair<unsigned int, unsigned int> goal = std::make_pair(198, 161);
     DStarLite::DStarLiteROS::Config config(mapdata, start, goal, obstacle_cost, unknown_cost, scan_radius,
@@ -69,9 +74,19 @@ int main(int argc, char **argv)
     while (ros::ok())
     {
         // timer_start = ros::Time::now().toNSec();
-        list<Map::Cell *> path = ds.execute(start);
+        vector<pair<double, double>> path = ds.execute(start);
         // timer_end = ros::Time::now().toNSec();
         // printf("Execute Field D* took: %" PRIu64 "\n", timer_end - timer_start);
+        path_p.header.stamp = ros::Time::now();
+        path_p.poses.clear();
+        for (unsigned int i = 0; i < path.size(); i++)
+        {
+            ps.pose.position.x = (path[i].first * mapdata.info.resolution) + mapdata.info.origin.position.x;
+            ps.pose.position.y = (path[i].second * mapdata.info.resolution) + mapdata.info.origin.position.y;
+            ps.header.stamp = ros::Time::now();
+            path_p.poses.push_back(ps);
+        }
+        path_pub.publish(path_p);
         // timer_start = ros::Time::now().toNSec();
         ds.update_map(mapdata.data);
         // timer_end = ros::Time::now().toNSec();
