@@ -75,16 +75,17 @@ Map::Map(unsigned int rows, unsigned int cols)
 				if (j != 0)
 				{
 					// Top left
-					nbrs[0] = _cells[i - 1][j - 1];
+					nbrs[3] = _cells[i - 1][j - 1];
 				}
 
 				// Top middle
-				nbrs[1] = _cells[i - 1][j];
+				nbrs[2] = _cells[i - 1][j];
+				cnrs[2] = _cells[i - 1][j];
 
 				if (j < cols - 1)
 				{
 					// Top right
-					nbrs[2] = _cells[i - 1][j + 1];
+					nbrs[1] = _cells[i - 1][j + 1];
 					cnrs[1] = _cells[i - 1][j + 1];
 				}
 			}
@@ -92,7 +93,7 @@ Map::Map(unsigned int rows, unsigned int cols)
 			if (j < cols - 1)
 			{
 				// Middle right
-				nbrs[3] = _cells[i][j + 1];
+				nbrs[0] = _cells[i][j + 1];
 				cnrs[0] = _cells[i][j + 1];
 			}
 
@@ -102,25 +103,23 @@ Map::Map(unsigned int rows, unsigned int cols)
 				if (j < cols - 1)
 				{
 					// Bottom right
-					nbrs[4] = _cells[i + 1][j + 1];
-					cnrs[1] = _cells[i + 1][j + 1];
+					nbrs[7] = _cells[i + 1][j + 1];
 				}
 
 				// Bottom middle
-				nbrs[5] = _cells[i + 1][j];
-				cnrs[2] = _cells[i + 1][j];
+				nbrs[6] = _cells[i + 1][j];
 
 				if (j != 0)
 				{
 					// Bottom left
-					nbrs[6] = _cells[i + 1][j - 1];
+					nbrs[5] = _cells[i + 1][j - 1];
 				}
 			}
 
 			if (j != 0)
 			{
 				// Middle left
-				nbrs[7] = _cells[i][j - 1];
+				nbrs[4] = _cells[i][j - 1];
 			}
 
 			cnrs[3] = _cells[i][j];
@@ -270,40 +269,37 @@ Map::Cell *Map::Cell::cknbr(Cell *s1)
 	{
 		return nullptr;
 	}
-	int dx = s1->_x - _x;
-	int dy = -(s1->_y - _y);
-	if (dx == 1 && dy == 0)
-	{
-		return _nbrs[2];
-	}
-	else if (dx == 1 && dy == -1)
-	{
-		return _nbrs[3];
-	}
-	else if (dx == 0 && dy == -1)
-	{
-		return _nbrs[4];
-	}
-	else if (dx == -1 && dy == -1)
-	{
-		return _nbrs[5];
-	}
-	else if (dx == -1 && dy == 0)
-	{
-
-		return _nbrs[6];
-	}
-	else if (dx == -1 && dy == 1)
+	if (s1->x() == _nbrs[0]->x() && s1->y() == _nbrs[0]->y())
 	{
 		return _nbrs[7];
 	}
-	else if (dx == 0 && dy == 1)
+	else if (s1->x() == _nbrs[1]->x() && s1->y() == _nbrs[1]->y())
 	{
 		return _nbrs[0];
 	}
-	else if (dx == 1 && dy == 1)
+	else if (s1->x() == _nbrs[2]->x() && s1->y() == _nbrs[2]->y())
 	{
 		return _nbrs[1];
+	}
+	else if (s1->x() == _nbrs[3]->x() && s1->y() == _nbrs[3]->y())
+	{
+		return _nbrs[2];
+	}
+	else if (s1->x() == _nbrs[4]->x() && s1->y() == _nbrs[4]->y())
+	{
+		return _nbrs[3];
+	}
+	else if (s1->x() == _nbrs[5]->x() && s1->y() == _nbrs[5]->y())
+	{
+		return _nbrs[4];
+	}
+	else if (s1->x() == _nbrs[6]->x() && s1->y() == _nbrs[6]->y())
+	{
+		return _nbrs[5];
+	}
+	else if (s1->x() == _nbrs[7]->x() && s1->y() == _nbrs[7]->y())
+	{
+		return _nbrs[6];
 	}
 	else
 	{
@@ -323,41 +319,37 @@ Map::Cell *Map::Cell::ccknbr(Cell *s1)
 	{
 		return nullptr;
 	}
-	int dx = s1->_x - _x;
-	int dy = -(s1->_y - _y);
-	if (dx == 1 && dy == 0)
+		if (s1->x() == _nbrs[0]->x() && s1->y() == _nbrs[0]->y())
 	{
-		return _nbrs[4];
-	}
-	else if (dx == 1 && dy == -1)
-	{
-		return _nbrs[5];
-	}
-	else if (dx == 0 && dy == -1)
-	{
-		return _nbrs[6];
-	}
-	else if (dx == -1 && dy == -1)
-	{
-		return _nbrs[7];
-	}
-	else if (dx == -1 && dy == 0)
-	{
-		return _nbrs[0];
-	}
-	else if (dx == -1 && dy == 1)
-	{
-
 		return _nbrs[1];
 	}
-	else if (dx == 0 && dy == 1)
+	else if (s1->x() == _nbrs[1]->x() && s1->y() == _nbrs[1]->y())
 	{
 		return _nbrs[2];
 	}
-	else if (dx == 1 && dy == 1)
+	else if (s1->x() == _nbrs[2]->x() && s1->y() == _nbrs[2]->y())
 	{
-
 		return _nbrs[3];
+	}
+	else if (s1->x() == _nbrs[3]->x() && s1->y() == _nbrs[3]->y())
+	{
+		return _nbrs[4];
+	}
+	else if (s1->x() == _nbrs[4]->x() && s1->y() == _nbrs[4]->y())
+	{
+		return _nbrs[5];
+	}
+	else if (s1->x() == _nbrs[5]->x() && s1->y() == _nbrs[5]->y())
+	{
+		return _nbrs[6];
+	}
+	else if (s1->x() == _nbrs[6]->x() && s1->y() == _nbrs[6]->y())
+	{
+		return _nbrs[7];
+	}
+	else if (s1->x() == _nbrs[7]->x() && s1->y() == _nbrs[7]->y())
+	{
+		return _nbrs[0];
 	}
 	else
 	{

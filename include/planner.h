@@ -105,6 +105,12 @@ namespace DStarLite
 		vector<Map::Cell *> _path;
 
 		/**
+		 * @var unordered_set<Map::Cell*> path set
+		 * 
+		 */
+		unordered_set<Map::Cell *> _path_set;
+
+		/**
 		 * @var vector<pair<double, double>> interpolated path
 		 */
 		vector<pair<double, double>> _interpol_path;
@@ -154,19 +160,19 @@ namespace DStarLite
 		/**
 		 * Initializes cell cost table, which indices representing original cell costs which map to non-lineraly space cell costs
 		 *
-		 * @param unsigned int Nc number of distinct traversal costs (including the infinite cost of traversing an obstacle cell)
+		 * @param int Nc number of distinct traversal costs (including the infinite cost of traversing an obstacle cell)
 		 * @return void
 		 */
-		void _construct_cellcosts(unsigned int Nc);
+		void _construct_cellcosts(int Nc);
 
 		/**
 		 * Generates interpolation lookup table for quickly aquiring cell costs.
 		 *
-		 * @param unsigned int Nc number of distinct traversal costs (including the infinite cost of traversing an obstacle cell)
-		 * @param unsigned int Mc maximum traversal cost of any traversable (i.e. non-obstacle) cell
+		 * @param int Nc number of distinct traversal costs (including the infinite cost of traversing an obstacle cell)
+		 * @param int Mc maximum traversal cost of any traversable (i.e. non-obstacle) cell
 		 * @return void
 		 */
-		void _construct_interpolation_table(unsigned int Nc, unsigned int Mc);
+		void _construct_interpolation_table(int Nc, int Mc);
 
 		/**
 		 * Computes shortest interpolated path.
@@ -248,9 +254,10 @@ namespace DStarLite
 		 * Finds the minimum successor cell using interpolated costs.
 		 *
 		 * @param Map::Cell* root
+		 * @param bool check if cell is already in _path_set
 		 * @return <Map::Cell*,double> successor
 		 */
-		pair<Map::Cell *, double> _min_interpol_succ(Map::Cell *u);
+		pair<Map::Cell *, double> _min_interpol_succ(Map::Cell *u, bool check_path = false);
 
 		/**
 		 * Gets/Sets rhs value for a cell.
