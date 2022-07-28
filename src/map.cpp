@@ -254,7 +254,7 @@ bool Map::Cell::is_corner(Cell *cnr)
 		return false;
 	}
 
-	return ((cnr->x() == _cnrs[0]->x() && cnr->y() == _cnrs[0]->y()) || (cnr->x() == _cnrs[1]->x() && cnr->y() == _cnrs[1]->y()) || (cnr->x() == _cnrs[2]->x() && cnr->y() == _cnrs[2]->y()) || (cnr->x() == _cnrs[3]->x() && cnr->y() == _cnrs[3]->y()));
+	return ((_cnrs[0] != nullptr && cnr->x() == _cnrs[0]->x() && cnr->y() == _cnrs[0]->y()) || (_cnrs[1] != nullptr && cnr->x() == _cnrs[1]->x() && cnr->y() == _cnrs[1]->y()) || (_cnrs[2] != nullptr && cnr->x() == _cnrs[2]->x() && cnr->y() == _cnrs[2]->y()) || (_cnrs[3] != nullptr && cnr->x() == _cnrs[3]->x() && cnr->y() == _cnrs[3]->y()));
 }
 
 /**
@@ -269,35 +269,35 @@ Map::Cell *Map::Cell::cknbr(Cell *s1)
 	{
 		return nullptr;
 	}
-	if (s1->x() == _nbrs[0]->x() && s1->y() == _nbrs[0]->y())
+	if (_nbrs[0] != nullptr && s1->x() == _nbrs[0]->x() && s1->y() == _nbrs[0]->y())
 	{
 		return _nbrs[7];
 	}
-	else if (s1->x() == _nbrs[1]->x() && s1->y() == _nbrs[1]->y())
+	else if (_nbrs[1] != nullptr && s1->x() == _nbrs[1]->x() && s1->y() == _nbrs[1]->y())
 	{
 		return _nbrs[0];
 	}
-	else if (s1->x() == _nbrs[2]->x() && s1->y() == _nbrs[2]->y())
+	else if (_nbrs[2] != nullptr && s1->x() == _nbrs[2]->x() && s1->y() == _nbrs[2]->y())
 	{
 		return _nbrs[1];
 	}
-	else if (s1->x() == _nbrs[3]->x() && s1->y() == _nbrs[3]->y())
+	else if (_nbrs[3] != nullptr && s1->x() == _nbrs[3]->x() && s1->y() == _nbrs[3]->y())
 	{
 		return _nbrs[2];
 	}
-	else if (s1->x() == _nbrs[4]->x() && s1->y() == _nbrs[4]->y())
+	else if (_nbrs[4] != nullptr && s1->x() == _nbrs[4]->x() && s1->y() == _nbrs[4]->y())
 	{
 		return _nbrs[3];
 	}
-	else if (s1->x() == _nbrs[5]->x() && s1->y() == _nbrs[5]->y())
+	else if (_nbrs[5] != nullptr && s1->x() == _nbrs[5]->x() && s1->y() == _nbrs[5]->y())
 	{
 		return _nbrs[4];
 	}
-	else if (s1->x() == _nbrs[6]->x() && s1->y() == _nbrs[6]->y())
+	else if (_nbrs[6] != nullptr && s1->x() == _nbrs[6]->x() && s1->y() == _nbrs[6]->y())
 	{
 		return _nbrs[5];
 	}
-	else if (s1->x() == _nbrs[7]->x() && s1->y() == _nbrs[7]->y())
+	else if (_nbrs[7] != nullptr && s1->x() == _nbrs[7]->x() && s1->y() == _nbrs[7]->y())
 	{
 		return _nbrs[6];
 	}
@@ -319,35 +319,35 @@ Map::Cell *Map::Cell::ccknbr(Cell *s1)
 	{
 		return nullptr;
 	}
-		if (s1->x() == _nbrs[0]->x() && s1->y() == _nbrs[0]->y())
+	if (_nbrs[0] != nullptr && s1->x() == _nbrs[0]->x() && s1->y() == _nbrs[0]->y())
 	{
 		return _nbrs[1];
 	}
-	else if (s1->x() == _nbrs[1]->x() && s1->y() == _nbrs[1]->y())
+	else if (_nbrs[1] != nullptr && s1->x() == _nbrs[1]->x() && s1->y() == _nbrs[1]->y())
 	{
 		return _nbrs[2];
 	}
-	else if (s1->x() == _nbrs[2]->x() && s1->y() == _nbrs[2]->y())
+	else if (_nbrs[2] != nullptr && s1->x() == _nbrs[2]->x() && s1->y() == _nbrs[2]->y())
 	{
 		return _nbrs[3];
 	}
-	else if (s1->x() == _nbrs[3]->x() && s1->y() == _nbrs[3]->y())
+	else if (_nbrs[3] != nullptr && s1->x() == _nbrs[3]->x() && s1->y() == _nbrs[3]->y())
 	{
 		return _nbrs[4];
 	}
-	else if (s1->x() == _nbrs[4]->x() && s1->y() == _nbrs[4]->y())
+	else if (_nbrs[4] != nullptr && s1->x() == _nbrs[4]->x() && s1->y() == _nbrs[4]->y())
 	{
 		return _nbrs[5];
 	}
-	else if (s1->x() == _nbrs[5]->x() && s1->y() == _nbrs[5]->y())
+	else if (_nbrs[5] != nullptr && s1->x() == _nbrs[5]->x() && s1->y() == _nbrs[5]->y())
 	{
 		return _nbrs[6];
 	}
-	else if (s1->x() == _nbrs[6]->x() && s1->y() == _nbrs[6]->y())
+	else if (_nbrs[6] != nullptr && s1->x() == _nbrs[6]->x() && s1->y() == _nbrs[6]->y())
 	{
 		return _nbrs[7];
 	}
-	else if (s1->x() == _nbrs[7]->x() && s1->y() == _nbrs[7]->y())
+	else if (_nbrs[7] != nullptr && s1->x() == _nbrs[7]->x() && s1->y() == _nbrs[7]->y())
 	{
 		return _nbrs[0];
 	}

@@ -53,7 +53,7 @@ namespace DStarLite
 		 * @param double [optional] precision
 		 * @return bool
 		 */
-		static bool equals(double a, double b, double precision = 0.00000001);
+		static bool equals(double a, double b, double precision = 0.000001);
 
 		/**
 		 * Determines if a double is greater than compared to another double
@@ -64,7 +64,7 @@ namespace DStarLite
 		 * @param double [optional] precision
 		 * @return bool
 		 */
-		static bool greater(double a, double b, double precision = 0.00000001);
+		static bool greater(double a, double b, double precision = 0.000001);
 
 		/**
 		 * Determines if a double is less than compared to another double
@@ -75,7 +75,7 @@ namespace DStarLite
 		 * @param double [optional] precision
 		 * @return bool
 		 */
-		static bool less(double a, double b, double precision = 0.00000001);
+		static bool less(double a, double b, double precision = 0.000001);
 
 		/**
 		 * Converts radians to degrees.

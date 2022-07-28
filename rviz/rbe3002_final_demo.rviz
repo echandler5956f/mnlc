@@ -25,7 +25,7 @@ Panels:
     Experimental: true
     Name: Time
     SyncMode: 0
-    SyncSource: LaserScan
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -304,22 +304,22 @@ Visualization Manager:
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic: /mnlc_simple_costmap/cspace
       Unreliable: false
       Use Timestamp: false
-      Value: true
+      Value: false
     - Alpha: 0.699999988079071
       Class: rviz/Map
       Color Scheme: costmap
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic: /mnlc_global_costmap_opencv/cspace
       Unreliable: false
       Use Timestamp: false
-      Value: true
+      Value: false
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -340,7 +340,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: true
+      Enabled: false
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
       Name: PoseWithCovariance
@@ -349,7 +349,7 @@ Visualization Manager:
       Shape: Arrow
       Topic: /amcl_pose
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -434,7 +434,7 @@ Visualization Manager:
       Marker Topic: /OpenCVFrontierDetector/shapes
       Name: Marker
       Namespaces:
-        markers: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -450,7 +450,7 @@ Visualization Manager:
       Marker Topic: /frontier_filter/filtered_points_markers
       Name: Marker
       Namespaces:
-        filtered_markers: true
+        {}
       Queue Size: 1
       Value: true
     - Alpha: 1
@@ -488,7 +488,7 @@ Visualization Manager:
       Marker Topic: /mnlc_global_rrt_detector/shapes
       Name: Marker
       Namespaces:
-        markers: true
+        {}
       Queue Size: 25
       Value: true
     - Alpha: 1
@@ -560,7 +560,7 @@ Visualization Manager:
       Marker Topic: /mnlc_local_rrt_detector/shapes
       Name: Marker
       Namespaces:
-        markers: true
+        {}
       Queue Size: 25
       Value: true
     - Class: rviz/Marker
@@ -568,7 +568,7 @@ Visualization Manager:
       Marker Topic: /assigned_frontiers
       Name: Marker
       Namespaces:
-        goal_markers: true
+        {}
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -593,6 +593,16 @@ Visualization Manager:
       Shaft Length: 0.05000000074505806
       Topic: /Field_D_Star
       Unreliable: false
+      Value: true
+    - Alpha: 0.699999988079071
+      Class: rviz/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic: /g_map
+      Unreliable: false
+      Use Timestamp: false
       Value: true
   Enabled: true
   Global Options:
@@ -655,5 +665,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 3700
-  X: 60
+  X: 63
   Y: 0

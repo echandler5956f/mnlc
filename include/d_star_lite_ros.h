@@ -24,6 +24,7 @@
 #include <map>
 
 nav_msgs::OccupancyGrid mapdata;
+nav_msgs::OccupancyGrid g_map;
 _Float32 heuristic_weight;
 int obstacle_tolerance;
 nav_msgs::Path path_p;
@@ -298,6 +299,16 @@ namespace DStarLite
                     }
                 }
             }
+        }
+
+        /**
+         * Returns a normalized path-to-goal map
+         *
+         * @return vector<double> map
+         */
+        vector<double> get_g_map()
+        {
+            return _planner->g_map();
         }
     };
 };

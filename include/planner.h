@@ -64,6 +64,13 @@ namespace DStarLite
 		Map::Cell *goal(Map::Cell *u = nullptr);
 
 		/**
+		 * Returns a normalized path-to-goal map
+		 *
+		 * @return vector<double> map
+		 */
+		vector<double> g_map();
+
+		/**
 		 * Replans the path.
 		 *
 		 * @return bool solution found
@@ -106,7 +113,7 @@ namespace DStarLite
 
 		/**
 		 * @var unordered_set<Map::Cell*> path set
-		 * 
+		 *
 		 */
 		unordered_set<Map::Cell *> _path_set;
 
@@ -145,9 +152,9 @@ namespace DStarLite
 		vector<double> _cellcosts;
 
 		/**
-		 * @var double**** interpolation lookup table for quickly aquiring cell costs and optimal XY given a cell and two consecutive neighbors.
+		 * @var vector<vector<vector<vector<double>>>> interpolation lookup table for quickly aquiring cell costs and optimal XY given a cell and two consecutive neighbors.
 		 */
-		double _I[70][70][69][3];
+		vector<vector<vector<vector<double>>>> _I;
 
 		/**
 		 * Generates a cell.
@@ -160,19 +167,16 @@ namespace DStarLite
 		/**
 		 * Initializes cell cost table, which indices representing original cell costs which map to non-lineraly space cell costs
 		 *
-		 * @param int Nc number of distinct traversal costs (including the infinite cost of traversing an obstacle cell)
-		 * @return void
+		 * @return int Mc maximum traversable (non-obstacle) cost
 		 */
-		void _construct_cellcosts(int Nc);
+		int _construct_cellcosts();
 
 		/**
 		 * Generates interpolation lookup table for quickly aquiring cell costs.
 		 *
-		 * @param int Nc number of distinct traversal costs (including the infinite cost of traversing an obstacle cell)
-		 * @param int Mc maximum traversal cost of any traversable (i.e. non-obstacle) cell
 		 * @return void
 		 */
-		void _construct_interpolation_table(int Nc, int Mc);
+		void _construct_interpolation_table();
 
 		/**
 		 * Computes shortest interpolated path.
@@ -254,10 +258,9 @@ namespace DStarLite
 		 * Finds the minimum successor cell using interpolated costs.
 		 *
 		 * @param Map::Cell* root
-		 * @param bool check if cell is already in _path_set
 		 * @return <Map::Cell*,double> successor
 		 */
-		pair<Map::Cell *, double> _min_interpol_succ(Map::Cell *u, bool check_path = false);
+		pair<Map::Cell *, double> _min_interpol_succ(Map::Cell *u);
 
 		/**
 		 * Gets/Sets rhs value for a cell.
