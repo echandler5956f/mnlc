@@ -69,6 +69,12 @@ Map::Map(unsigned int rows, unsigned int cols)
 				cnrs[k] = nullptr;
 			}
 
+			Cell **cnr_of = new Cell *[Cell::NUM_CNRS];
+			for (unsigned int k = 0; k < Cell::NUM_CNRS; k++)
+			{
+				cnr_of[k] = nullptr;
+			}
+
 			// Top
 			if (i != 0)
 			{
@@ -108,11 +114,13 @@ Map::Map(unsigned int rows, unsigned int cols)
 
 				// Bottom middle
 				nbrs[6] = _cells[i + 1][j];
+				cnr_of[0] = _cells[i + 1][j];
 
 				if (j != 0)
 				{
 					// Bottom left
 					nbrs[5] = _cells[i + 1][j - 1];
+					cnr_of[1] = _cells[i + 1][j - 1];
 				}
 			}
 
@@ -120,10 +128,12 @@ Map::Map(unsigned int rows, unsigned int cols)
 			{
 				// Middle left
 				nbrs[4] = _cells[i][j - 1];
+				cnr_of[2] = _cells[i][j - 1];
 			}
 
 			cnrs[3] = _cells[i][j];
-			_cells[i][j]->init(nbrs, cnrs);
+			cnr_of[3] = _cells[i][j];
+			_cells[i][j]->init(nbrs, cnrs, cnr_of);
 		}
 	}
 }
@@ -228,9 +238,10 @@ Map::Cell::~Cell()
  *
  * @param Cell** cell neighbors
  * @param Cell** cell corners
+ * @param Cell** cell corners of
  * @return void
  */
-void Map::Cell::init(Cell **nbrs, Cell **cnrs)
+void Map::Cell::init(Cell **nbrs, Cell **cnrs, Cell **cnr_of)
 {
 	if (_init)
 		return;
@@ -239,6 +250,7 @@ void Map::Cell::init(Cell **nbrs, Cell **cnrs)
 
 	_nbrs = nbrs;
 	_cnrs = cnrs;
+	_cnr_of = cnr_of;
 }
 
 /**
@@ -383,13 +395,23 @@ Map::Cell **Map::Cell::nbrs()
 }
 
 /**
- * Gets cell corners.
+ * Gets corners of ->this cell.
  *
  * @return Cell**
  */
 Map::Cell **Map::Cell::cnrs()
 {
 	return _cnrs;
+}
+
+/**
+ * Get the cells that ->this cell is a corner of
+ *
+ * @return Cell**
+ */
+Map::Cell **Map::Cell::cnr_of()
+{
+	return _cnr_of;
 }
 
 /**

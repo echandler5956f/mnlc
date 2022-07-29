@@ -64,7 +64,7 @@ namespace DStarLite
 		Map::Cell *goal(Map::Cell *u = nullptr);
 
 		/**
-		 * Returns a normalized path-to-goal map
+		 * Returns a path-to-goal map
 		 *
 		 * @return vector<double> map
 		 */
@@ -76,6 +76,13 @@ namespace DStarLite
 		 * @return bool solution found
 		 */
 		bool replan();
+
+		/**
+		 * Returns a lookahead of the path-to-goal map
+		 *
+		 * @return vector<double> map
+		 */
+		vector<double> rhs_map();
 
 		/**
 		 * Gets/Sets start.
@@ -105,17 +112,6 @@ namespace DStarLite
 		 * @var Map* map
 		 */
 		Map *_map;
-
-		/**
-		 * @var vector<Map::Cell*> path
-		 */
-		vector<Map::Cell *> _path;
-
-		/**
-		 * @var unordered_set<Map::Cell*> path set
-		 *
-		 */
-		unordered_set<Map::Cell *> _path_set;
 
 		/**
 		 * @var vector<pair<double, double>> interpolated path

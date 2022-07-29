@@ -23,6 +23,7 @@ int main(int argc, char **argv)
     ros::Subscriber cspace_sub = n.subscribe("/mnlc_global_costmap_opencv/cspace", 1, update_map);
     ros::Publisher path_pub = n.advertise<nav_msgs::Path>("/Field_D_Star", 1);
     ros::Publisher g_map_pub = n.advertise<nav_msgs::OccupancyGrid>("/g_map", 1);
+    ros::Publisher rhs_map_pub = n.advertise<nav_msgs::OccupancyGrid>("/rhs_map", 1);
     ros::Time st;
     st.fromSec(start_time);
     ros::Time::sleepUntil(st);
@@ -71,7 +72,7 @@ int main(int argc, char **argv)
                                            true, heuristic_weight, obstacle_tolerance, search_tolerance, max_its);
     DStarLite::DStarLiteROS ds(config);
     uint64_t timer_start, timer_end;
-    vector<double> gmd;
+    vector<double> md;
     double tmp;
     ros::Rate loop_rate(60);
     while (ros::ok())
@@ -80,36 +81,55 @@ int main(int argc, char **argv)
         vector<pair<double, double>> path = ds.execute(start);
         // timer_end = ros::Time::now().toNSec();
         // printf("Execute Field D* took: %" PRIu64 "\n", timer_end - timer_start);
-        // path_p.header.stamp = ros::Time::now();
-        // path_p.poses.clear();
-        // for (unsigned int i = 0; i < path.size(); i++)
-        // {
-        //     ps.pose.position.x = (path[i].first * mapdata.info.resolution) + mapdata.info.origin.position.x;
-        //     ps.pose.position.y = (path[i].second * mapdata.info.resolution) + mapdata.info.origin.position.y;
-        //     ps.header.stamp = ros::Time::now();
-        //     path_p.poses.push_back(ps);
-        // }
-        // path_pub.publish(path_p);
+        path_p.header.stamp = ros::Time::now();
+        path_p.poses.clear();
+        for (unsigned int i = 0; i < path.size(); i++)
+        {
+            ps.pose.position.x = (path[i].first * mapdata.info.resolution) + mapdata.info.origin.position.x;
+            ps.pose.position.y = (path[i].second * mapdata.info.resolution) + mapdata.info.origin.position.y;
+            ps.header.stamp = ros::Time::now();
+            path_p.poses.push_back(ps);
+        }
+        path_pub.publish(path_p);
         // timer_start = ros::Time::now().toNSec();
         ds.update_map(mapdata.data);
         // timer_end = ros::Time::now().toNSec();
         // printf("Update map of Field D* took: %" PRIu64 "\n", timer_end - timer_start);
         g_map = mapdata;
-        gmd = ds.get_g_map();
+        md = ds.get_g_map();
         for (unsigned int i = 0; i < g_map.data.size(); i++)
         {
-            if (Math::equals(gmd[i], Math::INF))
+            if (Math::equals(md[i], Math::INF))
             {
                 g_map.data[i] = -1;
             }
             else
             {
-                tmp = round(gmd[i] / 225.0);
+                // tmp = round(md[i] / 225.0);
+                tmp = round(md[i] / 65.0);
                 // printf("tmp: %lf\n", tmp);
                 g_map.data[i] = static_cast<int>(tmp);
             }
         }
         g_map_pub.publish(g_map);
+
+        rhs_map = mapdata;
+        md = ds.get_rhs_map();
+        for (unsigned int i = 0; i < rhs_map.data.size(); i++)
+        {
+            if (Math::equals(md[i], Math::INF))
+            {
+                rhs_map.data[i] = -1;
+            }
+            else
+            {
+                // tmp = round(md[i] / 225.0);
+                tmp = round(md[i] / 65.0);
+                // printf("tmp: %lf\n", tmp);
+                rhs_map.data[i] = static_cast<int>(tmp);
+            }
+        }
+        rhs_map_pub.publish(rhs_map);
         ros::spinOnce();
         loop_rate.sleep();
     }

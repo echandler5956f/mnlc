@@ -25,7 +25,7 @@ Panels:
     Experimental: true
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: LaserScan
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -276,10 +276,10 @@ Visualization Manager:
     - Alpha: 1
       Class: rviz/GridCells
       Color: 170; 0; 0
-      Enabled: true
+      Enabled: false
       Name: GridCells
       Topic: /a_star/frontier
-      Value: true
+      Value: false
     - Alpha: 0.699999988079071
       Class: rviz/Map
       Color Scheme: costmap
@@ -434,7 +434,7 @@ Visualization Manager:
       Marker Topic: /OpenCVFrontierDetector/shapes
       Name: Marker
       Namespaces:
-        {}
+        markers: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -450,7 +450,7 @@ Visualization Manager:
       Marker Topic: /frontier_filter/filtered_points_markers
       Name: Marker
       Namespaces:
-        {}
+        filtered_markers: true
       Queue Size: 1
       Value: true
     - Alpha: 1
@@ -488,7 +488,7 @@ Visualization Manager:
       Marker Topic: /mnlc_global_rrt_detector/shapes
       Name: Marker
       Namespaces:
-        {}
+        markers: true
       Queue Size: 25
       Value: true
     - Alpha: 1
@@ -560,7 +560,7 @@ Visualization Manager:
       Marker Topic: /mnlc_local_rrt_detector/shapes
       Name: Marker
       Namespaces:
-        {}
+        markers: true
       Queue Size: 25
       Value: true
     - Class: rviz/Marker
@@ -568,7 +568,7 @@ Visualization Manager:
       Marker Topic: /assigned_frontiers
       Name: Marker
       Namespaces:
-        {}
+        goal_markers: true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -587,7 +587,7 @@ Visualization Manager:
         Y: 0
         Z: 0
       Pose Color: 255; 85; 255
-      Pose Style: Arrows
+      Pose Style: None
       Radius: 0.029999999329447746
       Shaft Diameter: 0.009999999776482582
       Shaft Length: 0.05000000074505806
@@ -604,6 +604,16 @@ Visualization Manager:
       Unreliable: false
       Use Timestamp: false
       Value: true
+    - Alpha: 0.699999988079071
+      Class: rviz/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: false
+      Name: Map
+      Topic: /g_map
+      Unreliable: false
+      Use Timestamp: false
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -665,5 +675,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 3700
-  X: 63
+  X: 30
   Y: 0

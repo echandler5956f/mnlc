@@ -19,10 +19,8 @@ Planner::Planner(Map *map, Map::Cell *start, Map::Cell *goal, int Nc)
 
 	// Clear lists
 	_interpol_path.clear();
-	_path_set.clear();
 	_open_list.clear();
 	_open_hash.clear();
-	_path.clear();
 
 	_map = map;
 	_start = start;
@@ -75,7 +73,7 @@ Map::Cell *Planner::goal(Map::Cell *u)
 }
 
 /**
- * Returns a normalized path-to-goal map
+ * Returns a path-to-goal map
  *
  * @return vector<double> map
  */
@@ -101,8 +99,6 @@ vector<double> Planner::g_map()
  */
 bool Planner::replan()
 {
-	_path.clear();
-	_path_set.clear();
 	_interpol_path.clear();
 
 	bool result = _compute_shortest_path();
@@ -113,9 +109,29 @@ bool Planner::replan()
 		return false;
 	}
 
-	// result = _extract_path();
+	result = _extract_path();
 
 	return result;
+}
+
+/**
+ * Returns a lookahead of the path-to-goal map
+ *
+ * @return vector<double> map
+ */
+vector<double> Planner::rhs_map()
+{
+	unsigned int cols = _map->cols();
+	unsigned int rows = _map->rows();
+	vector<double> rhsmap;
+	for (unsigned int i = 0; i < rows; i++)
+	{
+		for (unsigned int j = 0; j < cols; j++)
+		{
+			rhsmap.push_back(_rhs((*_map)(i, j)));
+		}
+	}
+	return rhsmap;
 }
 
 /**
@@ -231,7 +247,7 @@ int Planner::_construct_cellcosts()
 
 	for (unsigned int i = 0; i < _Nc; i++)
 	{
-		_cellcosts[i] = round(255.0 * pow(Math::EUL, ((0.33333 * static_cast<double>(i)) / 11.8125)));
+		_cellcosts[i] = round(255.0 * pow(Math::EUL, ((0.33333 * static_cast<double>(i)) / 11.8125)) - 254.0);
 	}
 	_cellcosts[_Nc] = Map::Cell::COST_UNWALKABLE;
 	return static_cast<int>(_cellcosts[_Nc - 1]);
@@ -643,13 +659,17 @@ pair<double, pair<pair<double, double>, pair<double, double>>> Planner::_compute
  */
 bool Planner::_extract_path()
 {
-	pair<double, pair<pair<double, double>, pair<double, double>>> vsp1p2;
-	pair<pair<double, double>, pair<double, double>> points, tmp_points;
+	pair<double, pair<pair<double, double>, pair<double, double>>> vsp1p2, temp_vsp1p2;
+	pair<pair<double, double>, pair<double, double>> points;
+	double x, y, temp_temp_cost, min_cost, min_min_cost;
+	unordered_set<Map::Cell *> _cnr_of_set;
 	pair<double, double> point, tpoint;
-	double x, y, min_cost;
+	Map::Cell **nbrsnbrs;
 	Map::Cell *current;
-	Map::Cell *prev;
+	Map::Cell **cnr_of;
+	Map::Cell **cnrs;
 	Map::Cell **nbrs;
+	Map::Cell *prev;
 
 	// Follow the path with the least cost until goal is reached
 	current = _start;
@@ -662,43 +682,72 @@ bool Planner::_extract_path()
 			printf("ERROR: INVALID CELL_1\n");
 			return false;
 		}
-		// printf("g(s): %lf\n", _g(current));
-		_path_set.insert(current);
-		vsp1p2 = make_pair(Math::INF, make_pair(make_pair(Math::INF, Math::INF), make_pair(Math::INF, Math::INF)));
-		prev = current;
-		// get direct (simple) approximation of path cost
-		if (prev->bptr() == nullptr || prev->ccknbr(current) == nullptr || _path_set.find(prev->bptr()) != _path_set.end())
+		// printf("Current x: %u, current y: %u\n", current->x(), current->y());
+		// if one point in the path resides within some grid cell g, then the next point in the path can only be a corner state of
+		// g if the backpointer of this corner state points to at least one state not in g
+		cnr_of = current->cnr_of();
+		for (unsigned int i = 0; i < Map::Cell::NUM_CNRS; i++)
 		{
-			// printf("Using fake backpointer\n");
-			nbrs = prev->nbrs();
-			min_cost = Math::INF;
-			current = nullptr;
-			for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
+			if (cnr_of[i] != nullptr)
 			{
-				if (nbrs[i] != nullptr && prev->ccknbr(nbrs[i]) != nullptr && _path_set.find(nbrs[i]) == _path_set.end())
+				cnrs = cnr_of[i]->cnrs();
+				for (unsigned int j = 0; j < Map::Cell::NUM_CNRS; j++)
 				{
-					vsp1p2 = _compute_cost(prev, nbrs[i], prev->ccknbr(nbrs[i]));
-					if (Math::less(vsp1p2.first, min_cost))
+					if (cnrs[j] != nullptr)
 					{
-						min_cost = vsp1p2.first;
-						current = nbrs[i];
+						_cnr_of_set.insert(cnrs[j]);
 					}
 				}
 			}
-
-			if (current == nullptr)
+		}
+		prev = current;
+		current = nullptr;
+		vsp1p2 = make_pair(Math::INF, make_pair(make_pair(Math::INF, Math::INF), make_pair(Math::INF, Math::INF)));
+		min_cost = Math::INF;
+		nbrs = prev->nbrs();
+		// get direct (simple) approximation of path cost
+		for (unsigned int i = 0; i < Map::Cell::NUM_NBRS; i++)
+		{
+			if (nbrs[i] != nullptr)
 			{
-				printf("ERROR: FAKE BACKPOINTER WAS INVALID\n");
-				return false;
+				if (prev->ccknbr(nbrs[i]) != nullptr)
+				{
+					temp_vsp1p2 = _compute_cost(prev, nbrs[i], prev->ccknbr(nbrs[i]));
+					if (!Math::equals(temp_vsp1p2.first, Math::INF))
+					{
+						// get indirect (precise) approximation of path cost by locally finding an optimal path to the interpolated edge point
+						min_min_cost = Math::INF;
+						temp_temp_cost = Math::INF;
+						nbrsnbrs = nbrs[i]->nbrs();
+						for (unsigned int j = 0; j < Map::Cell::NUM_NBRS; j++)
+						{
+							if (nbrsnbrs[j] != nullptr)
+							{
+								if (_cnr_of_set.find(nbrsnbrs[j]) == _cnr_of_set.end() && nbrs[i]->ccknbr(nbrsnbrs[j]) != nullptr)
+								{
+									temp_temp_cost = _compute_cost(nbrs[i], nbrsnbrs[j], nbrs[i]->ccknbr(nbrsnbrs[j])).first;
+									if (Math::less(temp_temp_cost, min_min_cost))
+									{
+										min_min_cost = temp_temp_cost;
+									}
+								}
+							}
+						}
+						if (!Math::equals(min_min_cost, Math::INF) && Math::less(temp_vsp1p2.first + min_min_cost, min_cost))
+						{
+							current = nbrs[i];
+							vsp1p2 = temp_vsp1p2;
+							min_cost = temp_vsp1p2.first + min_min_cost;
+						}
+					}
+				}
 			}
 		}
-		else
+		if (current == nullptr)
 		{
-			current = prev->bptr();
-			vsp1p2 = _compute_cost(prev, current, prev->ccknbr(current));
+			printf("ERROR: PATH EXTRACTION FAILED\n");
+			return false;
 		}
-		// get indirect (precise) approximation of path cost by locally finding an optimal path to the interpolated edge point
-		//
 		// add the interpolated points to the list
 		points = vsp1p2.second;
 		if (Math::equals(points.first.first, Math::INF) || Math::equals(points.first.second, Math::INF) || Math::equals(points.second.first, Math::INF) || Math::equals(points.second.second, Math::INF))
@@ -749,7 +798,8 @@ double Planner::_g(Map::Cell *u, double value)
  */
 double Planner::_h(Map::Cell *a, Map::Cell *b)
 {
-	return (0.5 * sqrt(pow(static_cast<int>(b->x()) - static_cast<int>(a->x()), 2) + pow(static_cast<int>(b->y()) - static_cast<int>(a->y()), 2)));
+	return (7.5 * sqrt(pow(static_cast<int>(b->x()) - static_cast<int>(a->x()), 2) + pow(static_cast<int>(b->y()) - static_cast<int>(a->y()), 2)));
+	// return (82.0 * sqrt(pow(static_cast<int>(b->x()) - static_cast<int>(a->x()), 2) + pow(static_cast<int>(b->y()) - static_cast<int>(a->y()), 2)));
 }
 
 /**
