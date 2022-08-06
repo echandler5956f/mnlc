@@ -97,6 +97,23 @@ bool Math::less(double a, double b, double precision)
 }
 
 /**
+ * Determines the minimum of three ints for convenience.
+ *
+ * @param int first int
+ * @param int second int
+ * @param int third int
+ * @return int minimum
+ */
+int Math::min3(int a, int b, int c)
+{
+	if (a <= b && a <= c)
+		return a;
+	else if (b <= c)
+		return b;
+	return c;
+}
+
+/**
  * Converts radians to degrees.
  *
  * @param double radians

@@ -78,6 +78,16 @@ namespace DStarLite
 		static bool less(double a, double b, double precision = 0.000001);
 
 		/**
+		 * Determines the minimum of three ints for convenience.
+		 *
+		 * @param int first int
+		 * @param int second int
+		 * @param int third int
+		 * @return int minimum
+		 */
+		static int min3(int a, int b, int c);
+
+		/**
 		 * Converts radians to degrees.
 		 *
 		 * @param double radians

@@ -66,8 +66,8 @@ int main(int argc, char **argv)
     ps.header.frame_id = mapdata.header.frame_id;
     ps.pose.orientation.w = 1.0;
     path_p.header.frame_id = mapdata.header.frame_id;
-    pair<unsigned int, unsigned int> start = std::make_pair(138, 138);
-    pair<unsigned int, unsigned int> goal = std::make_pair(198, 161);
+    pair<int, int> start = std::make_pair(138, 138);
+    pair<int, int> goal = std::make_pair(198, 161);
     DStarLite::DStarLiteROS::Config config(mapdata, start, goal, obstacle_cost, unknown_cost, scan_radius,
                                            true, heuristic_weight, obstacle_tolerance, search_tolerance, max_its);
     DStarLite::DStarLiteROS ds(config);
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
         // printf("Execute Field D* took: %" PRIu64 "\n", timer_end - timer_start);
         path_p.header.stamp = ros::Time::now();
         path_p.poses.clear();
-        for (unsigned int i = 0; i < path.size(); i++)
+        for (int i = 0; i < path.size(); i++)
         {
             ps.pose.position.x = (path[i].first * mapdata.info.resolution) + mapdata.info.origin.position.x;
             ps.pose.position.y = (path[i].second * mapdata.info.resolution) + mapdata.info.origin.position.y;
@@ -97,7 +97,7 @@ int main(int argc, char **argv)
         // printf("Update map of Field D* took: %" PRIu64 "\n", timer_end - timer_start);
         g_map = mapdata;
         md = ds.get_g_map();
-        for (unsigned int i = 0; i < g_map.data.size(); i++)
+        for (int i = 0; i < g_map.data.size(); i++)
         {
             if (Math::equals(md[i], Math::INF))
             {
@@ -105,8 +105,8 @@ int main(int argc, char **argv)
             }
             else
             {
-                // tmp = round(md[i] / 225.0);
-                tmp = round(md[i] / 65.0);
+                tmp = round(md[i] / 90.0);
+                // tmp = round(md[i] / 70.0);
                 // printf("tmp: %lf\n", tmp);
                 g_map.data[i] = static_cast<int>(tmp);
             }
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 
         rhs_map = mapdata;
         md = ds.get_rhs_map();
-        for (unsigned int i = 0; i < rhs_map.data.size(); i++)
+        for (int i = 0; i < rhs_map.data.size(); i++)
         {
             if (Math::equals(md[i], Math::INF))
             {
@@ -123,8 +123,8 @@ int main(int argc, char **argv)
             }
             else
             {
-                // tmp = round(md[i] / 225.0);
-                tmp = round(md[i] / 65.0);
+                tmp = round(md[i] / 90.0);
+                // tmp = round(md[i] / 70.0);
                 // printf("tmp: %lf\n", tmp);
                 rhs_map.data[i] = static_cast<int>(tmp);
             }

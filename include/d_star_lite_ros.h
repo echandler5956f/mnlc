@@ -55,13 +55,13 @@ namespace DStarLite
              */
             nav_msgs::OccupancyGrid _mapdata;
             /**
-             * @var pair<unsigned int, unsigned int> initial start position
+             * @var pair<int, int> initial start position
              */
-            pair<unsigned int, unsigned int> _start;
+            pair<int, int> _start;
             /**
-             * @var pair<unsigned int, unsigned int> initial goal position
+             * @var pair<int, int> initial goal position
              */
-            pair<unsigned int, unsigned int> _goal;
+            pair<int, int> _goal;
             /**
              * @var int obstacle cost
              */
@@ -99,8 +99,8 @@ namespace DStarLite
              * Constructor.
              *
              * @param nav_msgs::OccupancyGrid initial mapdata
-             * @param pair<unsigned int, unsigned int> initial start position
-             * @param pair<unsigned int, unsigned int> initial goal position
+             * @param pair<int, int> initial start position
+             * @param pair<int, int> initial goal position
              * @param int obstacle cost
              * @param int unknown cost
              * @param float scan radius
@@ -110,7 +110,7 @@ namespace DStarLite
              * @param int search tolerance
              * @param int maximum iterations
              */
-            Config(const nav_msgs::OccupancyGrid &mapdata, const pair<unsigned int, unsigned int> &start, const pair<unsigned int, unsigned int> &goal,
+            Config(const nav_msgs::OccupancyGrid &mapdata, const pair<int, int> &start, const pair<int, int> &goal,
                    const int obstacle_cost, const int unknown_cost, const float scan_radius, const bool verbose, const float heuristic_weight, const int obstacle_tolerance,
                    const int search_tolerance, const int max_its)
             {
@@ -183,7 +183,7 @@ namespace DStarLite
             _data = _config._mapdata.data;
 
             // Height and width of the initial occupancy grid
-            unsigned int height, width;
+            int height, width;
             height = _config._mapdata.info.height;
             width = _config._mapdata.info.width;
 
@@ -196,9 +196,9 @@ namespace DStarLite
             int k, c, v;
 
             // Build map
-            for (unsigned int i = 0; i < height; i++)
+            for (int i = 0; i < height; i++)
             {
-                for (unsigned int j = 0; j < width; j++)
+                for (int j = 0; j < width; j++)
                 {
                     k = (i * width) + j;
                     c = _data[k];
@@ -238,7 +238,7 @@ namespace DStarLite
          * @param Map::Cell* current cell
          * @return vector<pair<double, double>> path
          */
-        vector<pair<double, double>> execute(pair<unsigned int, unsigned int> current)
+        vector<pair<double, double>> execute(pair<int, int> current)
         {
             // Step
             _planner->start((*_map)(current.second, current.first));
@@ -266,14 +266,14 @@ namespace DStarLite
         void update_map(std::vector<int8_t, std::allocator<int8_t>> new_data)
         {
             _map_updated = false;
-            unsigned int rows, cols;
+            int rows, cols;
             rows = _map->rows();
             cols = _map->cols();
             int k, c, v;
 
-            for (unsigned int i = 0; i < rows; i++)
+            for (int i = 0; i < rows; i++)
             {
-                for (unsigned int j = 0; j < cols; j++)
+                for (int j = 0; j < cols; j++)
                 {
                     k = (i * cols) + j;
                     // Check if an update is required

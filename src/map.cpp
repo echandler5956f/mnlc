@@ -4,19 +4,14 @@ using namespace std;
 using namespace DStarLite;
 
 /**
- * @var unsigned int number of cell neighbors
+ * @var int number of cell neighbors
  */
-const unsigned int Map::Cell::NUM_NBRS = 8;
+const int Map::Cell::NUM_NBRS = 8;
 
 /**
- * @var unsigned int number of cell corners
+ * @var int number of cell corners
  */
-const unsigned int Map::Cell::NUM_CNRS = 4;
-
-/**
- * @var unsigned int number of distinct traversal costs
- */
-const unsigned int Map::Cell::DIST_TRAV_COSTS = 70;
+const int Map::Cell::NUM_CNRS = 4;
 
 /**
  * @var double cost of an unwalkable tile
@@ -24,65 +19,70 @@ const unsigned int Map::Cell::DIST_TRAV_COSTS = 70;
 const double Map::Cell::COST_UNWALKABLE = DBL_MAX;
 
 /**
+ * @var static const int[] used to find nodes on the corners of a grid cell
+ */
+const int Map::Cell::DELTAY[] = {0, 0, 1, 1};
+
+/**
+ * @var static const int[] used to find nodes on the corners of a grid cell
+ */
+const int Map::Cell::DELTAX[] = {0, 1, 1, 0};
+
+/**
  * @var int hash "constant" (may need to change if map width exceeds this value)
  */
 const int Map::Cell::Hash::C = 1000000;
 
 /**
+ * @var int hash "constant" (may need to change if map width exceeds this value)
+ */
+const int Map::CellPath::Hash::C = 1000000;
+
+/**
  * Constructor.
  *
- * @param unsigned int rows
- * @param unsigned int columns
+ * @param int rows
+ * @param int columns
  */
-Map::Map(unsigned int rows, unsigned int cols)
+Map::Map(int rows, int cols)
 {
 	_rows = rows;
 	_cols = cols;
 
 	_cells = new Cell **[rows];
 
-	for (unsigned int i = 0; i < rows; i++)
+	for (int i = 0; i < rows; i++)
 	{
 		_cells[i] = new Cell *[cols];
 
-		for (unsigned int j = 0; j < cols; j++)
-		{
+		for (int j = 0; j < cols; j++)
 			// Initialize cells
 			_cells[i][j] = new Cell(j, i);
-		}
 	}
 
 	// Attach neighbors
-	for (unsigned int i = 0; i < rows; i++)
+	for (int i = 0; i < rows; i++)
 	{
-		for (unsigned int j = 0; j < cols; j++)
+		for (int j = 0; j < cols; j++)
 		{
 			Cell **nbrs = new Cell *[Cell::NUM_NBRS];
-			for (unsigned int k = 0; k < Cell::NUM_NBRS; k++)
-			{
+			for (int k = 0; k < Cell::NUM_NBRS; k++)
 				nbrs[k] = nullptr;
-			}
 
 			Cell **cnrs = new Cell *[Cell::NUM_CNRS];
-			for (unsigned int k = 0; k < Cell::NUM_CNRS; k++)
-			{
+			for (int k = 0; k < Cell::NUM_CNRS; k++)
 				cnrs[k] = nullptr;
-			}
 
 			Cell **cnr_of = new Cell *[Cell::NUM_CNRS];
-			for (unsigned int k = 0; k < Cell::NUM_CNRS; k++)
-			{
+			for (int k = 0; k < Cell::NUM_CNRS; k++)
 				cnr_of[k] = nullptr;
-			}
 
 			// Top
 			if (i != 0)
 			{
 				if (j != 0)
-				{
 					// Top left
 					nbrs[3] = _cells[i - 1][j - 1];
-				}
 
 				// Top middle
 				nbrs[2] = _cells[i - 1][j];
@@ -107,10 +107,8 @@ Map::Map(unsigned int rows, unsigned int cols)
 			if (i < rows - 1)
 			{
 				if (j < cols - 1)
-				{
 					// Bottom right
 					nbrs[7] = _cells[i + 1][j + 1];
-				}
 
 				// Bottom middle
 				nbrs[6] = _cells[i + 1][j];
@@ -143,12 +141,10 @@ Map::Map(unsigned int rows, unsigned int cols)
  */
 Map::~Map()
 {
-	for (unsigned int i = 0; i < _rows; i++)
+	for (int i = 0; i < _rows; i++)
 	{
-		for (unsigned int j = 0; j < _cols; j++)
-		{
+		for (int j = 0; j < _cols; j++)
 			delete _cells[i][j];
-		}
 
 		delete[] _cells[i];
 	}
@@ -159,11 +155,11 @@ Map::~Map()
 /**
  * Retrieves a cell.
  *
- * @param unsigned int row
- * @param unsigned int column
+ * @param int row
+ * @param int column
  * @return Map::Cell*
  */
-Map::Cell *Map::operator()(const unsigned int row, const unsigned int col)
+Map::Cell *Map::operator()(const int row, const int col)
 {
 	return _cells[row][col];
 }
@@ -171,9 +167,9 @@ Map::Cell *Map::operator()(const unsigned int row, const unsigned int col)
 /**
  * Gets number of cols.
  *
- * @return unsigned int
+ * @return int
  */
-unsigned int Map::cols()
+int Map::cols()
 {
 	return _cols;
 }
@@ -181,11 +177,11 @@ unsigned int Map::cols()
 /**
  * Checks if row/col exists.
  *
- * @param unsigned int row
- * @param unsigned int col
+ * @param int row
+ * @param int col
  * @return bool
  */
-bool Map::has(unsigned int row, unsigned int col)
+bool Map::has(int row, int col)
 {
 	return (row >= 0 && row < _rows && col >= 0 && col < _cols);
 }
@@ -193,9 +189,9 @@ bool Map::has(unsigned int row, unsigned int col)
 /**
  * Gets number of rows.
  *
- * @return unsigned int
+ * @return int
  */
-unsigned int Map::rows()
+int Map::rows()
 {
 	return _rows;
 }
@@ -203,11 +199,67 @@ unsigned int Map::rows()
 /**
  * Constructor.
  *
- * @param unsigned int x-coordinate
- * @param unsigned int y-coordinate
+ * @param Cell * cell the local path resides within
+ */
+Map::CellPath::CellPath(int cell_x, int cell_y)
+{
+	g_to_edge = Math::INF;
+	local_g = Math::INF;
+	_cx = cell_x;
+	_cy = cell_y;
+	length = 0;
+	g = Math::INF;
+}
+
+/**
+ * Deconstructor.
+ */
+Map::CellPath::~CellPath()
+{
+	if (length > 0)
+	{
+		delete []x;
+		delete []y;
+	}
+}
+
+/**
+ * Get cell x value.
+ *
+ */
+int Map::CellPath::get_cx()
+{
+	return _cx;
+}
+
+/**
+ * Get cell y value.
+ *
+ */
+int Map::CellPath::get_cy()
+{
+	return _cy;
+}
+
+/**
+ * Hashes cell based on coordinates.
+ *
+ * @param CellPath*
+ * @return size_t
+ */
+size_t Map::CellPath::Hash::operator()(CellPath *c) const
+{
+	return CellPath::Hash::C * c->_cy + c->_cx;
+}
+
+/**
+ * Constructor.
+ *
+ * @param int x-coordinate
+ * @param int y-coordinate
  * @param int [optional] cost of the cell
  */
-Map::Cell::Cell(unsigned int x, unsigned int y, int cost)
+Map::Cell::Cell(int x, int y, int cost)
 {
 	_init = false;
 
@@ -215,6 +267,7 @@ Map::Cell::Cell(unsigned int x, unsigned int y, int cost)
 
 	_nbrs = nullptr;
 	_cnrs = nullptr;
+	_cnr_of = nullptr;
 
 	_x = x;
 	_y = y;
@@ -231,6 +284,8 @@ Map::Cell::~Cell()
 		delete[] _nbrs;
 	if (_cnrs != nullptr)
 		delete[] _cnrs;
+	if (_cnr_of != nullptr)
+		delete[] _cnr_of;
 }
 
 /**
@@ -262,9 +317,7 @@ void Map::Cell::init(Cell **nbrs, Cell **cnrs, Cell **cnr_of)
 bool Map::Cell::is_corner(Cell *cnr)
 {
 	if (cnr == nullptr)
-	{
 		return false;
-	}
 
 	return ((_cnrs[0] != nullptr && cnr->x() == _cnrs[0]->x() && cnr->y() == _cnrs[0]->y()) || (_cnrs[1] != nullptr && cnr->x() == _cnrs[1]->x() && cnr->y() == _cnrs[1]->y()) || (_cnrs[2] != nullptr && cnr->x() == _cnrs[2]->x() && cnr->y() == _cnrs[2]->y()) || (_cnrs[3] != nullptr && cnr->x() == _cnrs[3]->x() && cnr->y() == _cnrs[3]->y()));
 }
@@ -278,45 +331,26 @@ bool Map::Cell::is_corner(Cell *cnr)
 Map::Cell *Map::Cell::cknbr(Cell *s1)
 {
 	if (s1 == nullptr)
-	{
 		return nullptr;
-	}
+
 	if (_nbrs[0] != nullptr && s1->x() == _nbrs[0]->x() && s1->y() == _nbrs[0]->y())
-	{
 		return _nbrs[7];
-	}
 	else if (_nbrs[1] != nullptr && s1->x() == _nbrs[1]->x() && s1->y() == _nbrs[1]->y())
-	{
 		return _nbrs[0];
-	}
 	else if (_nbrs[2] != nullptr && s1->x() == _nbrs[2]->x() && s1->y() == _nbrs[2]->y())
-	{
 		return _nbrs[1];
-	}
 	else if (_nbrs[3] != nullptr && s1->x() == _nbrs[3]->x() && s1->y() == _nbrs[3]->y())
-	{
 		return _nbrs[2];
-	}
 	else if (_nbrs[4] != nullptr && s1->x() == _nbrs[4]->x() && s1->y() == _nbrs[4]->y())
-	{
 		return _nbrs[3];
-	}
 	else if (_nbrs[5] != nullptr && s1->x() == _nbrs[5]->x() && s1->y() == _nbrs[5]->y())
-	{
 		return _nbrs[4];
-	}
 	else if (_nbrs[6] != nullptr && s1->x() == _nbrs[6]->x() && s1->y() == _nbrs[6]->y())
-	{
 		return _nbrs[5];
-	}
 	else if (_nbrs[7] != nullptr && s1->x() == _nbrs[7]->x() && s1->y() == _nbrs[7]->y())
-	{
 		return _nbrs[6];
-	}
 	else
-	{
 		return nullptr;
-	}
 }
 
 /**
@@ -328,45 +362,26 @@ Map::Cell *Map::Cell::cknbr(Cell *s1)
 Map::Cell *Map::Cell::ccknbr(Cell *s1)
 {
 	if (s1 == nullptr)
-	{
 		return nullptr;
-	}
+
 	if (_nbrs[0] != nullptr && s1->x() == _nbrs[0]->x() && s1->y() == _nbrs[0]->y())
-	{
 		return _nbrs[1];
-	}
 	else if (_nbrs[1] != nullptr && s1->x() == _nbrs[1]->x() && s1->y() == _nbrs[1]->y())
-	{
 		return _nbrs[2];
-	}
 	else if (_nbrs[2] != nullptr && s1->x() == _nbrs[2]->x() && s1->y() == _nbrs[2]->y())
-	{
 		return _nbrs[3];
-	}
 	else if (_nbrs[3] != nullptr && s1->x() == _nbrs[3]->x() && s1->y() == _nbrs[3]->y())
-	{
 		return _nbrs[4];
-	}
 	else if (_nbrs[4] != nullptr && s1->x() == _nbrs[4]->x() && s1->y() == _nbrs[4]->y())
-	{
 		return _nbrs[5];
-	}
 	else if (_nbrs[5] != nullptr && s1->x() == _nbrs[5]->x() && s1->y() == _nbrs[5]->y())
-	{
 		return _nbrs[6];
-	}
 	else if (_nbrs[6] != nullptr && s1->x() == _nbrs[6]->x() && s1->y() == _nbrs[6]->y())
-	{
 		return _nbrs[7];
-	}
 	else if (_nbrs[7] != nullptr && s1->x() == _nbrs[7]->x() && s1->y() == _nbrs[7]->y())
-	{
 		return _nbrs[0];
-	}
 	else
-	{
 		return nullptr;
-	}
 }
 
 /**
@@ -378,9 +393,7 @@ Map::Cell *Map::Cell::ccknbr(Cell *s1)
 Map::Cell *Map::Cell::bptr(Cell *backpointer)
 {
 	if (backpointer != nullptr)
-	{
 		_bptr = backpointer;
-	}
 	return _bptr;
 }
 
@@ -417,9 +430,9 @@ Map::Cell **Map::Cell::cnr_of()
 /**
  * Gets x-coordinate.
  *
- * @return unsigned int
+ * @return int
  */
-unsigned int Map::Cell::x()
+int Map::Cell::x()
 {
 	return _x;
 }
@@ -427,9 +440,9 @@ unsigned int Map::Cell::x()
 /**
  * Gets y-coordinate.
  *
- * @return unsigned int
+ * @return int
  */
-unsigned int Map::Cell::y()
+int Map::Cell::y()
 {
 	return _y;
 }

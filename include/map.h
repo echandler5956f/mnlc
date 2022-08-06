@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <stdlib.h>
+#include <vector>
 
 #include "math.h"
 
@@ -10,9 +11,11 @@ using namespace std;
 
 namespace DStarLite
 {
+	// map of cells
 	class Map
 	{
 	public:
+		// cells used to represent our grid
 		class Cell
 		{
 		public:
@@ -37,24 +40,29 @@ namespace DStarLite
 			};
 
 			/**
-			 * @var static const unsigned int number of cell neighbors
+			 * @var static const int number of cell neighbors
 			 */
-			static const unsigned int NUM_NBRS;
+			static const int NUM_NBRS;
 
 			/**
-			 * @var static const unsigned int number of cell corners
+			 * @var static const int number of cell corners
 			 */
-			static const unsigned int NUM_CNRS;
-
-			/**
-			 * @var static const unsigned int number of distinct traversal costs
-			 */
-			static const unsigned int DIST_TRAV_COSTS;
+			static const int NUM_CNRS;
 
 			/**
 			 * @var static const double cost of an unwalkable cell
 			 */
 			static const double COST_UNWALKABLE;
+
+			/**
+			 * @var static const int[] used to find nodes on the corners of a grid cell
+			 */
+			static const int DELTAY[];
+
+			/**
+			 * @var static const int[] used to find nodes on the corners of a grid cell
+			 */
+			static const int DELTAX[];
 
 			/**
 			 * @var double cost of cell
@@ -64,11 +72,11 @@ namespace DStarLite
 			/**
 			 * Constructor.
 			 *
-			 * @param unsigned int x-coordinate
-			 * @param unsigned int y-coordinate
+			 * @param int x-coordinate
+			 * @param int y-coordinate
 			 * @param int [optional] cost of the cell
 			 */
-			Cell(unsigned int x, unsigned int y, int cost = 0);
+			Cell(int x, int y, int cost = 0);
 
 			/**
 			 * Deconstructor.
@@ -141,16 +149,16 @@ namespace DStarLite
 			/**
 			 * Gets x-coordinate.
 			 *
-			 * @return unsigned int
+			 * @return int
 			 */
-			unsigned int x();
+			int x();
 
 			/**
 			 * Gets y-coordinate.
 			 *
-			 * @return unsigned int
+			 * @return int
 			 */
-			unsigned int y();
+			int y();
 
 		protected:
 			/**
@@ -179,23 +187,121 @@ namespace DStarLite
 			Cell **_cnr_of;
 
 			/**
-			 * @var unsigned int x-coordinate
+			 * @var int x-coordinate
 			 */
-			unsigned int _x;
+			int _x;
 
 			/**
-			 * @var unsigned int y-coordinate
+			 * @var int y-coordinate
 			 */
-			unsigned int _y;
+			int _y;
+		};
+
+		// local path within a cell
+		class CellPath
+		{
+		public:
+			/**
+			 * Hash
+			 */
+			class Hash : public unary_function<CellPath *, size_t>
+			{
+			public:
+				/**
+				 * @var int hash "constant" (may need to change if width exceeds this value)
+				 */
+				static const int C;
+
+				/**
+				 * Hashes cell based on coordinates.
+				 *
+				 * @param CellPath*
+				 * @return size_t
+				 */
+				size_t operator()(CellPath *c) const;
+			};
+			/**
+			 * Constructor.
+			 *
+			 * @param int cell x value
+			 * @param int cell y value
+			 */
+			CellPath(int cell_x, int cell_y);
+
+			/**
+			 * Deconstructor.
+			 */
+			~CellPath();
+
+			/**
+			 * Get cell x value.
+			 *
+			 */
+			int get_cx();
+
+			/**
+			 * Get cell y value.
+			 *
+			 */
+			int get_cy();
+
+			/**
+			 *
+			 * @var double x the x values that make up the local path
+			 */
+			double x[3];
+
+			/**
+			 *
+			 * @var double y the y values that make up the local path
+			 */
+			double y[3];
+
+			/**
+			 *
+			 * @var double g the global g value with higher accuracy found via the local path
+			 */
+			double g;
+
+			/**
+			 *
+			 * @var double local_g the local component of the overall g value
+			 */
+			double local_g;
+
+			/**
+			 *
+			 * @var double g_to_edge the path-to-edge component of the local component of the g value
+			 */
+			double g_to_edge;
+
+			/**
+			 *
+			 * @var int length convenience variable to keep track of how many of the three points we are using
+			 */
+			int length;
+
+		protected:
+			/**
+			 *
+			 * @var int cx the x value of the cell
+			 */
+			int _cx;
+
+			/**
+			 *
+			 * @var int cy the y value of the cell
+			 */
+			int _cy;
 		};
 
 		/**
 		 * Constructor.
 		 *
-		 * @param unsigned int rows
-		 * @param unsigned int columns
+		 * @param int rows
+		 * @param int columns
 		 */
-		Map(unsigned int rows, unsigned int cols);
+		Map(int rows, int cols);
 
 		/**
 		 * Deconstructor.
@@ -205,34 +311,34 @@ namespace DStarLite
 		/**
 		 * Retrieves a cell.
 		 *
-		 * @param unsigned int row
-		 * @param unsigned int column
+		 * @param int row
+		 * @param int column
 		 * @return Map::Cell*
 		 */
-		Cell *operator()(const unsigned int row, const unsigned int col);
+		Cell *operator()(const int row, const int col);
 
 		/**
 		 * Gets number of cols.
 		 *
-		 * @return unsigned int
+		 * @return int
 		 */
-		unsigned int cols();
+		int cols();
 
 		/**
 		 * Checks if row/col exists.
 		 *
-		 * @param unsigned int row
-		 * @param unsigned int col
+		 * @param int row
+		 * @param int col
 		 * @return bool
 		 */
-		bool has(unsigned int row, unsigned int col);
+		bool has(int row, int col);
 
 		/**
 		 * Gets number of rows.
 		 *
-		 * @return unsigned int
+		 * @return int
 		 */
-		unsigned int rows();
+		int rows();
 
 	protected:
 		/**
@@ -241,14 +347,14 @@ namespace DStarLite
 		Cell ***_cells;
 
 		/**
-		 * @var unsigned int columns
+		 * @var int columns
 		 */
-		unsigned int _cols;
+		int _cols;
 
 		/**
-		 * @var unsigned int rows
+		 * @var int rows
 		 */
-		unsigned int _rows;
+		int _rows;
 	};
 };
 

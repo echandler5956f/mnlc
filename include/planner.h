@@ -29,9 +29,27 @@ namespace DStarLite
 		};
 
 		/**
-		 * @var static const double max steps before assuming no solution possible
+		 * Path Key compare struct.
 		 */
-		static const double MAX_STEPS;
+		struct PKeyCompare : public binary_function<double, double, bool>
+		{
+			bool operator()(const double &d1, const double &d2) const;
+		};
+
+		/**
+		 * @var static const double [radians] minimum backpointer gradient angle before resorting to one-step lookahead
+		 */
+		static const double GRAD_ANG_MIN;
+
+		/**
+		 * @var static const double [radians] maximum backpointer gradient angle before resorting to one-step lookahead
+		 */
+		static const double GRAD_ANG_MAX;
+
+		/**
+		 * @var static const int max steps before assuming no solution possible
+		 */
+		static const int MAX_STEPS;
 
 		/**
 		 * Constructor.
@@ -126,10 +144,25 @@ namespace DStarLite
 		OL _open_list;
 
 		/**
-		 * @var unordered_map open hash (stores position in multimap)
+		 * @var unordered_map open hash (stores position in open multimap)
 		 */
 		typedef tr1::unordered_map<Map::Cell *, OL::iterator, Map::Cell::Hash> OH;
 		OH _open_hash;
+
+		/**
+		 * @var multimap path list
+		 */
+		typedef pair<double, Map::CellPath *> PL_PAIR;
+		typedef multimap<double, Map::CellPath *, PKeyCompare> PL;
+		PL _primary_cp_list;
+		PL _secondary_cp_list;
+
+		/**
+		 * @var unordered_map path hash (stores position in path multimap)
+		 */
+		typedef tr1::unordered_map<Map::CellPath *, PL::iterator, Map::CellPath::Hash> PH;
+		PH _primary_cp_hash;
+		PH _secondary_cp_hash;
 
 		/**
 		 * @var Map::Cell* start and goal tile
@@ -151,6 +184,12 @@ namespace DStarLite
 		 * @var vector<vector<vector<vector<double>>>> interpolation lookup table for quickly aquiring cell costs and optimal XY given a cell and two consecutive neighbors.
 		 */
 		vector<vector<vector<vector<double>>>> _I;
+
+		/** Calculates the cost of traversing the path
+		 *
+		 * @return double the path cost
+		 */
+		double _calculate_path_cost(vector<pair<double, double>> &path);
 
 		/**
 		 * Generates a cell.
@@ -175,6 +214,71 @@ namespace DStarLite
 		void _construct_interpolation_table();
 
 		/**
+		 * Calculates the interpolated cost of 's' given any two consecutive neighbors 'sa' and 'sb'.
+		 *
+		 * @param Map::Cell* cell s
+		 * @param Map::Cell* cell sa
+		 * @param Map::Cell* cell sb
+		 * @return double cost of s
+		 */
+		double _compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb);
+
+		/**
+		 * Calculates the interpolated [x, y] position of a backpointer of 's' given any two consecutive neighbors 'sa' and 'sb'.
+		 *
+		 * @param Map::Cell* cell s
+		 * @param Map::Cell* cell sa
+		 * @param Map::Cell* cell sb
+		 * @return pair<pair<double, double>, int> position of bptr of s and type of path (1 = direct, 2 = more than one path segment)
+		 */
+		pair<pair<double, double>, int> _compute_bp(Map::Cell *s, Map::Cell *sa, Map::Cell *sb);
+
+		/**
+		 * This computes the minimum cost from an arbitrary point inside cell c to
+		 * the edge (of c) that connects nodes s_1 and s_2. The node s is also
+		 * located on a corner of c, and defines a neighboring cell b that can
+		 * also be used en-route to the edge (s_a s_b). Assuming that s is the
+		 * origin of a coordinate system where the y axis starts at node s and goes
+		 * along the edge between c and b, and the x axis starts at s and goes
+		 * along the other edge of c, and that side lengths of c are 1,
+		 * (y_hat, x_hat) is the location of the arbitrary point
+		 * this returns a CellPath containing relevant info
+		 *
+		 * @param double x_hat x coordinate of point
+		 * @param double y_hat y coordinate of point
+		 * @param Map::Cell* s
+		 * @param Map::Cell* s_a
+		 * @param Map::Cell* s_b
+		 * @param Map::CellPath** sub_paths
+		 */
+		void _compute_cost_of_point_to_edge(double x_hat, double y_hat, Map::Cell *s, Map::Cell *s_a, Map::Cell *s_b, Map::CellPath **sub_paths);
+
+		/**
+		 * Computes the local cost of getting from the point s' to the goal, s' is
+		 * described first in terms of the cell that contains it [cell_y, cell_x]
+		 * and then in terms of x and y both in the range [0 1], describing the
+		 * local position of the point within the cell. Puts cellPaths into a heap
+		 * so that they are sorted by best cost
+		 *
+		 * @param int cx cell's global y value
+		 * @param int cy cell's global x value
+		 * @param double x point's local x value
+		 * @param double y point's local y value
+		 * @param bool true to use primary path list, false to use secondary
+		 */
+		void _compute_local_point_cost(int cx, int cy, double x, double y, bool primary);
+
+		/**
+		 * Computes the local point cost for each possible cell and puts local paths into the heap
+		 *
+		 * @param double px
+		 * @param double py
+		 * @param bool true to use primary path list, false to use secondary
+
+		 */
+		void _compute_local_point_costs(double px, double py, bool primary);
+
+		/**
 		 * Computes shortest interpolated path.
 		 *
 		 * @return bool successful
@@ -182,17 +286,7 @@ namespace DStarLite
 		bool _compute_shortest_path();
 
 		/**
-		 * Calculates the interpolated cost of 's' given any two consecutive neighbors 'sa' and 'sb'.
-		 *
-		 * @param Map::Cell* cell s
-		 * @param Map::Cell* cell sa
-		 * @param Map::Cell* cell sb
-		 * @return pair<double, pair<pair<double, double>, pair<double, double>>> cost of s and point1 x,y and point2 x,y
-		 */
-		pair<double, pair<pair<double, double>, pair<double, double>>> _compute_cost(Map::Cell *s, Map::Cell *sa, Map::Cell *sb);
-
-		/**
-		 * Extracts interpolated path
+		 * Extracts interpolated path using a combination of a backpointer gradient and a one step lookahead
 		 *
 		 * @return bool successful
 		 */
@@ -206,6 +300,15 @@ namespace DStarLite
 		 * @return double g value
 		 */
 		double _g(Map::Cell *u, double value = DBL_MIN);
+
+		/** Gets the path of backpointers that links sa to sb in the graph
+		 *
+		 * @param vector<pair<double, double>> &path
+		 * @param Map::Cell * first cell
+		 * @param Map::Cell * second cell
+		 * @return bool successful
+		 */
+		bool _get_path(vector<pair<double, double>> &path, Map::Cell *s_a, Map::Cell *s_b);
 
 		/**
 		 * Calculates heuristic between two cells (euclidean distance).
@@ -228,7 +331,7 @@ namespace DStarLite
 		 * Inserts cell into open list.
 		 *
 		 * @param Map::Cell* cell to insert
-		 * @param pair<double,double> key vakue for the cell
+		 * @param pair<double,double> key value for the cell
 		 * @return void
 		 */
 		void _list_insert(Map::Cell *u, pair<double, double> k);
@@ -257,6 +360,64 @@ namespace DStarLite
 		 * @return <Map::Cell*,double> successor
 		 */
 		pair<Map::Cell *, double> _min_interpol_succ(Map::Cell *u);
+
+		/**
+		 * Inserts cell into the primary path list.
+		 *
+		 * @param Map::CellPath* cell path to insert
+		 * @param double key value for the cell path
+		 * @return void
+		 */
+		void _path_p_list_insert(Map::CellPath *p, double k);
+
+		/**
+		 * Removes cell path from the primary path list.
+		 *
+		 * @param Map::CellPath* cell path to remove
+		 * @return void
+		 */
+		void _path_p_list_remove(Map::CellPath *p);
+
+		/**
+		 * Updates cell path in the primary path list.
+		 *
+		 * @param Map::CellPath* sub_path to update the key of
+		 * @param double k new key
+		 * @return void
+		 */
+		void _path_p_list_update(Map::CellPath *p, double k);
+
+		/**
+		 * Inserts cell into the secondary path list.
+		 *
+		 * @param Map::CellPath* cell path to insert
+		 * @param double key value for the cell path
+		 * @return void
+		 */
+		void _path_s_list_insert(Map::CellPath *p, double k);
+
+		/**
+		 * Removes cell path from the secondary path list.
+		 *
+		 * @param Map::CellPath* cell path to remove
+		 * @return void
+		 */
+		void _path_s_list_remove(Map::CellPath *p);
+
+		/**
+		 * Updates cell path in the secondary path list.
+		 *
+		 * @param Map::CellPath* sub_path to update the key of
+		 * @param double k new key
+		 * @return void
+		 */
+		void _path_s_list_update(Map::CellPath *p, double k);
+
+		/** Removes all but the first point in a sub-path containing repeated points
+		 *
+		 * @return vector<pair<double, double>> &path
+		 */
+		void _remove_repeated_points(vector<pair<double, double>> &path);
 
 		/**
 		 * Gets/Sets rhs value for a cell.
