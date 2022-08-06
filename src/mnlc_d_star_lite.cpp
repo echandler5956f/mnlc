@@ -71,16 +71,17 @@ int main(int argc, char **argv)
     DStarLite::DStarLiteROS::Config config(mapdata, start, goal, obstacle_cost, unknown_cost, scan_radius,
                                            true, heuristic_weight, obstacle_tolerance, search_tolerance, max_its);
     DStarLite::DStarLiteROS ds(config);
+    tf::StampedTransform transform;
     uint64_t timer_start, timer_end;
     vector<double> md;
     double tmp;
     ros::Rate loop_rate(60);
     while (ros::ok())
     {
-        // timer_start = ros::Time::now().toNSec();
+        timer_start = ros::Time::now().toNSec();
         vector<pair<double, double>> path = ds.execute(start);
-        // timer_end = ros::Time::now().toNSec();
-        // printf("Execute Field D* took: %" PRIu64 "\n", timer_end - timer_start);
+        timer_end = ros::Time::now().toNSec();
+        printf("Execute Field D* took: %" PRIu64 "\n", timer_end - timer_start);
         path_p.header.stamp = ros::Time::now();
         path_p.poses.clear();
         for (int i = 0; i < path.size(); i++)
@@ -91,10 +92,10 @@ int main(int argc, char **argv)
             path_p.poses.push_back(ps);
         }
         path_pub.publish(path_p);
-        // timer_start = ros::Time::now().toNSec();
+        timer_start = ros::Time::now().toNSec();
         ds.update_map(mapdata.data);
-        // timer_end = ros::Time::now().toNSec();
-        // printf("Update map of Field D* took: %" PRIu64 "\n", timer_end - timer_start);
+        timer_end = ros::Time::now().toNSec();
+        printf("Update map of Field D* took: %" PRIu64 "\n", timer_end - timer_start);
         g_map = mapdata;
         md = ds.get_g_map();
         for (int i = 0; i < g_map.data.size(); i++)
@@ -106,7 +107,7 @@ int main(int argc, char **argv)
             else
             {
                 tmp = round(md[i] / 90.0);
-                // tmp = round(md[i] / 70.0);
+                // tmp = round(md[i] / 205.0);
                 // printf("tmp: %lf\n", tmp);
                 g_map.data[i] = static_cast<int>(tmp);
             }
@@ -124,14 +125,29 @@ int main(int argc, char **argv)
             else
             {
                 tmp = round(md[i] / 90.0);
-                // tmp = round(md[i] / 70.0);
+                // tmp = round(md[i] / 205.0);
                 // printf("tmp: %lf\n", tmp);
                 rhs_map.data[i] = static_cast<int>(tmp);
             }
         }
         rhs_map_pub.publish(rhs_map);
+        int temp = 0;
+        while (temp == 0)
+        {
+            try
+            {
+                temp = 1;
+                listener.lookupTransform("/map", "/base_footprint", ros::Time(0), transform);
+            }
+            catch (tf::TransformException ex)
+            {
+                temp = 0;
+                ros::Duration(0.01).sleep();
+            }
+        }
+        start = make_pair(static_cast<int>(((transform.getOrigin().x()) - mapdata.info.origin.position.x) / mapdata.info.resolution), static_cast<int>(((transform.getOrigin().y()) - mapdata.info.origin.position.y) / mapdata.info.resolution));
         ros::spinOnce();
-        loop_rate.sleep();
+        // loop_rate.sleep();
     }
     ds.~DStarLiteROS();
     return 0;

@@ -52,6 +52,11 @@ namespace DStarLite
 		static const int MAX_STEPS;
 
 		/**
+		 * @var static const int max steps before giving up on path extraction
+		 */
+		static const int MAX_EXTRACTION_STEPS;
+
+		/**
 		 * Constructor.
 		 *
 		 * @param Map* map
@@ -244,14 +249,14 @@ namespace DStarLite
 		 * (y_hat, x_hat) is the location of the arbitrary point
 		 * this returns a CellPath containing relevant info
 		 *
-		 * @param double x_hat x coordinate of point
 		 * @param double y_hat y coordinate of point
+		 * @param double x_hat x coordinate of point
 		 * @param Map::Cell* s
 		 * @param Map::Cell* s_a
 		 * @param Map::Cell* s_b
 		 * @param Map::CellPath** sub_paths
 		 */
-		void _compute_cost_of_point_to_edge(double x_hat, double y_hat, Map::Cell *s, Map::Cell *s_a, Map::Cell *s_b, Map::CellPath **sub_paths);
+		void _compute_cost_of_point_to_edge(double y_hat, double x_hat, Map::Cell *s, Map::Cell *s_a, Map::Cell *s_b, Map::CellPath **sub_paths);
 
 		/**
 		 * Computes the local cost of getting from the point s' to the goal, s' is
@@ -260,23 +265,23 @@ namespace DStarLite
 		 * local position of the point within the cell. Puts cellPaths into a heap
 		 * so that they are sorted by best cost
 		 *
-		 * @param int cx cell's global y value
-		 * @param int cy cell's global x value
-		 * @param double x point's local x value
+		 * @param int cy cell's global y value
+		 * @param int cx cell's global x value
 		 * @param double y point's local y value
+		 * @param double x point's local x value
 		 * @param bool true to use primary path list, false to use secondary
 		 */
-		void _compute_local_point_cost(int cx, int cy, double x, double y, bool primary);
+		void _compute_local_point_cost(int cy, int cx, double y, double x, bool primary);
 
 		/**
 		 * Computes the local point cost for each possible cell and puts local paths into the heap
 		 *
-		 * @param double px
 		 * @param double py
+		 * @param double px
 		 * @param bool true to use primary path list, false to use secondary
 
 		 */
-		void _compute_local_point_costs(double px, double py, bool primary);
+		void _compute_local_point_costs(double py, double px, bool primary);
 
 		/**
 		 * Computes shortest interpolated path.

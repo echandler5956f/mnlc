@@ -8,6 +8,11 @@ using namespace DStarLite;
 const double Math::INF = DBL_MAX;
 
 /**
+ * @var double SMALL
+ */
+const double Math::SMALL = 0.000001;
+
+/**
  * @var double PI
  */
 const double Math::PI = 3.14159265;

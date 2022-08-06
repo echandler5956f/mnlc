@@ -88,10 +88,9 @@ namespace DStarLite
 			 *
 			 * @param Cell** cell neighbors
 			 * @param Cell** cell corners
-			 * @param Cell** cell corners of
 			 * @return void
 			 */
-			void init(Cell **nbrs, Cell **cnrs, Cell **cnrs_of);
+			void init(Cell **nbrs, Cell **cnrs);
 
 			/**
 			 * Check if cnr is a corner of ->this cell
@@ -140,13 +139,6 @@ namespace DStarLite
 			Cell **cnrs();
 
 			/**
-			 * Gets the cells that ->this cell is a corner of
-			 *
-			 * @return Cell**
-			 */
-			Cell **cnr_of();
-
-			/**
 			 * Gets x-coordinate.
 			 *
 			 * @return int
@@ -180,11 +172,6 @@ namespace DStarLite
 			 * @var Cell** corners
 			 */
 			Cell **_cnrs;
-
-			/**
-			 * @var Cell** corners of
-			 */
-			Cell **_cnr_of;
 
 			/**
 			 * @var int x-coordinate
@@ -223,10 +210,10 @@ namespace DStarLite
 			/**
 			 * Constructor.
 			 *
-			 * @param int cell x value
 			 * @param int cell y value
+			 * @param int cell x value
 			 */
-			CellPath(int cell_x, int cell_y);
+			CellPath(int cell_y, int cell_x);
 
 			/**
 			 * Deconstructor.

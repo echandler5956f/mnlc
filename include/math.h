@@ -15,6 +15,11 @@ namespace DStarLite
 		static const double INF;
 
 		/**
+		* @var double SMALL
+		 */
+		static const double SMALL;
+
+		/**
 		 * @var double PI
 		 */
 		static const double PI;
