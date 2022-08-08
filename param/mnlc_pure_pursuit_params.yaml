@@ -1,18 +1,18 @@
 pure_pursuit:
   start_time: 5
-  rad_tolerance: 0.05 # radius fidelity of the smoothing
-  tolerance: 0.0875 # [m] tolerance
-  alpha: 0.5001 # curve constant
-  beta: 0.4999 # curve constant
-  w_base: 0.235  # [m] wheel base
-  spacing: 0.0125 # [m] space between injected points
-  kv: 4.5454 # velocity constant
-  ka: 0.01 # acceleration constant
-  lad: 0.2  # [m] look-ahead distance
-  lfg: 0.005 # look forward gain
-  target_speed: 0.01 # [m/s] velocity target
-  target_acc: 0.01 # [m/s^2] acceleration target
-  kp: 0.45 # pid proportional gain
+  rad_tolerance: 0.1 # radius fidelity of the smoothing
+  tolerance: 0.145 # [m] tolerance
+  alpha: 0.60 # curve constant
+  beta: 0.40 # curve constant
+  w_base: 0.23  # [m] wheel base
+  spacing: 0.025 # [m] space between injected points
+  kv: 1.0 # velocity constant
+  ka: 0.0125 # acceleration constant
+  lad: 0.275  # [m] look-ahead distance
+  lfg: 0.0625 # look forward gain
+  target_speed: 0.15 # [m/s] velocity target
+  filter_size: 5 # size of the averaging filter
+  kp: 2.5 # pid proportional gain
   ki: 0.0 # integral gain
   kd: 0.0 # derivative gain
   error_bound: 0.0 # a hard cap on the pid error. if 0.0, no cap

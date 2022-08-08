@@ -42,15 +42,15 @@ class mnlc_sklearn_frontier_filter():
         self.frontiers = []
         self.next_time = rospy.get_time()
         self.detected_points_sub = rospy.Subscriber(
-            '/detected_points', PointStamped, self.update_frontiers, queue_size=1000)
+            '/detected_points', PointStamped, self.update_frontiers, queue_size=250)
         self.rtab_map_sub = rospy.Subscriber(
             '/mnlc_global_costmap_opencv/cspace', OccupancyGrid, self.update_map, queue_size=1)
         self.assigned_points_pub = rospy.Publisher(
             '/frontier_filter/filtered_points_markers', Marker, queue_size=10)
         self.filter_pub = rospy.Publisher(
             '/frontier_filter/filtered_points', PointArray, queue_size=10)
-        self.state_machine_sub = rospy.Subscriber('/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
-
+        self.state_machine_sub = rospy.Subscriber(
+            '/mnlc_state_machine', std_msgs.msg.Int8, self.update_state, queue_size=1)
 
     def initialize_marker(self, map):
         self.marker.header.frame_id = map.header.frame_id
@@ -60,7 +60,7 @@ class mnlc_sklearn_frontier_filter():
         self.marker.type = Marker.POINTS
         self.marker.action = Marker.ADD
         self.marker.pose.orientation.w = 1.0
-        self.marker.scale.x = self.marker.scale.y = 0.3
+        self.marker.scale.x = self.marker.scale.y = 0.05
         (self.marker.color.r, self.marker.color.g, self.marker.color.b,
          self.marker.color.a) = (255.0/255.0, 255.0/255.0, 0.0/255.0, 1)
         self.marker.lifetime == rospy.Duration()
@@ -97,18 +97,23 @@ class mnlc_sklearn_frontier_filter():
 
     def filter_potential_frontiers(self):
         point = PointStamped()
-        point.header.frame_id = 'map'
+        point.header.frame_id = '/map'
         point_array = PointArray()
         self.marker.points = []
+        mapdata = self.latest_map
+        mox = mapdata.info.origin.position.x
+        moy = mapdata.info.origin.position.y
+        mw = mapdata.info.width
+        res = mapdata.info.resolution
         while not rospy.is_shutdown():
             time_init = rospy.get_time()
             mapdata = self.latest_map
             centroids = []
             front = copy.copy(self.frontiers)
             if len(front) > 1:
-                bandwidth = estimate_bandwidth(front, quantile=0.2)
+                bandwidth = estimate_bandwidth(front, quantile=0.3)
                 if bandwidth == 0.0:
-                    bandwidth = 0.2
+                    bandwidth = 0.3
                 ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
                 ms.fit(front)
                 centroids = ms.cluster_centers_
@@ -122,31 +127,30 @@ class mnlc_sklearn_frontier_filter():
                 point.point.y = centroids[i][1]
                 x = np.array([point.point.x,
                               point.point.y])
-                grid = np.array([int(math.floor(x[0] - mapdata.info.origin.position.x) /
-                                     mapdata.info.resolution), int(math.floor((x[1] - mapdata.info.origin.position.y) /
-                                                                              mapdata.info.resolution))])
+                grid = np.array(
+                    [int(math.floor(x[0] - mox) / res), int(math.floor((x[1] - moy) / res))])
                 data = int(
-                    mapdata.data[grid[0] + (grid[1] * mapdata.info.width)])
+                    mapdata.data[grid[0] + (grid[1] * mw)])
                 cond = data >= int(self.obstacle_cost) or data == -1
                 centroid = np.array([centroids[i][0], centroids[i][1]])
                 radius = self.info_radius
                 info_gain = 0
-                index = int((math.floor((centroid[1] - mapdata.info.origin.position.y)/mapdata.info.resolution) *
-                             mapdata.info.width) + (math.floor((centroid[0] - mapdata.info.origin.position.x)/mapdata.info.resolution)))
-                r_region = int(radius/mapdata.info.resolution)
-                init_index = index-r_region * (mapdata.info.width + 1)
+                index = int((math.floor((centroid[1] - moy)/res) *
+                             mw) + (math.floor((centroid[0] - mox)/res)))
+                r_region = int(radius/res)
+                init_index = index-r_region * (mw + 1)
                 for n in range(0, 2 * r_region + 1):
-                    start = n * mapdata.info.width + init_index
+                    start = n * mw + init_index
                     end = start + 2 * r_region
-                    limit = ((start/mapdata.info.width) + 2) * \
-                        mapdata.info.width
+                    limit = ((start/mw) + 2) * mw
                     for j in range(start, end + 1):
                         if (j >= 0 and j < limit and j < len(mapdata.data)):
-                            p = np.array([mapdata.info.origin.position.x + (j - (j/mapdata.info.width) * (mapdata.info.width)) * mapdata.info.resolution,
-                                          mapdata.info.origin.position.y + (j/mapdata.info.width) * mapdata.info.resolution])
+                            p = np.array([mox + (j - (j/mw) * (mw)) * res,
+                                          moy + (j/mw) * res])
                             if (mapdata.data[j] == -1 and np.linalg.norm(centroid-p) <= radius):
                                 info_gain += 1
-                info_gain = info_gain * (mapdata.info.resolution ** 2)
+                info_gain = info_gain * (res ** 2)
+                print(info_gain)
                 if cond or info_gain < 0.125:
                     centroids = np.delete(centroids, (i), axis=0)
                     i = i - 1
@@ -161,7 +165,8 @@ class mnlc_sklearn_frontier_filter():
                     self.marker.points.append(copy.copy(point.point))
                 self.filter_pub.publish(point_array)
                 self.assigned_points_pub.publish(self.marker)
-            # print("Calculating mnlc Filter took: ", rospy.get_time() - time_init, ".")
+            # print("Calculating frontier filter took: ",
+            #       rospy.get_time() - time_init, ".")
 
     def update_frontiers(self, frontier):
         if len(self.frontiers) > 0:

@@ -1,6 +1,6 @@
 <launch>
   <!-- Globals -->
-  <arg name="sim" default="0"/>
+  <arg name="sim" default="1"/>
   <arg name="mapping" default="1"/>
   <param name="sim" value="$(arg sim)"/>
 
@@ -26,12 +26,18 @@
   <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_burger.urdf.xacro" />
   <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-urdf -model turtlebot3_burger -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description" />
 
+  <!-- LIDAR Filter -->
+  <!-- <node pkg="laser_filters" type="scan_to_scan_filter_chain" name="laser_filter" output="screen">
+    <rosparam command="load" file="$(find rbe3002)/param/mnlc_lidar_filter_params.yaml" />
+    <param name="tf_message_filter_target_frame" value="/base_footprint" />
+  </node> -->
+
   <!-- RTabMap -->
   <include file="$(find rbe3002)/launch/rtab_map.launch"/>
 
   <!-- Riz -->
   <node name="rviz" pkg="rviz" type="rviz" required="true" args="-d $(find rbe3002)/rviz/rbe3002_final_demo.rviz"/>
-
+  
   <!-- MNLC -->
   <!-- Mapping, Navigation, and Localization Controller -->
 
@@ -39,45 +45,63 @@
   <node name="mnlc_controller"                      pkg="rbe3002" type="mnlc_controller.py"                      output="screen"/>
 
   <!-- Global Planners -->
-  <node name="mnlc_a_star"                          pkg="rbe3002" type="mnlc_a_star.py"                          output="screen"/>
+  <node name="mnlc_d_star_lite"                     pkg="rbe3002" type="mnlc_d_star_lite"                        output="screen"/>
+  <node name="mnlc_a_star"                          pkg="rbe3002" type="mnlc_a_star"                             output="screen"/>
+  <!-- <node name="mnlc_a_star"                          pkg="rbe3002" type="mnlc_a_star.py"                          output="screen"/> -->
 
   <!-- Local Planners -->
   <node name="mnlc_pure_pursuit"                    pkg="rbe3002" type="mnlc_pure_pursuit.py"                    output="screen"/>
 
   <!-- Frontier Assigners -->
-  <node name="mnlc_assigner"                        pkg="rbe3002" type="mnlc_assigner.py"                        output="screen"/>
+  <node name="mnlc_frontier_assigner"               pkg="rbe3002" type="mnlc_frontier_assigner"                  output="screen"/>
+  <!-- <node name="mnlc_assigner"                        pkg="rbe3002" type="mnlc_assigner.py"                        output="screen"/> -->
 
   <!-- Frontier Filters -->
-  <node name="mnlc_sklearn_frontier_filter"         pkg="rbe3002" type="mnlc_sklearn_frontier_filter.py"         output="screen"/>
+  <!-- <node name="mnlc_meanshift_frontier_filter"       pkg="rbe3002" type="mnlc_meanshift_frontier_filter"          output="screen"/> -->
+  <node name="mnlc_hdbscan_frontier_filter"         pkg="rbe3002" type="mnlc_hdbscan_frontier_filter"            output="screen"/>
+  <!-- <node name="mnlc_sklearn_frontier_filter"         pkg="rbe3002" type="mnlc_sklearn_frontier_filter.py"         output="screen"/> -->
 
   <!-- Global Frontier Detectors -->
-  <node name="mnlc_global_opencv_frontier_detector" pkg="rbe3002" type="mnlc_global_opencv_frontier_detector.py" output="screen"/>
-  <node name="mnlc_global_rrt_detector1"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/>
-  <!-- <node name="mnlc_global_rrt_detector2"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/>
-  <node name="mnlc_global_rrt_detector3"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/> -->
-
+  <node name="mnlc_global_rrt_detector"             pkg="rbe3002" type="mnlc_global_rrt_detector"                output="screen"/>
+  <!-- <node name="mnlc_global_rrt_detector1"            pkg="rbe3002" type="mnlc_global_rrt_detector.py"             output="screen"/> -->
+  <!-- <node name="mnlc_global_opencv_frontier_detector" pkg="rbe3002" type="mnlc_global_opencv_frontier_detector.py" output="screen"/> -->
 
   <!-- Local Frontier Detectors -->
-  <node name="mnlc_local_rrt_detector1"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
+  <node name="mnlc_local_rrt_detector1"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
+  <node name="mnlc_local_rrt_detector2"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
+  <node name="mnlc_local_rrt_detector3"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
+  <node name="mnlc_local_rrt_detector4"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
+  <node name="mnlc_local_rrt_detector5"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
+  <!-- <node name="mnlc_local_rrt_detector6"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/> -->
+  <!-- <node name="mnlc_local_rrt_detector7"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/>
+  <node name="mnlc_local_rrt_detector8"             pkg="rbe3002" type="mnlc_local_rrt_detector"                 output="screen"/> -->
+
+  <!-- <node name="mnlc_local_rrt_detector1"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
   <node name="mnlc_local_rrt_detector2"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
-  <node name="mnlc_local_rrt_detector3"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
-  <node name="mnlc_local_rrt_detector4"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
-  <node name="mnlc_local_rrt_detector5"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/>
+  <node name="mnlc_local_rrt_detector3"             pkg="rbe3002" type="mnlc_local_rrt_detector.py"              output="screen"/> -->
 
   <!-- Costmaps -->
-  <node name="mnlc_global_costmap_opencv"           pkg="rbe3002" type="mnlc_global_costmap_opencv.py"           output="screen"/>
-  <node name="mnlc_local_costmap_opencv"            pkg="rbe3002" type="mnlc_local_costmap_opencv.py"            output="screen"/>
+  <node name="mnlc_global_costmap_opencv"           pkg="rbe3002" type="mnlc_global_costmap_opencv"              output="screen"/>
+  <node name="mnlc_simple_costmap"                  pkg="rbe3002" type="mnlc_simple_costmap"                     output="screen"/>
+  <!-- <node name="mnlc_global_costmap_opencv"           pkg="rbe3002" type="mnlc_global_costmap_opencv.py"           output="screen"/> -->
+  <!-- <node name="mnlc_local_costmap_opencv"            pkg="rbe3002" type="mnlc_local_costmap_opencv.py"            output="screen"/> -->
+
+  <!-- Visualization -->
+  <!-- <node name="mnlc_vornoi_visualizer"               pkg="rbe3002" type="mnlc_vornoi_visualizer"                  output="screen"/> -->
 
   <!-- Parameters-->
   <rosparam file="$(find rbe3002)/param/mnlc_controller_params.yaml"                      command="load"/>
+  <rosparam file="$(find rbe3002)/param/mnlc_d_star_lite_params.yaml"                     command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_a_star_params.yaml"                          command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_pure_pursuit_params.yaml"                    command="load"/>
-  <rosparam file="$(find rbe3002)/param/mnlc_assigner_params.yaml"                        command="load"/>
+  <rosparam file="$(find rbe3002)/param/mnlc_frontier_assigner_params.yaml"               command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_sklearn_frontier_filter_params.yaml"         command="load"/>
+  <rosparam file="$(find rbe3002)/param/mnlc_hdbscan_frontier_filter_params.yaml"         command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_global_opencv_frontier_detector_params.yaml" command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_global_rrt_detector_params.yaml"             command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_local_rrt_detector_params.yaml"              command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_global_costmap_opencv_params.yaml"           command="load"/>
+  <rosparam file="$(find rbe3002)/param/mnlc_simple_costmap_params.yaml"                  command="load"/>
   <rosparam file="$(find rbe3002)/param/mnlc_local_costmap_opencv_params.yaml"            command="load"/>
 
   <!-- Auto-SSH -->

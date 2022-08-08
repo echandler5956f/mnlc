@@ -1,37 +1,122 @@
 [
 {
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_a_star.dir/src/mnlc_a_star.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_a_star.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_a_star.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv -isystem /usr/include/eigen3  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_d_star_lite.dir/src/mnlc_d_star_lite.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_d_star_lite.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_d_star_lite.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv -isystem /usr/include/eigen3  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_d_star_lite.dir/src/planner.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/planner.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/planner.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv -isystem /usr/include/eigen3  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_d_star_lite.dir/src/map.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/map.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/map.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv -isystem /usr/include/eigen3  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_d_star_lite.dir/src/math.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/math.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/math.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_field_d_star.dir/src/mnlc_field_d_star.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_field_d_star.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_field_d_star.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_field_d_star.dir/src/mnlc_lexi_queue.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_lexi_queue.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_lexi_queue.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_global_costmap_opencv.dir/src/mnlc_global_costmap_opencv.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_global_costmap_opencv.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_global_costmap_opencv.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_simple_costmap.dir/src/mnlc_simple_costmap.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_simple_costmap.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_simple_costmap.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv -isystem /home/quant/.local/include -isystem /usr/include/python2.7 -isystem /usr/include/eigen3  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_meanshift_frontier_filter.dir/src/mnlc_meanshift_frontier_filter.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_meanshift_frontier_filter.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_meanshift_frontier_filter.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv -isystem /usr/include/eigen3  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_hdbscan_frontier_filter.dir/src/mnlc_hdbscan_frontier_filter.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_hdbscan_frontier_filter.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_hdbscan_frontier_filter.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_frontier_assigner.dir/src/mnlc_frontier_assigner.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_frontier_assigner.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_frontier_assigner.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_global_rrt_detector.dir/src/mnlc_global_rrt_detector.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_global_rrt_detector.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_global_rrt_detector.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_global_rrt_detector.dir/src/mersenne_twister.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mersenne_twister.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mersenne_twister.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_local_rrt_detector.dir/src/mnlc_local_rrt_detector.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_local_rrt_detector.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_local_rrt_detector.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/include/opencv  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_local_rrt_detector.dir/src/mersenne_twister.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mersenne_twister.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mersenne_twister.cpp"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build",
+  "command": "/usr/bin/c++ -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"rbe3002\\\" -I/home/quant/rbe3002_ws/src/rbe3002/build/devel/include -I/home/quant/rbe3002_ws/src/rbe3002/include -I/opt/ros/melodic/include -I/opt/ros/melodic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -isystem /usr/include/opencv  -std=c++11 -O3 -DNDEBUG -o CMakeFiles/mnlc_vornoi_visualizer.dir/src/mnlc_vornoi_visualizer.cpp.o -c /home/quant/rbe3002_ws/src/rbe3002/src/mnlc_vornoi_visualizer.cpp",
+  "file": "/home/quant/rbe3002_ws/src/rbe3002/src/mnlc_vornoi_visualizer.cpp"
+},
+{
   "directory": "/home/quant/rbe3002_ws/src/rbe3002/build/gtest/googlemock",
-  "command": "/usr/bin/c++  -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_main_EXPORTS -I/usr/src/googletest/googlemock/include -I/usr/src/googletest/googlemock -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -g -fPIC    -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock_main.dir/__/googletest/src/gtest-all.cc.o -c /usr/src/googletest/googletest/src/gtest-all.cc",
+  "command": "/usr/bin/c++ -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_EXPORTS -I/usr/src/googletest/googlemock/include -I/usr/src/googletest/googlemock -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -std=c++11 -O3 -DNDEBUG -fPIC  -std=c++11 -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock.dir/usr/src/googletest/googletest/src/gtest-all.cc.o -c /usr/src/googletest/googletest/src/gtest-all.cc",
   "file": "/usr/src/googletest/googletest/src/gtest-all.cc"
 },
 {
   "directory": "/home/quant/rbe3002_ws/src/rbe3002/build/gtest/googlemock",
-  "command": "/usr/bin/c++  -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_main_EXPORTS -I/usr/src/googletest/googlemock/include -I/usr/src/googletest/googlemock -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -g -fPIC    -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock_main.dir/src/gmock-all.cc.o -c /usr/src/googletest/googlemock/src/gmock-all.cc",
+  "command": "/usr/bin/c++ -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_EXPORTS -I/usr/src/googletest/googlemock/include -I/usr/src/googletest/googlemock -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -std=c++11 -O3 -DNDEBUG -fPIC  -std=c++11 -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock.dir/src/gmock-all.cc.o -c /usr/src/googletest/googlemock/src/gmock-all.cc",
   "file": "/usr/src/googletest/googlemock/src/gmock-all.cc"
 },
 {
   "directory": "/home/quant/rbe3002_ws/src/rbe3002/build/gtest/googlemock",
-  "command": "/usr/bin/c++  -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_main_EXPORTS -I/usr/src/googletest/googlemock/include -I/usr/src/googletest/googlemock -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -g -fPIC    -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock_main.dir/src/gmock_main.cc.o -c /usr/src/googletest/googlemock/src/gmock_main.cc",
+  "command": "/usr/bin/c++ -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_main_EXPORTS -I/usr/src/googletest/googlemock/include -I/usr/src/googletest/googlemock -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -std=c++11 -O3 -DNDEBUG -fPIC  -std=c++11 -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock_main.dir/usr/src/googletest/googletest/src/gtest-all.cc.o -c /usr/src/googletest/googletest/src/gtest-all.cc",
+  "file": "/usr/src/googletest/googletest/src/gtest-all.cc"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build/gtest/googlemock",
+  "command": "/usr/bin/c++ -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_main_EXPORTS -I/usr/src/googletest/googlemock/include -I/usr/src/googletest/googlemock -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -std=c++11 -O3 -DNDEBUG -fPIC  -std=c++11 -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock_main.dir/src/gmock-all.cc.o -c /usr/src/googletest/googlemock/src/gmock-all.cc",
+  "file": "/usr/src/googletest/googlemock/src/gmock-all.cc"
+},
+{
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build/gtest/googlemock",
+  "command": "/usr/bin/c++ -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_main_EXPORTS -I/usr/src/googletest/googlemock/include -I/usr/src/googletest/googlemock -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -std=c++11 -O3 -DNDEBUG -fPIC  -std=c++11 -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock_main.dir/src/gmock_main.cc.o -c /usr/src/googletest/googlemock/src/gmock_main.cc",
   "file": "/usr/src/googletest/googlemock/src/gmock_main.cc"
 },
 {
-  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build/gtest/googlemock",
-  "command": "/usr/bin/c++  -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_EXPORTS -I/usr/src/googletest/googlemock/include -I/usr/src/googletest/googlemock -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -g -fPIC    -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock.dir/__/googletest/src/gtest-all.cc.o -c /usr/src/googletest/googletest/src/gtest-all.cc",
+  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build/gtest/googlemock/gtest",
+  "command": "/usr/bin/c++ -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgtest_EXPORTS -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -std=c++11 -O3 -DNDEBUG -fPIC  -std=c++11 -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gtest.dir/src/gtest-all.cc.o -c /usr/src/googletest/googletest/src/gtest-all.cc",
   "file": "/usr/src/googletest/googletest/src/gtest-all.cc"
 },
 {
-  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build/gtest/googlemock",
-  "command": "/usr/bin/c++  -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_EXPORTS -I/usr/src/googletest/googlemock/include -I/usr/src/googletest/googlemock -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -g -fPIC    -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock.dir/src/gmock-all.cc.o -c /usr/src/googletest/googlemock/src/gmock-all.cc",
-  "file": "/usr/src/googletest/googlemock/src/gmock-all.cc"
-},
-{
   "directory": "/home/quant/rbe3002_ws/src/rbe3002/build/gtest/googlemock/gtest",
-  "command": "/usr/bin/c++  -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgtest_main_EXPORTS -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -g -fPIC    -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gtest_main.dir/src/gtest_main.cc.o -c /usr/src/googletest/googletest/src/gtest_main.cc",
+  "command": "/usr/bin/c++ -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgtest_main_EXPORTS -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -std=c++11 -O3 -DNDEBUG -fPIC  -std=c++11 -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gtest_main.dir/src/gtest_main.cc.o -c /usr/src/googletest/googletest/src/gtest_main.cc",
   "file": "/usr/src/googletest/googletest/src/gtest_main.cc"
-},
-{
-  "directory": "/home/quant/rbe3002_ws/src/rbe3002/build/gtest/googlemock/gtest",
-  "command": "/usr/bin/c++  -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgtest_EXPORTS -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -g -fPIC    -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gtest.dir/src/gtest-all.cc.o -c /usr/src/googletest/googletest/src/gtest-all.cc",
-  "file": "/usr/src/googletest/googletest/src/gtest-all.cc"
 }
 ]

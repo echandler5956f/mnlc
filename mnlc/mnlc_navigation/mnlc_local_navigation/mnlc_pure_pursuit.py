@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
-from nav_msgs.msg import Path, OccupancyGrid
 from geometry_msgs.msg import Twist, PoseStamped
-from nav_msgs.srv import GetMap
+from nav_msgs.msg import Path, OccupancyGrid
 from sensor_msgs.msg._Imu import Imu
 from scipy.spatial import distance
 import move_base_msgs.msg as mb
+from nav_msgs.srv import GetMap
 import rbe3002.msg as rbem
+import std_msgs.msg
 import std_srvs.srv
 import numpy as np
 import actionlib
 import roslib
 import rospy
-import time
 import math
 import tf
 
@@ -59,6 +59,22 @@ class PIDController():
         self.prevError = 0
         self.currEffort = 0
 
+class averagingFilter():
+    filter_size = 5
+    data = []
+    index = 0
+
+    def averagingFilter(self, size):
+        self.filter_size = size
+        self.data = np.zeros((self.filter_size, 1), dtype=np.float)
+    
+    def average(self, vel):
+        self.data[self.index] = vel
+        self.index = 0 if (self.index >= self.filter_size - 1) else (self.index + 1)
+        average = 0.0
+        for i in range(0, self.filter_size):
+            average = average + self.data[i]
+        return average / self.filter_size
 
 class mnlc_pure_pursuit():
 
@@ -73,6 +89,9 @@ class mnlc_pure_pursuit():
         rospy.loginfo("mnlc_pure_pursuit node ready.")
 
     def initialize_params(self):
+        self.t = rospy.get_time()
+        self.acc = std_msgs.msg.Float32()
+        self.acc.data = 0.0
         self.start_time = rospy.get_param('/pure_pursuit/start_time')
         self.ctrl_invl = rospy.get_param(
             '/controller/ctrl_invl')  # [s] control loop interval
@@ -89,15 +108,15 @@ class mnlc_pure_pursuit():
         # [m] space between injected points
         self.spacing = rospy.get_param('/pure_pursuit/spacing')
         self.old_nearest = None
-        self.kv = rospy.get_param('/pure_pursuit/kv')  # velocity constant
-        self.ka = rospy.get_param('/pure_pursuit/ka')  # acceleration constant
         # [m] look-ahead distance
         self.lad = rospy.get_param('/pure_pursuit/lad')
         self.lfg = rospy.get_param('/pure_pursuit/lfg')  # look forward gain
         self.target_speed = rospy.get_param(
             '/pure_pursuit/target_speed')  # [m/s] velocity target
-        self.target_acc = rospy.get_param(
-            '/pure_pursuit/target_acc')  # [m/s^2] acceleration target
+        self.filter_size = rospy.get_param(
+            '/pure_pursuit/filter_size')  # size of the velocity filter
+        kv = rospy.get_param('/pure_pursuit/kv')  # velocity constant
+        ka = rospy.get_param('/pure_pursuit/ka')  # acceleration constant
         kp = rospy.get_param('/pure_pursuit/kp')  # pid proportional gain
         ki = rospy.get_param('/pure_pursuit/ki')  # integral gain
         kd = rospy.get_param('/pure_pursuit/kd')  # derivative gain
@@ -105,8 +124,14 @@ class mnlc_pure_pursuit():
         error_bound = rospy.get_param('/pure_pursuit/error_bound')
         self.map_metadata = OccupancyGrid()
         self.listener = tf.TransformListener()
+        self.velocity_controller = PIDController()
         self.turningController = PIDController()
+        self.lin_vel_filter = averagingFilter()
+        self.ang_vel_filter = averagingFilter()
+        self.velocity_controller.PIDController(kv, 0, ka, 0)
         self.turningController.PIDController(kp, ki, kd, error_bound)
+        self.lin_vel_filter.averagingFilter(self.filter_size)
+        self.ang_vel_filter.averagingFilter(self.filter_size)
 
     def safe_start(self):
         rospy.wait_for_service(
@@ -155,6 +180,7 @@ class mnlc_pure_pursuit():
         rospy.Timer(rospy.Duration(self.ctrl_invl), self.odometry)
         self.cmd_vel_pub = rospy.Publisher(
             '/cmd_vel', Twist, None, queue_size=1)
+        self.acc_pub = rospy.Publisher('/acc', std_msgs.msg.Float32, None, queue_size=1)
         self.smoothed_pth_pub = rospy.Publisher(
             '/pure_persuit/smoothed_path', Path, queue_size=1)
         self.phase1_server = actionlib.SimpleActionServer(
@@ -211,26 +237,31 @@ class mnlc_pure_pursuit():
             i = Path()
         rospy.loginfo("Executing Pure Persuit path following.")
         time_init = rospy.get_time()
-        dx = smoothed_path.poses[5].pose.position.x - self.cx
-        dy = smoothed_path.poses[5].pose.position.y - self.cy
+        dx = smoothed_path.poses[7].pose.position.x - self.cx
+        dy = smoothed_path.poses[7].pose.position.y - self.cy
         it = math.atan2(dy, dx)
         iq = quaternion_from_euler(0.0, 0.0, it, 'rxyz')
         self.turnTo(iq)
         last_index = len(smoothed_path.poses) - 1
         t_index, lf = self.search_target(smoothed_path.poses)
         # print("t_index is: ", t_index, " and last_index is: ", last_index)
-        next_path_time = time.time()
+        next_path_time = rospy.get_time()
         while last_index > t_index:
-            if rospy.get_time() > start_time + 40.0 and 0.0025 >= self.vel:
+            if rospy.get_time() > start_time + 25.0 and distance.euclidean(self.vel[0], self.vel[1]) <= 0.000625:
+                self.old_nearest = None
+                self.stop()
                 result = rbem.explorationResult()
                 result.reached_frontier = False
                 self.phase1_server.set_succeeded(result=result)
                 return
-            if time.time() > next_path_time:
-                lin_v = self.kv * self.target_speed + self.ka * self.target_acc
+            if rospy.get_time() > next_path_time:
+                lin_v = self.velocity_controller.ComputeEffort(
+                    (self.target_speed * 2) - distance.euclidean(self.vel[0], self.vel[1]))
                 ang_v, t_index = self.pp_steering(smoothed_path.poses, t_index)
-                self.send_speed(lin_v, ang_v)
-                next_path_time = time.time() + self.ctrl_invl
+                self.send_speed(self.lin_vel_filter.average(lin_v), self.ang_vel_filter.average(ang_v))
+                # print(rospy.get_time() - self.t)
+                self.t = rospy.get_time()
+                next_path_time = rospy.get_time() + self.ctrl_invl
                 feedback = rbem.explorationFeedback()
                 feedback.poses_left = len(smoothed_path.poses) - t_index
                 self.phase1_server.publish_feedback(feedback=feedback)
@@ -252,22 +283,22 @@ class mnlc_pure_pursuit():
                 [vector[0] / mag, vector[1] / mag]) * self.spacing
             for j in range(int(num_points)):
                 pose = PoseStamped()
-                pose.header.frame_id = 'map'
+                pose.header.frame_id = '/map'
                 pose.header.stamp = rospy.Time.now()
                 pose.pose.position.x = poses[i].pose.position.x + (
                     vector[0] * j)
-                pose.pose.position.y =poses[i].pose.position.y + (
+                pose.pose.position.y = poses[i].pose.position.y + (
                     vector[1] * j)
                 new_path.poses.append(pose)
         last_pose = PoseStamped()
-        last_pose.header.frame_id = 'map'
+        last_pose.header.frame_id = '/map'
         last_pose.header.stamp = rospy.Time.now()
         last_pose.pose.position.x = poses[len(
             poses) - 1].pose.position.x
         last_pose.pose.position.y = poses[len(
-           poses) - 1].pose.position.y
+            poses) - 1].pose.position.y
         new_path.poses.append(last_pose)
-        new_path.header.frame_id = 'map'
+        new_path.header.frame_id = '/map'
         new_path.header.stamp = rospy.Time.now()
         return new_path
 
@@ -288,12 +319,12 @@ class mnlc_pure_pursuit():
         smoothed_path = Path()
         for arr in npath:
             pose = PoseStamped()
-            pose.header.frame_id = 'map'
+            pose.header.frame_id = '/map'
             pose.header.stamp = rospy.Time.now()
             pose.pose.position.x = arr[0]
             pose.pose.position.y = arr[1]
             smoothed_path.poses.append(pose)
-        smoothed_path.header.frame_id = 'map'
+        smoothed_path.header.frame_id = '/map'
         smoothed_path.header.stamp = rospy.Time.now()
         return smoothed_path
 
@@ -317,7 +348,7 @@ class mnlc_pure_pursuit():
                     1 if (index + 1) < len(poses) else index
                 dt_index = dn_index
             self.old_nearest = index
-        lf = self.lfg * self.vel + self.lad
+        lf = self.lfg * distance.euclidean(self.vel[0], self.vel[1]) + self.lad
         while lf > math.sqrt(pow(self.rx - poses[index].pose.position.x, 2) +
                              pow(self.ry - poses[index].pose.position.y, 2)):
             if index + 1 >= len(poses):
@@ -372,6 +403,8 @@ class mnlc_pure_pursuit():
             try:
                 (trans, rot) = self.listener.lookupTransform(
                     '/odom', '/base_footprint', rospy.Time(0))
+                (self.vel, ang) = self.listener.lookupTwistFull("/base_footprint", "/odom",
+                                                                "/base_footprint", (0, 0, 0), "/odom", rospy.Time(0.0), rospy.Duration(0.1))
                 cond = 1
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 cond = 0
@@ -382,10 +415,10 @@ class mnlc_pure_pursuit():
         self.ry = self.cy - ((self.w_base / 2) * math.sin(self.ctheta))
 
     def update_imu(self, msg):
-        self.acc = distance.euclidean(
+        rospy.sleep(0.01)
+        self.acc.data = distance.euclidean(
             msg.linear_acceleration.x, msg.linear_acceleration.y)
-        self.vel = distance.euclidean(
-            msg.linear_acceleration.x, msg.linear_acceleration.y) * self.ctrl_invl
+        self.acc_pub.publish(self.acc)        
 
     def stop(self):
         rospy.loginfo("Sending zero-velocity target to the Turtlebot.")

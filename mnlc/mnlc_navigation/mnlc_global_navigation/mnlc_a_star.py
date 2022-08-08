@@ -86,9 +86,9 @@ class mnlc_a_star():
         if path == -1:
             empty_pose = PoseStamped()
             empty_pose.header.frame_id = '/map'
-            empty_pose.header.stamp = rospy.Time.now()
+            empty_pose.header.stamp = rospy.Time(0)
             path_msg.poses = [empty_pose]
-            path_msg.header.stamp = rospy.Time.now()
+            path_msg.header.stamp = rospy.Time(0)
             rospy.loginfo(
                 "A* has not found a path within the alotted time. Send a new goal point.")
             return path_msg
@@ -100,10 +100,10 @@ class mnlc_a_star():
             point_ret.z = 0
             pose.pose.position.x = point_ret.x
             pose.pose.position.y = point_ret.y
-            pose.header.stamp = rospy.Time.now()
+            pose.header.stamp = rospy.Time(0)
             pose.header.frame_id = '/map'
             path_msg.poses.append(pose)
-        path_msg.header.stamp = rospy.Time.now()
+        path_msg.header.stamp = rospy.Time(0)
         rospy.loginfo("A* has computed the path.")
         return path_msg
 
@@ -130,14 +130,23 @@ class mnlc_a_star():
         frontier_nodes.cell_height = self.global_costmap.info.resolution
         frontier_nodes.cell_width = self.global_costmap.info.resolution
         start_time = rospy.get_time()
+        goal_neighbors = [(goal[0], goal[1]), (goal[0] + 1, goal[1] + 1), (goal[0] + 1, goal[1]), (goal[0] + 1, goal[1] - 1), (goal[0], goal[1] + 1),
+                              (goal[0], goal[1] - 1), (goal[0] - 1, goal[1] + 1), (goal[0] - 1, goal[1]), (goal[0] - 1, goal[1] - 1)]
+        for next in goal_neighbors:
+            gc = data[next[0] + (next[1] * width)]
+            if gc >= obstacle_cost:
+                rospy.logwarn(
+                    "A* has determined that the goal is invalid. Requesting new path...")
+                return -1
         while not frontier.empty():
             current = frontier.get()
             if current == goal:
                 rospy.loginfo("Path has been found.")
                 break
             time = rospy.get_time()
-            if time >= start_time + 1.5:
-                rospy.logwarn("A* has not found a path in less than 1.5 seconds. Requesting new path...")
+            if time >= start_time + 3.0:
+                rospy.logwarn(
+                    "A* has not found a path in less than 3.0 seconds. Requesting new path...")
                 return -1
             x = current[0]
             y = current[1]
@@ -148,12 +157,13 @@ class mnlc_a_star():
             for next in valid_neighbors:
                 c = data[next[0] + (next[1] * width)]
                 if c == -1:
-                    c = 25
+                    c = 20
                 new_cost = cost_so_far[current] + c
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost
                     next_np = np.array(next)
-                    priority = new_cost + 3 * distance.euclidean(goal_np, next_np)
+                    priority = new_cost + 4.0 * \
+                        distance.euclidean(goal_np, next_np)
                     frontier.put(next, priority)
                     came_from[next] = current
                     point = Point()
@@ -161,8 +171,8 @@ class mnlc_a_star():
                     point.y = (y * res) + oy + res/2
                     frontier_nodes.cells.append(point)
         frontier_nodes.cells.reverse()
-        frontier_nodes.header.frame_id = "map"
-        frontier_nodes.header.stamp = rospy.Time.now()
+        frontier_nodes.header.frame_id = "/map"
+        frontier_nodes.header.stamp = rospy.Time(0)
         self.frontier_pub.publish(frontier_nodes)
         path = self.reconstruct_path(came_from, start, goal)
         rospy.loginfo("A* has successfully found the optimal path.")

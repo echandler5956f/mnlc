@@ -27,7 +27,6 @@ class mnlc_global_costmap_opencv():
 
     def initialize_params(self):
         self.start_time = rospy.get_param('/global_costmap/start_time')
-        # grid cost to be considered an obstacle
         # [s] standard service timeout limit
         self.timeout = rospy.get_param('/controller/timeout')
         # number of grid cells to pad the c_scpace with
@@ -78,29 +77,35 @@ class mnlc_global_costmap_opencv():
         temp = tmp()
         self.listener.waitForTransform(
             '/odom', '/base_footprint', rospy.Time(0), timeout=rospy.Duration(self.timeout))
-        rospy.Timer(rospy.Duration(secs=0, nsecs=5000000),
-                    self.publish_cspace, oneshot=True)
-        # allocate a thread for publishing
         self.calculate_global_costmap()
 
     def calculate_global_costmap(self):
+        cspace = OccupancyGrid()
+        cspace.header.frame_id = '/map'
+        cspace.info.origin.position.x = self.gox
+        cspace.info.origin.position.y = self.goy
+        cspace.info.resolution = self.resolution
+        cspace.info.height = self.height
+        cspace.info.width = self.width
         kernel1 = np.ones((self.padding, self.padding), np.float)
         while not rospy.is_shutdown():
-            # time_init = rospy.get_time()
+            time_init = rospy.get_time()
             img = self.img
             unkown_indices = self.unkown_indices
             img_dilate = cv2.dilate(img, kernel=kernel1, iterations=1)
             gaussian_blur = cv2.GaussianBlur(
-                src=img_dilate, ksize=(11, 11), sigmaX=4, sigmaY=4)
+                src=img_dilate, ksize=(7, 7), sigmaX=2, sigmaY=2)
             norm_image = cv2.normalize(
                 gaussian_blur, None, alpha=0, beta=100, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
             dataFromGridC = norm_image.flatten('C')
             dataFromGridC[unkown_indices] = -1
-            self.cspace_data = dataFromGridC
-            # time_end = rospy.get_time()
-            # print("Calculating Global CSpace took: ", time_end - time_init, ".")
+            cspace.header.stamp = rospy.Time(0)
+            cspace.data = dataFromGridC
+            self.c_space_pub.publish(cspace)
+            # print("Calculating Global CSpace took: ", rospy.get_time() - time_init, ".")
 
     def update_map(self, map):
+        time_init = rospy.get_time()
         path = r'/home/quant/.ros/global_costmap.pgm'
         self.rtab_map_pub.publish(map)
         mapdata_asarray = np.array(object=map.data, copy=False)
@@ -115,20 +120,7 @@ class mnlc_global_costmap_opencv():
             f.write(byte_array)
             f.close()
         self.img = cv2.imread(path, -1)
-
-    def publish_cspace(self, tmp):
-        cspace = OccupancyGrid()
-        cspace.header.frame_id = '/map'
-        cspace.info.origin.position.x = self.gox
-        cspace.info.origin.position.y = self.goy
-        cspace.info.resolution = self.resolution
-        cspace.info.height = self.height
-        cspace.info.width = self.width
-        rospy.sleep(0.5)
-        while not rospy.is_shutdown():
-            cspace.header.stamp = rospy.Time.now()
-            cspace.data = self.cspace_data
-            self.c_space_pub.publish(cspace)
+        # print("Calculating Global CSpace took: ", rospy.get_time() - time_init, ".")
 
     def error_handler(self):
         self.error = True

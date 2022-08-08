@@ -1,14 +1,32 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(rbe3002)
 
+# Set to Release in order to speed up the program significantly
+set(CMAKE_BUILD_TYPE Release) #None, Debug, Release, RelWithDebInfo, MinSizeRel
+
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
+IF(NOT MSVC)
+  include(CheckCXXCompilerFlag)
+  CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+  CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+if(COMPILER_SUPPORTS_CXX11)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+elseif(COMPILER_SUPPORTS_CXX0X)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+else()
+  message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support which is required 
+  by linked third party packages starting from ROS Jade. Ignore this message for ROS Indigo.")
+endif()
+endif()
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
+  cv_bridge
+  image_transport
   nav_msgs
   roscpp
   rospy
@@ -22,8 +40,10 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
-
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+find_package(pybind11 REQUIRED)
+find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(OpenCV REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -123,10 +143,42 @@ CATKIN_DEPENDS message_runtime
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
-)
+include_directories(include ${EXTERNAL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
+
+add_executable(mnlc_a_star src/mnlc_a_star.cpp)
+target_link_libraries(mnlc_a_star ${catkin_LIBRARIES})
+
+add_executable(mnlc_d_star_lite src/mnlc_d_star_lite.cpp src/planner.cpp src/map.cpp src/math.cpp)
+target_link_libraries(mnlc_d_star_lite ${catkin_LIBRARIES} Eigen3::Eigen)
+
+add_executable(mnlc_field_d_star src/mnlc_field_d_star.cpp src/mnlc_lexi_queue.cpp)
+target_link_libraries(mnlc_field_d_star ${catkin_LIBRARIES})
+
+add_executable(mnlc_global_costmap_opencv src/mnlc_global_costmap_opencv.cpp)
+target_link_libraries(mnlc_global_costmap_opencv ${catkin_LIBRARIES})
+
+add_executable(mnlc_simple_costmap src/mnlc_simple_costmap.cpp)
+target_link_libraries(mnlc_simple_costmap ${catkin_LIBRARIES})
+
+add_executable(mnlc_meanshift_frontier_filter src/mnlc_meanshift_frontier_filter.cpp)
+target_link_libraries(mnlc_meanshift_frontier_filter ${catkin_LIBRARIES} pybind11::embed Eigen3::Eigen)
+
+add_executable(mnlc_hdbscan_frontier_filter src/mnlc_hdbscan_frontier_filter.cpp)
+target_link_libraries(mnlc_hdbscan_frontier_filter ${catkin_LIBRARIES} Eigen3::Eigen)
+
+add_executable(mnlc_frontier_assigner src/mnlc_frontier_assigner.cpp)
+target_link_libraries(mnlc_frontier_assigner ${catkin_LIBRARIES})
+
+add_executable(mnlc_global_rrt_detector src/mnlc_global_rrt_detector.cpp src/mersenne_twister.cpp)
+target_link_libraries(mnlc_global_rrt_detector ${catkin_LIBRARIES})
+
+add_executable(mnlc_local_rrt_detector src/mnlc_local_rrt_detector.cpp src/mersenne_twister.cpp)
+target_link_libraries(mnlc_local_rrt_detector ${catkin_LIBRARIES})
+
+add_executable(mnlc_vornoi_visualizer src/mnlc_vornoi_visualizer.cpp)
+target_link_libraries(mnlc_vornoi_visualizer ${catkin_LIBRARIES} ${OpenCV_LIBS})
+
+
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/rbe3002_lab2.cpp

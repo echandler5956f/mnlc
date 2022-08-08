@@ -92,7 +92,7 @@ class mnlc_global_rrt_detector():
         points.action, line.action = points.ADD, line.ADD
         points.pose.orientation.w, line.pose.orientation.w = 1.0, 1.0
         line.scale.x, line.scale.y = 0.01, 0.01
-        points.scale.x, points.scale.y = 0.1, 0.1
+        points.scale.x, points.scale.y = 0.05, 0.05
         points.color.r, points.color.g, points.color.b, points.color.a = 153.0 / \
             255.0, 0.0/255.0, 0.0/255.0, 1.0
         line.color.r, line.color.g, line.color.b, line.color.a = 163.0 / \
@@ -118,6 +118,7 @@ class mnlc_global_rrt_detector():
         obstacle_cost = self.obstacle_cost
         next_time = rospy.get_time()
         while self.state != 2 and not rospy.is_shutdown() and self.error == False:
+            time_init = rospy.get_time()
             data = self.latest_map.data
             width = self.latest_map.info.width
             rand = [(np.random.random() * ix) - (ix * 0.5) + sx,
@@ -188,18 +189,16 @@ class mnlc_global_rrt_detector():
                 self.detected_points_pub.publish(point)
                 points.points = []
             elif obs_free == 1:
-                if rospy.get_time() > next_time + 30:
-                    next_time = rospy.get_time() + 30
-                    v = []
                 v.append(copy.copy(rnew))
                 p.x, p.y, p.z = rnew[0], rnew[1], 0.0
                 line.points.append(copy.copy(p))
                 p.x, p.y, p.z = near[0], near[1], 0.0
                 line.points.append(copy.copy(p))
             self.shapes_pub.publish(line)
+            # print("Calculating global rrt frontiers took: ", rospy.get_time() - time_init, ".")
 
     def update_state_machine(self, state):
-        self.state = state
+        self.state = state.data
         if state == 2:
             rospy.signal_shutdown(
                 "Mapping complete. Node is now uneeded. Shutting down mnlc_global_rrt_detector.")

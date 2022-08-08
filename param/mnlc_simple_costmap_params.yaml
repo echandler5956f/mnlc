@@ -1,0 +1,3 @@
+simple_costmap:
+  start_time: 5
+  padding: 1 # number of grid cells to pad the c_scpace with

@@ -1,9 +1,0 @@
-frontier_assigner:
-  start_time: 15
-  obstacle_cost: 20
-  info_radius: 0.75 # radius to consider laser readings from
-  info_multiplier: 1.0 # a modifier for the info gains
-  hysteresis_radius: 0.75 # at least as much as the laser scanner range
-  hysteresis_gain: 1.5 # bigger than one (bias the robot to continue exploring the current region)
-  filter_clear: 0.075
-  filter_limit: 30

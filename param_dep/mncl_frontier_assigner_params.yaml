@@ -1,4 +1,0 @@
-info_radius: 3.5 # radius to consider laser readings from
-info_multiplier: 3.0 # a modifier for the info gains
-hysteresis_radius: 3.0 # at least as much as the laser scanner range
-hysteresis_gain: 0.0001 # bigger than one (bias the robot to continue exploring the current region)
