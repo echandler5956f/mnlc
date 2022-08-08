@@ -110,10 +110,10 @@ namespace DStarLite
 		/**
 		 * Gets/Sets start.
 		 *
-		 * @param Map::Cell* [optional] new start
-		 * @return Map::Cell* start
+		 * @param pair<double, double> u_d new start
+		 * @return pair<double, double> start
 		 */
-		Map::Cell *start(Map::Cell *u = nullptr);
+		pair<double, double> start(pair<double, double> u_d);
 
 		/**
 		 * Update map.
@@ -174,6 +174,11 @@ namespace DStarLite
 		 */
 		Map::Cell *_start;
 		Map::Cell *_goal;
+
+		/**
+		 * @var pair<double, double> current cell coordinates
+		 */
+		pair<double, double> _current;
 
 		/**
 		 * @var int Nc: all distinct traversal costs including infinite cost of traversing an obstacle and Mc: distinct traversable cell costs

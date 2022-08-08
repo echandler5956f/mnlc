@@ -55,9 +55,9 @@ namespace DStarLite
              */
             nav_msgs::OccupancyGrid _mapdata;
             /**
-             * @var pair<int, int> initial start position
+             * @var pair<double, double> initial start position
              */
-            pair<int, int> _start;
+            pair<double, double> _start;
             /**
              * @var pair<int, int> initial goal position
              */
@@ -110,12 +110,12 @@ namespace DStarLite
              * @param int search tolerance
              * @param int maximum iterations
              */
-            Config(const nav_msgs::OccupancyGrid &mapdata, const pair<int, int> &start, const pair<int, int> &goal,
+            Config(const nav_msgs::OccupancyGrid &mapdata, const pair<double, double> start, const pair<int, int> &goal,
                    const int obstacle_cost, const int unknown_cost, const float scan_radius, const bool verbose, const float heuristic_weight, const int obstacle_tolerance,
                    const int search_tolerance, const int max_its)
             {
                 _mapdata = mapdata;
-                _start = start;
+                _start = (make_pair(start.first, start.second));
                 _goal = goal;
                 _obstacle_cost = obstacle_cost;
                 _unknown_cost = unknown_cost;
@@ -191,9 +191,9 @@ namespace DStarLite
             _map = new Map(height, width);
 
             // Set current and goal position
-            Map::Cell *_current = (*_map)(_config._start.second, _config._start.first);
+            Map::Cell *_current = (*_map)(static_cast<int>(_config._start.second), static_cast<int>(_config._start.first));
             Map::Cell *_goal = (*_map)(_config._goal.second, _config._goal.first);
-            int k, c, v;
+            int k, c;
 
             // Build map
             for (int i = 0; i < height; i++)
@@ -204,20 +204,12 @@ namespace DStarLite
                     c = _data[k];
 
                     // Cell is unwalkable
-                    if (c >= _config._obstacle_cost)
-                    {
-                        v = _config._obstacle_cost;
-                    }
+                    if (c > _config._obstacle_cost)
+                        c = _config._obstacle_cost;
                     else if (c < 0)
-                    {
-                        v = _config._unknown_cost;
-                    }
-                    else
-                    {
-                        v = c;
-                    }
+                        c = _config._unknown_cost;
 
-                    (*_map)(i, j)->cost = v;
+                    (*_map)(i, j)->cost = c;
                 }
             }
 
@@ -232,16 +224,17 @@ namespace DStarLite
             delete _map;
             delete _planner;
         }
+
         /**
          * Main execution method.
          *
-         * @param Map::Cell* current cell
+         * @param pair<double, double> current position in grid coordinates
          * @return vector<pair<double, double>> path
          */
-        vector<pair<double, double>> execute(pair<int, int> current)
+        vector<pair<double, double>> execute(pair<double, double> current)
         {
             // Step
-            _planner->start((*_map)(current.second, current.first));
+            _planner->start(current);
 
             // Check if map was updated
             if (_map_updated)
@@ -250,9 +243,7 @@ namespace DStarLite
                 // Replan the path
 
                 if (!_planner->replan())
-                {
                     ROS_ERROR("No Solution Found!");
-                }
 
                 _path = _planner->path();
             }
@@ -269,34 +260,36 @@ namespace DStarLite
             int rows, cols;
             rows = _map->rows();
             cols = _map->cols();
-            int k, c, v;
+            int k, c, c_old;
 
             for (int i = 0; i < rows; i++)
             {
                 for (int j = 0; j < cols; j++)
                 {
                     k = (i * cols) + j;
+                    c_old = _data[k];
+                    c = new_data[k];
+                    
                     // Check if an update is required
-                    if (_data[k] != new_data[k])
+                    if (c_old != c)
                     {
                         _map_updated = true;
                         _data[k] = new_data[k];
-                        c = _data[k];
 
-                        // Cell is unwalkable
-                        if (c >= _config._obstacle_cost)
+                        if (c_old < 0 || (c_old >= 0 && c < 0))
                         {
-                            v = _config._obstacle_cost;
-                        }
-                        else if (c < 0)
-                        {
-                            v = _config._unknown_cost;
+                            if (c < 0)
+                                c = _config._unknown_cost;
+                            (*_map)(i, j)->unknown_flip = true;
                         }
                         else
-                        {
-                            v = c;
-                        }
-                        _planner->update_cell_cost((*_map)(i, j), v);
+                            (*_map)(i, j)->unknown_flip = false;
+
+                        // Cell is unwalkable
+                        if (c > _config._obstacle_cost) 
+                            c = _config._obstacle_cost;
+
+                        _planner->update_cell_cost((*_map)(i, j), c);
                     }
                 }
             }

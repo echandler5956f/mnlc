@@ -610,7 +610,7 @@ Visualization Manager:
       Draw Behind: false
       Enabled: false
       Name: Map
-      Topic: /g_map
+      Topic: /rhs_map
       Unreliable: false
       Use Timestamp: false
       Value: false
@@ -675,5 +675,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 3700
-  X: 30
+  X: 10
   Y: 0

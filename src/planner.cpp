@@ -122,17 +122,7 @@ bool Planner::replan()
 	if (!result)
 		return false;
 
-	// printf("Goal is [%d, %d]. Goal g value: %lf\n", _goal->x(), _goal->y(), _g((*_map)(_goal->y(), _goal->x())));
-	// printf("Start is [%d, %d]. Start g value: %lf\n", _start->x(), _start->y(), _g((*_map)(_start->y(), _start->x())));
-	// printf("Start bptr is [%d, %d]. Start bptr g value: %lf\n", _start->bptr()->x(), _start->bptr()->y(), _g((*_map)(_start->bptr()->y(), _start->bptr()->x())));
-
-	// printf("Goal is [%d, %d]. Goal g value: %lf\n", _goal->x(), _goal->y(), _g((*_map)(_goal->y(), _goal->x())));
-	// printf("Start is [%d, %d]. Start g value: %lf\n", _start->x(), _start->y(), _g((*_map)(_start->y(), _start->x())));
-	// printf("Start bptr is [%d, %d]. Start bptr g value: %lf\n", _start->bptr()->x(), _start->bptr()->y(), _g((*_map)(_start->bptr()->y(), _start->bptr()->x())));
-	// printf("Start cknbr bptr is [%d, %d]. Start cknbr bptr g value: %lf\n", _start->cknbr(_start->bptr())->x(), _start->cknbr(_start->bptr())->y(), _g((*_map)(_start->cknbr(_start->bptr())->y(), _start->cknbr(_start->bptr())->x())));
-	// printf("Start ccknbr bptr is [%d, %d]. Start ccknbr bptr g value: %lf\n", _start->ccknbr(_start->bptr())->x(), _start->ccknbr(_start->bptr())->y(), _g((*_map)(_start->ccknbr(_start->bptr())->y(), _start->ccknbr(_start->bptr())->x())));
-
-	result = _extract_path();
+	// result = _extract_path();
 
 	return result;
 }
@@ -156,17 +146,15 @@ vector<double> Planner::rhs_map()
 /**
  * Gets/Sets start.
  *
- * @param Map::Cell* [optional] new start
- * @return Map::Cell* start
+ * @param pair<double, double> *u_d [optional] new start
+ * @return pair<double, double> * start
  */
-Map::Cell *Planner::start(Map::Cell *u)
+pair<double, double> Planner::start(pair<double, double> u_d)
 {
-	if (u == nullptr)
-		return _start;
+	_current = u_d;
+	_start = (*_map)(static_cast<int>(u_d.second), static_cast<int>(u_d.first));
 
-	_start = u;
-
-	return _start;
+	return _current;
 }
 
 /**
@@ -180,7 +168,6 @@ void Planner::update_cell_cost(Map::Cell *u, int cost)
 {
 	int c_old = u->cost;
 	u->cost = cost;
-	_cell(u);
 
 	double rhs_min;
 
@@ -188,7 +175,8 @@ void Planner::update_cell_cost(Map::Cell *u, int cost)
 	Map::Cell **cnrs = u->cnrs();
 	pair<Map::Cell *, double> argmin_min;
 
-	if (cost > c_old)
+	// we want to check if the unknown cost status has changed in case the new cost is less than the unknown cell cost
+	if (cost > c_old || u->unknown_flip)
 	{
 		for (int i = 0; i < Map::Cell::NUM_CNRS; i++)
 		{
@@ -232,7 +220,12 @@ void Planner::update_cell_cost(Map::Cell *u, int cost)
 			}
 		}
 		if (!Math::equals(rhs_min, Math::INF))
-			_update_state(u_new);
+		{
+			if (_open_hash.find(u_new) != _open_hash.end())
+				_list_update(u_new, _k(u_new));
+			else
+				_list_insert(u_new, _k(u_new));
+		}
 	}
 }
 
@@ -314,7 +307,7 @@ int Planner::_construct_cellcosts()
 	_cellcosts.resize(_Nc + 1);
 
 	for (int i = 0; i < _Nc; i++)
-			_cellcosts[i] = round(255.0 * pow(Math::EUL, ((0.33333 * static_cast<double>(i)) / 11.8125)) - 250.0);
+		_cellcosts[i] = round(255.0 * pow(Math::EUL, ((0.33333 * static_cast<double>(i)) / 11.8125)) - 250.0);
 	_cellcosts[_Nc] = Map::Cell::COST_UNWALKABLE;
 	return static_cast<int>(_cellcosts[_Nc - 1]);
 }
@@ -708,12 +701,11 @@ void Planner::_compute_cost_of_point_to_edge(double y_hat, double x_hat, Map::Ce
 		printf("ERROR: THIS SHOULD NEVER HAPPEN 1\n"); // except possible on the first path step of path extraction
 	else if (Math::greater(tmp_s1_g, tmp_s2_g + c))	   // to avoide getting imaginary answer, need to give this an appropriate g based on s_2
 		tmp_s1_g = tmp_s2_g + c;
-	else if (Math::greater(tmp_s2_g, tmp_s1_g + c)) // to avoide getting imaginary answer, need to give this an appropriate g based on s_1
+	else if (Math::greater(tmp_s2_g, tmp_s1_g + c)) // to avoid getting imaginary answer, need to give this an appropriate g based on s_1
 		tmp_s2_g = tmp_s1_g + c;
 
 	// printf(" here 2 [%f %f] %f %f %f \n", x_hat, y_hat, s_1->g, s_2->g, c);
 
-	// if((s_1->g - s_2->g + c < SMALL) || (s_2->g - s_1->g + c < SMALL)) // then the equation explodes, but we know that the best option is to go straight at the minimum of g1 or g2
 	if (Math::equals(tmp_s1_g - tmp_s2_g, c) || Math::equals(tmp_s2_g - tmp_s1_g, c)) // then the equation explodes, but we know that the best option is to go straight at the minimum of g1 or g2
 	{
 		if (Math::less(tmp_s1_g, tmp_s2_g)) // go toward s_1
@@ -1295,7 +1287,7 @@ bool Planner::_compute_shortest_path()
 				nbrs = u->nbrs();
 				for (int i = 0; i < Map::Cell::NUM_NBRS; i++)
 				{
-					if (nbrs[i] != nullptr && nbrs[i]->bptr() != nullptr && nbrs[i]->ccknbr(nbrs[i]->bptr()) != nullptr)
+					if ((nbrs[i] != nullptr && nbrs[i]->bptr() != nullptr && nbrs[i]->ccknbr(nbrs[i]->bptr()) != nullptr) && nbrs[i] != _goal)
 					{
 						if (nbrs[i]->bptr() == u || nbrs[i]->bptr() == nbrs[i]->cknbr(u))
 						{
@@ -1344,8 +1336,8 @@ bool Planner::_extract_path()
 	gx = static_cast<double>(_goal->x());
 	gy = static_cast<double>(_goal->y());
 
-	px = static_cast<double>(_start->x());
-	py = static_cast<double>(_start->y());
+	px = _current.first;
+	py = _current.second;
 
 	_interpol_path.push_back(make_pair(px, py));
 
@@ -1389,11 +1381,12 @@ bool Planner::_extract_path()
 
 			if (top_cell_path == nullptr)
 			{
+				printf("ERROR: NO BEST NEIGHBOR FOUND\n");
 				_secondary_cp_list.clear();
 				_secondary_cp_hash.clear();
 				_primary_cp_list.clear();
 				_primary_cp_hash.clear();
-				printf("ERROR: NO BEST NEIGHBOR FOUND\n");
+				return false;
 			}
 
 			if (Math::equals(static_cast<double>(top_cell_path->get_cx()) + top_cell_path->x[0], px) && Math::equals(static_cast<double>(top_cell_path->get_cy()) + top_cell_path->y[0], py))
@@ -1429,6 +1422,40 @@ bool Planner::_extract_path()
 
 			_compute_local_point_costs(lapy, lapx, false);
 			lookahead_cell_path = _secondary_cp_list.begin()->second;
+
+			// // make sure that a look ahead point on a corner doesn't lead to a path where the next point is on the edge of the cell containing the robot (corners are ok)
+			// if (Math::equals(lapy, round(lapy)) && Math::equals(lapx, round(lapx))) // look ahead point is on a corner
+			// {
+
+			// 	if (Math::equals(lookahead_cell_path->x[0], round(lookahead_cell_path->x[0])) && Math::equals(lookahead_cell_path->y[0], round(lookahead_cell_path->y[0]))) // next point is also on a corner
+			// 	{
+			// 		// corners are ok
+			// 	}
+			// 	else
+			// 	{
+			// 		if (Math::equals(static_cast<double>(ipy), py)) // then the robot is on a horizontal edge
+			// 			y_min = py - 1.0;
+			// 		else
+			// 			y_min = static_cast<double>(ipy);
+			// 		y_max = static_cast<double>(ipy + 1);
+
+			// 		if (Math::equals(static_cast<double>(ipx), px)) // then the robot is on a vertical edge
+			// 			x_min = px - 1.0;
+			// 		else
+			// 			x_min = static_cast<double>(ipx);
+			// 		x_max = static_cast<double>(ipx + 1);
+
+			// 		// if the first point after the look ahead point is in this range, then we don't want to use the look ahead point (ever)
+			// 		if ((Math::less(x_min, lookahead_cell_path->x[0]) || Math::equals(x_min, lookahead_cell_path->x[0])) && (Math::less(lookahead_cell_path->x[0], x_max) || Math::equals(lookahead_cell_path->x[0], x_max)) &&
+			// 			(Math::less(y_min, lookahead_cell_path->y[0]) || Math::equals(y_min, lookahead_cell_path->y[0])) && (Math::less(lookahead_cell_path->y[0], y_max) || Math::equals(lookahead_cell_path->y[0], y_max)))
+			// 		{
+			// 			_secondary_cp_list.clear();
+			// 			_secondary_cp_hash.clear();
+			// 			best_cell_path->~CellPath();
+			// 			continue;
+			// 		}
+			// 	}
+			// }
 
 			if (Math::greater(best_cell_path->g_to_edge, top_cell_path->g) || Math::greater(lookahead_cell_path->g, top_cell_path->g) || Math::greater(best_cell_path->g_to_edge + lookahead_cell_path->g, top_cell_path->g))
 			{
@@ -1743,6 +1770,7 @@ bool Planner::_extract_path()
 
 		_primary_cp_list.clear();
 		_primary_cp_hash.clear();
+		// best_cell_path->~CellPath();
 	}
 
 	// _remove_repeated_points(_interpol_path);
@@ -1821,9 +1849,10 @@ bool Planner::_get_path(vector<pair<double, double>> &path, Map::Cell *s_a, Map:
  */
 double Planner::_h(Map::Cell *a, Map::Cell *b)
 {
+	return (0.0);
 	// return (max(sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)) - (2.0 * _Mc * Math::SQRT2), 0.0));
 	// return (0.125 * sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)));
-	return (0.5 * sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)));
+	// return (0.5 * sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)));
 	// return (15.0 * sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)));
 	// return (82.0 * sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)));
 }

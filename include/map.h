@@ -70,6 +70,11 @@ namespace DStarLite
 			int cost;
 
 			/**
+			 * @var bool ready to update status of the cell (occurs if the cell cost changes from known to unknown or vice versa)
+			 */
+			bool unknown_flip;
+
+			/**
 			 * Constructor.
 			 *
 			 * @param int x-coordinate
@@ -81,7 +86,7 @@ namespace DStarLite
 			/**
 			 * Deconstructor.
 			 */
-			~Cell();
+			virtual ~Cell();
 
 			/**
 			 * Initialize.
@@ -139,6 +144,13 @@ namespace DStarLite
 			Cell **cnrs();
 
 			/**
+			 * Get canonical status of the cell.
+			 *
+			 * @return bool
+			 */
+			bool is_canon();
+
+			/**
 			 * Gets x-coordinate.
 			 *
 			 * @return int
@@ -182,7 +194,81 @@ namespace DStarLite
 			 * @var int y-coordinate
 			 */
 			int _y;
+
+			/**
+			 * @var bool is a canonical cell
+			 */
+			bool _is_canon;
 		};
+
+		// class CanonicalCell : public Cell
+		// {
+		// public:
+		// 	/**
+		// 	 * Constructor.
+		// 	 *
+		// 	 * @param int x-coordinate
+		// 	 * @param int y-coordinate
+		// 	 * @param int [optional] cost of the cell
+		// 	 */
+		// 	CanonicalCell(int x, int y, int cost = 0);
+
+		// 	/**
+		// 	 * Deconstructor.
+		// 	 */
+		// 	virtual ~CanonicalCell();
+
+		// 	/**
+		// 	 * Initialize.
+		// 	 *
+		// 	 * @param Cell** canonical cell neighbors
+		// 	 * @param Cell** canonical cell corners
+		// 	 * @return void
+		// 	 */
+		// 	void init(Cell **nbrs, Cell **cnrs);
+
+		// 	/**
+		// 	 * Gets clockwise neighbor relative to some neighbor at neighbor s1.
+		// 	 *
+		// 	 * @param CanonicalCell *
+		// 	 * @return CanonicalCell*
+		// 	 */
+		// 	CanonicalCell *canon_cknbr(CanonicalCell *s1);
+
+		// 	/**
+		// 	 * Gets counterclockwise neighbor relative to some neighbor at neighbor s1.
+		// 	 *
+		// 	 * @param CanonicalCell * s1
+		// 	 * @return CanonicalCell*
+		// 	 */
+		// 	CanonicalCell *canon_ccknbr(CanonicalCell *s1);
+
+		// 	/**
+		// 	 * Gets/sets cell backpointer from which ->this cell derives its path cost.
+		// 	 *
+		// 	 * CanonicalCell* [optional] backpointer
+		// 	 * @return CanonicalCell*
+		// 	 */
+		// 	CanonicalCell *canon_bptr(CanonicalCell *canon_backpointer = nullptr);
+
+		// 	/**
+		// 	 * Gets cell neighbors.
+		// 	 *
+		// 	 * @return CanonicalCell**
+		// 	 */
+		// 	CanonicalCell **canon_nbrs();
+
+		// protected:
+		// 	/**
+		// 	 * @var CanonicalCell* points to the canonical cell from which ->this cell derives its path cost
+		// 	 */
+		// 	CanonicalCell *_canon_bptr;
+
+		// 	/**
+		// 	 * @var CanonicalCell** neighbors
+		// 	 */
+		// 	CanonicalCell **_canon_nbrs;
+		// };
 
 		// local path within a cell
 		class CellPath
@@ -200,7 +286,7 @@ namespace DStarLite
 				static const int C;
 
 				/**
-				 * Hashes cell based on coordinates.
+				 * Hashes cell path based on coordinates and g value.
 				 *
 				 * @param CellPath*
 				 * @return size_t
