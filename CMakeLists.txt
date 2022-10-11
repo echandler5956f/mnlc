@@ -44,6 +44,11 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(pybind11 REQUIRED)
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(OpenCV REQUIRED)
+find_package(MPI REQUIRED)
+find_package(Boost REQUIRED)
+find_package(unordered_dense CONFIG REQUIRED)
+
+add_definitions(-DOMPI_SKIP_MPICXX)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -143,13 +148,15 @@ CATKIN_DEPENDS message_runtime
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include ${EXTERNAL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
+include_directories(include ${EXTERNAL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 add_executable(mnlc_a_star src/mnlc_a_star.cpp)
 target_link_libraries(mnlc_a_star ${catkin_LIBRARIES})
 
-add_executable(mnlc_d_star_lite src/mnlc_d_star_lite.cpp src/planner.cpp src/map.cpp src/math.cpp)
-target_link_libraries(mnlc_d_star_lite ${catkin_LIBRARIES} Eigen3::Eigen)
+add_executable(mnlc_d_star_lite src/mnlc_d_star_lite.cpp src/planner.cpp src/map.cpp src/math.cpp src/quadtree.cpp)
+target_link_libraries(mnlc_d_star_lite ${catkin_LIBRARIES} ${Boost_LIBRARIES} Eigen3::Eigen MPI::MPI_C unordered_dense::unordered_dense)
+
+set_property(TARGET mnlc_d_star_lite PROPERTY CXX_STANDARD 17)
 
 add_executable(mnlc_field_d_star src/mnlc_field_d_star.cpp src/mnlc_lexi_queue.cpp)
 target_link_libraries(mnlc_field_d_star ${catkin_LIBRARIES})

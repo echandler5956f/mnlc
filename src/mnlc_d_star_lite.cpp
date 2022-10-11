@@ -5,7 +5,7 @@ void update_map(const nav_msgs::OccupancyGrid::ConstPtr &map)
     mapdata = *map;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "mnlc_d_star_lite");
     ros::NodeHandle n;
@@ -23,6 +23,7 @@ int main(int argc, char **argv)
     ros::Subscriber cspace_sub = n.subscribe("/mnlc_global_costmap_opencv/cspace", 1, update_map);
     ros::Publisher path_pub = n.advertise<nav_msgs::Path>("/Field_D_Star", 1);
     ros::Publisher g_map_pub = n.advertise<nav_msgs::OccupancyGrid>("/g_map", 1);
+    ros::Publisher h_map_pub = n.advertise<nav_msgs::OccupancyGrid>("/h_map", 1);
     ros::Publisher rhs_map_pub = n.advertise<nav_msgs::OccupancyGrid>("/rhs_map", 1);
     ros::Time st;
     st.fromSec(start_time);
@@ -95,11 +96,36 @@ int main(int argc, char **argv)
                                            true, heuristic_weight, obstacle_tolerance, search_tolerance, max_its);
     DStarLite::DStarLiteROS ds(config);
 
-    ros::Rate loop_rate(1);
-    while (ros::ok())
-    {
-        // timer_start = ros::Time::now().toNSec();
+    ros::Rate loop_rate(60);
+    // while (ros::ok())
+    // {
+        timer_start = ros::Time::now().toNSec();
         vector<pair<double, double>> path = ds.execute(start);
+        // vector<vector<int>> t;
+        // int cost;
+        // int width = mapdata.info.width;
+        // for (int i = 0; i < width; i++)
+        // {
+        //     for (int j = 0; j < width; j++)
+        //     {
+        //         cost = mapdata.data[i * width + j];
+        //         cost = (cost == -1 ? unknown_cost : cost);
+        //         if (j < width - 1)
+        //             t.push_back({i * width + j + 1, i * width + j + 1 + 2, cost});
+        //         if (j < width - 1 && i < width - 1)
+        //             t.push_back({i * width + j + 1, (i + 1) * width + j + 1 + 2, cost});
+        //         if (i < width - 1)
+        //             t.push_back({i * width + j + 1, (i + 1) * width + j + 1, cost});
+        //     }
+        // }
+        // ofstream file;
+        // printf("Starting file write\n");
+        // file.open("better.txt");
+        // file << (width * width) + 1 << " " << (width * width) + 1 << " " << t.size() << endl;
+        // for (int i = 0; i < t.size(); i++)
+        //     file << t[i][0] << " " << t[i][1] << " " << t[i][2] << endl;
+        // file.close();
+        // printf("Finished file write\n");
         // timer_end = ros::Time::now().toNSec();
         // printf("Execute Field D* took: %" PRIu64 "\n", timer_end - timer_start);
         // path_p.header.stamp = ros::Time::now();
@@ -134,23 +160,40 @@ int main(int argc, char **argv)
         }
         g_map_pub.publish(g_map);
 
-        // rhs_map = mapdata;
-        // md = ds.get_rhs_map();
-        // for (int i = 0; i < rhs_map.data.size(); i++)
-        // {
-        //     if (Math::equals(md[i], Math::INF))
-        //     {
-        //         rhs_map.data[i] = -1;
-        //     }
-        //     else
-        //     {
-        //         tmp = round(md[i] / 90.0);
-        //         // tmp = round(md[i] / 205.0);
-        //         // printf("tmp: %lf\n", tmp);
-        //         rhs_map.data[i] = static_cast<int>(tmp);
-        //     }
-        // }
-        // rhs_map_pub.publish(rhs_map);
+        h_map = mapdata;
+        md = ds.get_h_map();
+        for (int i = 0; i < h_map.data.size(); i++)
+        {
+            if (Math::equals(md[i], Math::INF))
+            {
+                h_map.data[i] = -1;
+            }
+            else
+            {
+                tmp = round(md[i] / 1.1);
+                // printf("tmp: %lf\n", tmp);
+                h_map.data[i] = static_cast<int>(tmp);
+            }
+        }
+        h_map_pub.publish(h_map);
+
+        rhs_map = mapdata;
+        md = ds.get_rhs_map();
+        for (int i = 0; i < rhs_map.data.size(); i++)
+        {
+            if (Math::equals(md[i], Math::INF))
+            {
+                rhs_map.data[i] = -1;
+            }
+            else
+            {
+                tmp = round(md[i] / 90.0);
+                // tmp = round(md[i] / 205.0);
+                // printf("tmp: %lf\n", tmp);
+                rhs_map.data[i] = static_cast<int>(tmp);
+            }
+        }
+        rhs_map_pub.publish(rhs_map);
         // temp = 0;
         // while (temp == 0)
         // {
@@ -165,9 +208,10 @@ int main(int argc, char **argv)
         //     }
         // }
         // start = (make_pair(((transform.getOrigin().x()) - mapdata.info.origin.position.x) / mapdata.info.resolution, ((transform.getOrigin().y()) - mapdata.info.origin.position.y) / mapdata.info.resolution));
-        ros::spinOnce();
-        loop_rate.sleep();
-    }
+    //     ros::spinOnce();
+    //     loop_rate.sleep();
+    // }
     ds.~DStarLiteROS();
+
     return 0;
 }

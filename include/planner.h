@@ -62,9 +62,10 @@ namespace DStarLite
 		 * @param Map* map
 		 * @param Map::Cell* start cell
 		 * @param Map::Cell* goal cell
-		 * @param int Nc
+		 * @param vector<double> & cellcosts table
+		 * @param vector<vector<vector<vector<double>>>> & interpolation table
 		 */
-		Planner(Map *map, Map::Cell *start, Map::Cell *goal, int Nc);
+		Planner(Map *map, Map::Cell *start, Map::Cell *goal, vector<double> &cellcosts, vector<vector<vector<vector<double>>>> &I);
 
 		/**
 		 * Deconstructor.
@@ -94,6 +95,13 @@ namespace DStarLite
 		vector<double> g_map();
 
 		/**
+		 * Returns a distance-to-start map
+		 *
+		 * @return vector<double> map
+		 */
+		vector<double> h_map();
+
+		/**
 		 * Replans the path.
 		 *
 		 * @return bool solution found
@@ -120,16 +128,23 @@ namespace DStarLite
 		 *
 		 * @param Map::Cell* cell to update
 		 * @param int new cost of the cell
+		 * @param bool unknown flip whether or not the unknown status of the cell has flipped
 		 * @return void
 		 */
-		void update_cell_cost(Map::Cell *u, int cost);
+		void update_cell_cost(Map::Cell *u, int cost, bool unknown_flip);
 
-	protected:
+	private:
 		/**
 		 * @var unordered_map cell hash (keeps track of all the cells)
 		 */
 		typedef tr1::unordered_map<Map::Cell *, pair<double, double>, Map::Cell::Hash> CH;
 		CH _cell_hash;
+
+		/**
+		 * @var unordered_map cell hash (keeps track of all the cells)
+		 */
+		typedef tr1::unordered_map<Map::Cell *, double, Map::Cell::Hash> HH;
+		HH _heuristic_hash;
 
 		/**
 		 * @var Map* map
@@ -186,14 +201,14 @@ namespace DStarLite
 		int _Nc, _Mc;
 
 		/**
-		 * @var vector<double> cellcosts with indices representing original cell costs which map to non-linearly spaced cell costs
+		 * @var vector<double> &cellcosts with indices representing original cell costs which map to non-linearly spaced cell costs
 		 */
-		vector<double> _cellcosts;
+		vector<double> &_cellcosts;
 
 		/**
-		 * @var vector<vector<vector<vector<double>>>> interpolation lookup table for quickly aquiring cell costs and optimal XY given a cell and two consecutive neighbors.
+		 * @var vector<vector<vector<vector<double>>>> &interpolation lookup table for quickly aquiring cell costs and optimal XY given a cell and two consecutive neighbors.
 		 */
-		vector<vector<vector<vector<double>>>> _I;
+		vector<vector<vector<vector<double>>>> &_I;
 
 		/** Calculates the cost of traversing the path
 		 *
@@ -208,20 +223,6 @@ namespace DStarLite
 		 * @return void
 		 */
 		void _cell(Map::Cell *u);
-
-		/**
-		 * Initializes cell cost table, which indices representing original cell costs which map to non-lineraly space cell costs
-		 *
-		 * @return int Mc maximum traversable (non-obstacle) cost
-		 */
-		int _construct_cellcosts();
-
-		/**
-		 * Generates interpolation lookup table for quickly aquiring cell costs.
-		 *
-		 * @return void
-		 */
-		void _construct_interpolation_table();
 
 		/**
 		 * Calculates the interpolated cost of 's' given any two consecutive neighbors 'sa' and 'sb'.
@@ -239,9 +240,9 @@ namespace DStarLite
 		 * @param Map::Cell* cell s
 		 * @param Map::Cell* cell sa
 		 * @param Map::Cell* cell sb
-		 * @return pair<pair<double, double>, int> position of bptr of s and type of path (1 = direct, 2 = more than one path segment)
+		 * @return tuple<double, double, int, double> position of bptr of s and type of path (1 = direct, 2 = more than one path segment) and shortest path length
 		 */
-		pair<pair<double, double>, int> _compute_bp(Map::Cell *s, Map::Cell *sa, Map::Cell *sb);
+		tuple<double, double, int, double> _compute_bp(Map::Cell *s, Map::Cell *sa, Map::Cell *sb);
 
 		/**
 		 * This computes the minimum cost from an arbitrary point inside cell c to
@@ -321,13 +322,22 @@ namespace DStarLite
 		bool _get_path(vector<pair<double, double>> &path, Map::Cell *s_a, Map::Cell *s_b);
 
 		/**
+		 * Gets/Sets h value for a cell.
+		 *
+		 * @param Map::Cell* cell to retrieve/update
+		 * @param double [optional] new h value
+		 * @return double h value
+		 */
+		double _h(Map::Cell *u, double value = DBL_MIN);
+
+		/**
 		 * Calculates heuristic between two cells (euclidean distance).
 		 *
 		 * @param Map::Cell* cell a
 		 * @param Map::Cell* cell b
 		 * @return double heuristic value
 		 */
-		double _h(Map::Cell *a, Map::Cell *b);
+		double _heuristic(Map::Cell *a, Map::Cell *b);
 
 		/**
 		 * Calculates key value for cell.

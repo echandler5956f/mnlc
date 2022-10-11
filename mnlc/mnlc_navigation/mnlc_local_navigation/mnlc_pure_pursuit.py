@@ -395,7 +395,7 @@ class mnlc_pure_pursuit():
         msg_cmd_vel = Twist()
         msg_cmd_vel.linear.x = linear_speed
         msg_cmd_vel.angular.z = angular_speed
-        self.cmd_vel_pub.publish(msg_cmd_vel)
+        # self.cmd_vel_pub.publish(msg_cmd_vel)
 
     def odometry(self, tmp):
         cond = 0

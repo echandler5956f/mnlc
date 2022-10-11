@@ -261,7 +261,6 @@ Map::Cell::Cell(int x, int y, int cost)
 	_y = y;
 
 	this->cost = cost;
-	unknown_flip = false;
 }
 
 /**
@@ -432,76 +431,3 @@ size_t Map::Cell::Hash::operator()(Cell *c) const
 {
 	return Cell::Hash::C * c->y() + c->x();
 }
-
-// /**
-//  * Constructor.
-//  *
-//  * @param int x-coordinate
-//  * @param int y-coordinate
-//  * @param int [optional] cost of the cell
-//  */
-// Map::CanonicalCell::CanonicalCell(int x, int y, int cost) : Cell(x, y, cost)
-// {
-// 	_canon_bptr = nullptr;
-// 	_canon_nbrs = nullptr;
-// 	_is_canon = true;
-// }
-
-// /**
-//  * Deconstructor.
-//  */
-// Map::CanonicalCell::~CanonicalCell()
-// {
-// 	if (_canon_nbrs != nullptr)
-// 		delete[] _canon_nbrs;
-// }
-
-// /**
-//  * Initialize.
-//  *
-//  * @param Cell** canonical cell neighbors
-//  * @param Cell** canonical cell corners
-//  * @return void
-//  */
-// void Map::CanonicalCell::init(Cell **nbrs, Cell **cnrs)
-// {
-// }
-
-// /**
-//  * Gets clockwise neighbor relative to some neighbor at neighbor s1.
-//  *
-//  * @param CanonicalCell *
-//  * @return CanonicalCell*
-//  */
-// Map::CanonicalCell *Map::CanonicalCell::canon_cknbr(CanonicalCell *s1)
-// {
-// }
-
-// /**
-//  * Gets counterclockwise neighbor relative to some neighbor at neighbor s1.
-//  *
-//  * @param CanonicalCell * s1
-//  * @return CanonicalCell*
-//  */
-// Map::CanonicalCell *Map::CanonicalCell::canon_ccknbr(CanonicalCell *s1)
-// {
-// }
-
-// /**
-//  * Gets/sets cell backpointer from which ->this cell derives its path cost.
-//  *
-//  * CanonicalCell* [optional] backpointer
-//  * @return CanonicalCell*
-//  */
-// Map::CanonicalCell *Map::CanonicalCell::canon_bptr(CanonicalCell *canon_backpointer = nullptr)
-// {
-// }
-
-// /**
-//  * Gets cell neighbors.
-//  *
-//  * @return CanonicalCell**
-//  */
-// Map::CanonicalCell **Map::CanonicalCell::canon_nbrs()
-// {
-// }

@@ -22,13 +22,17 @@ const int Planner::MAX_EXTRACTION_STEPS = 250;
 
 /**
  * Constructor.
+ * All planner instances share the same instance of the very memory hungry cellcosts and interpolation tables.
+ * Saving as a reference instead of a pointer also lets us avoid using the ugly ->operator[]() syntax
  *
  * @param Map* map
  * @param Map::Cell* start cell
  * @param Map::Cell* goal cell
- * @param int Nc
+ * @param vector<double> & cellcosts table
+ * @param vector<vector<vector<vector<double>>>> & interpolation table
  */
-Planner::Planner(Map *map, Map::Cell *start, Map::Cell *goal, int Nc)
+Planner::Planner(Map *map, Map::Cell *start, Map::Cell *goal, vector<double> &cellcosts, vector<vector<vector<vector<double>>>> &I)
+	: _cellcosts(cellcosts), _I(I)
 {
 	printf("Initializing Field D* Planner\n");
 
@@ -44,15 +48,16 @@ Planner::Planner(Map *map, Map::Cell *start, Map::Cell *goal, int Nc)
 	_map = map;
 	_start = start;
 	_goal = goal;
-	_Nc = Nc;
+	_cellcosts = cellcosts;
+	_I = I;
+	_Nc = cellcosts.size() - 1;
+	_Mc = static_cast<int>(_cellcosts[_Nc - 1]);
 
-	printf("Constructing interpolation table\n");
-
-	_Mc = _construct_cellcosts();
 	printf("_Nc: %d, _Mc: %d\n", _Nc, _Mc);
-	_construct_interpolation_table();
+
 	_rhs(_goal, 0.0);
-	_list_insert(_goal, pair<double, double>(_h(_start, _goal), 0));
+	_h(_goal, 0.0);
+	_list_insert(_goal, pair<double, double>(_heuristic(_start, _goal), 0));
 
 	printf("Field D* Planner is ready\n");
 }
@@ -108,6 +113,61 @@ vector<double> Planner::g_map()
 }
 
 /**
+ * Returns a distance-to-start map
+ *
+ * @return vector<double> map
+ */
+vector<double> Planner::h_map()
+{
+	int cols = _map->cols();
+	int rows = _map->rows();
+	vector<pair<int, int>> coords;
+	vector<double> hmap;
+	for (int i = 0; i < rows; i++)
+		for (int j = 0; j < cols; j++)
+		{
+			hmap.push_back(_h((*_map)(i, j)));
+			coords.push_back(make_pair(i, j));
+		}
+
+	double max = 0.0;
+	for (int i = 0; i < hmap.size(); i++)
+		if (!Math::equals(hmap[i], Math::INF))
+			if (Math::greater(hmap[i], max))
+				max = hmap[i];
+
+	if (!Math::equals(max, 0.0))
+		for (int i = 0; i < hmap.size(); i++)
+			if (!Math::equals(hmap[i], Math::INF))
+				hmap[i] = max - hmap[i];
+
+	ofstream file1;
+	file1.open("heuristic_hash_coords1.txt");
+	for (int i = 0; i < coords.size(); i++)
+		file1 << coords[i].first << endl;
+	file1.close();
+
+	ofstream file2;
+	file2.open("heuristic_hash_coords2.txt");
+	for (int i = 0; i < coords.size(); i++)
+		file2 << coords[i].second << endl;
+	file2.close();
+
+	ofstream file3;
+	file3.open("heuristic_hash_val.txt");
+	for (int i = 0; i < hmap.size(); i++)
+	{
+		if (Math::equals(hmap[i], Math::INF))
+			file3 << -1 << endl;
+		else
+			file3 << hmap[i] << endl;
+	}
+	file3.close();
+
+	return hmap;
+}
+
+/**
  * Replans the path.
  *
  * @return bool solution found
@@ -122,7 +182,7 @@ bool Planner::replan()
 	if (!result)
 		return false;
 
-	// result = _extract_path();
+	result = _extract_path();
 
 	return result;
 }
@@ -162,9 +222,10 @@ pair<double, double> Planner::start(pair<double, double> u_d)
  *
  * @param Map::Cell* cell to update
  * @param int new cost of the cell
+ * @param bool unknown flip whether or not the unknown status of the cell has flipped
  * @return void
  */
-void Planner::update_cell_cost(Map::Cell *u, int cost)
+void Planner::update_cell_cost(Map::Cell *u, int cost, bool unknown_flip)
 {
 	int c_old = u->cost;
 	u->cost = cost;
@@ -176,7 +237,7 @@ void Planner::update_cell_cost(Map::Cell *u, int cost)
 	pair<Map::Cell *, double> argmin_min;
 
 	// we want to check if the unknown cost status has changed in case the new cost is less than the unknown cell cost
-	if (cost > c_old || u->unknown_flip)
+	if (cost > c_old || unknown_flip)
 	{
 		for (int i = 0; i < Map::Cell::NUM_CNRS; i++)
 		{
@@ -189,6 +250,7 @@ void Planner::update_cell_cost(Map::Cell *u, int cost)
 						if (Math::less(_g(cnrs[i]), _rhs(cnrs[i])) || _open_hash.find(cnrs[i]) == _open_hash.end())
 						{
 							_rhs(cnrs[i], Math::INF);
+							// _h(cnrs[i], Math::INF);
 							_update_state(cnrs[i]);
 						}
 						else
@@ -196,6 +258,10 @@ void Planner::update_cell_cost(Map::Cell *u, int cost)
 							argmin_min = _min_interpol_succ(cnrs[i]);
 							_rhs(cnrs[i], argmin_min.second);
 							cnrs[i]->bptr(argmin_min.first);
+							if (!Math::equals(argmin_min.second, Math::INF))
+								_h(cnrs[i], get<3>(_compute_bp(cnrs[i], argmin_min.first, cnrs[i]->ccknbr(argmin_min.first))));
+							else
+								_h(cnrs[i], Math::INF);
 							_update_state(cnrs[i]);
 						}
 					}
@@ -295,96 +361,7 @@ void Planner::_cell(Map::Cell *u)
 
 	double h = Math::INF;
 	_cell_hash[u] = pair<double, double>(h, h);
-}
-
-/**
- * Initializes cell cost table, which indices representing original cell costs which map to non-lineraly space cell costs
- *
- * @return int Mc maximum traversable (non-obstacle) cost
- */
-int Planner::_construct_cellcosts()
-{
-	_cellcosts.resize(_Nc + 1);
-
-	for (int i = 0; i < _Nc; i++)
-		_cellcosts[i] = round(255.0 * pow(Math::EUL, ((0.33333 * static_cast<double>(i)) / 11.8125)) - 250.0);
-	_cellcosts[_Nc] = Map::Cell::COST_UNWALKABLE;
-	return static_cast<int>(_cellcosts[_Nc - 1]);
-}
-
-/**
- * Generates interpolation lookup table for quickly aquiring cell costs.
- *
- * @return void
- */
-void Planner::_construct_interpolation_table()
-{
-	_I.resize(_Nc + 1);
-	for (int i = 0; i < _Nc + 1; i++)
-	{
-		_I[i].resize(_Nc + 1);
-		for (int j = 0; j < _Nc + 1; j++)
-		{
-			_I[i][j].resize(_Mc + 1);
-			for (int k = 0; k < _Mc + 1; k++)
-				_I[i][j][k].resize(3);
-		}
-	}
-
-	int ci, bi, f;
-	double c, b, x, y;
-
-	ci = 0;
-
-	while (ci < _Nc)
-	{
-		c = _cellcosts[ci];
-		bi = 0;
-
-		while (bi < _Nc)
-		{
-			b = _cellcosts[bi];
-			f = 1;
-			while (f <= _Mc)
-			{
-				if (Math::less(static_cast<double>(f), b))
-				{
-					if (Math::less(c, static_cast<double>(f)) || Math::equals(c, static_cast<double>(f)))
-					{
-						_I[ci][bi][f][0] = c * Math::SQRT2;
-						_I[ci][bi][f][1] = 1.0;
-						_I[ci][bi][f][2] = 0.0;
-					}
-					else
-					{
-						y = min(static_cast<double>(f) / (sqrt(pow(c, 2) - pow(static_cast<double>(f), 2))), 1.0);
-						_I[ci][bi][f][0] = (c * sqrt(1.0 + pow(y, 2))) + (static_cast<double>(f) * (1.0 - y));
-						_I[ci][bi][f][1] = 1.0;
-						_I[ci][bi][f][2] = y;
-					}
-				}
-				else
-				{
-					if (Math::less(c, b) || Math::equals(c, b))
-					{
-						_I[ci][bi][f][0] = c * Math::SQRT2;
-						_I[ci][bi][f][1] = 1.0;
-						_I[ci][bi][f][2] = 0.0;
-					}
-					else
-					{
-						x = 1.0 - min(b / (sqrt(pow(c, 2) - pow(b, 2))), 1.0);
-						_I[ci][bi][f][0] = (c * sqrt(1.0 + pow((1.0 - x), 2))) + (b * x);
-						_I[ci][bi][f][1] = x;
-						_I[ci][bi][f][2] = 0.0;
-					}
-				}
-				f++;
-			}
-			bi++;
-		}
-		ci++;
-	}
+	_heuristic_hash[u] = h;
 }
 
 /**
@@ -393,15 +370,16 @@ void Planner::_construct_interpolation_table()
  * @param Map::Cell* cell s
  * @param Map::Cell* cell sa
  * @param Map::Cell* cell sb
- * @return pair<pair<double, double>, int> position of bptr of s and type of path (1 = direct, 2 = more than one path segment)
+ * @return tuple<double, double, int, double> position of bptr of s and type of path (1 = direct, 2 = more than one path segment) and shortest path length
  */
-pair<pair<double, double>, int> Planner::_compute_bp(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
+tuple<double, double, int, double> Planner::_compute_bp(Map::Cell *s, Map::Cell *sa, Map::Cell *sb)
 {
-	double x, y, tmp;
+	double x, y, distance, tmp;
 	int path_type;
 
 	x = 1.0;
 	y = 1.0;
+	distance = Math::INF;
 	path_type = 1;
 
 	if (s == nullptr || sa == nullptr || sb == nullptr)
@@ -409,11 +387,11 @@ pair<pair<double, double>, int> Planner::_compute_bp(Map::Cell *s, Map::Cell *sa
 		x = 0.0;
 		y = 0.0;
 		path_type = 2;
-		printf("ERROR: NULLTR CELL FOUND WHEN COMPUTING COST\n");
+		printf("ERROR: NULLTR CELL FOUND WHEN COMPUTING COST BPTR\n");
 	}
 	else
 	{
-		double c, b, g1, g2, f;
+		double c, b, d1, d2, g1, g2, f;
 		int ci, bi, by, bx;
 		Map::Cell *s1;
 		Map::Cell *s2;
@@ -461,10 +439,15 @@ pair<pair<double, double>, int> Planner::_compute_bp(Map::Cell *s, Map::Cell *sa
 				b = round(b);
 				g1 = round(_g(s1));
 				g2 = round(_g(s2));
+				d1 = _h(s1);
+				d2 = _h(s2);
 
 				if (Math::less(g1, g2) || Math::equals(g1, g2))
+				{
 					// goes straight to s1
 					y = 0.0;
+					distance = 1.0 + d1;
+				}
 				else
 				{
 					// f is the cost of traversing the right edge
@@ -477,10 +460,14 @@ pair<pair<double, double>, int> Planner::_compute_bp(Map::Cell *s, Map::Cell *sa
 
 						if (Math::equals(x, 1.0)) // then path spends some time in both grids b and c
 							path_type = 2;
+						distance = x + sqrt(pow(1.0 - x, 2) + 1.0) + d2;
 					}
 					else
+					{
 						// take a straight-line path from s to some point sy on the right edge
 						y = _I[ci][bi][static_cast<int>(f)][2];
+						distance = sqrt(1.0 + pow(y, 2)) + d2;
+					}
 				}
 
 				if (s->y() == s1->y()) // s_1 is to the left or right of s
@@ -537,7 +524,7 @@ pair<pair<double, double>, int> Planner::_compute_bp(Map::Cell *s, Map::Cell *sa
 		}
 	}
 
-	return make_pair(make_pair(y, x), path_type);
+	return make_tuple(y, x, path_type, distance);
 }
 
 /**
@@ -1261,6 +1248,10 @@ bool Planner::_compute_shortest_path()
 						{
 							_rhs(nbrs[i], cost_interpol);
 							nbrs[i]->bptr(u);
+							if (!Math::equals(cost_interpol, Math::INF))
+								_h(nbrs[i], get<3>(_compute_bp(nbrs[i], u, nbrs[i]->ccknbr(u))));
+							else
+								_h(nbrs[i], Math::INF);
 						}
 					}
 					if (nbrs[i]->cknbr(u) != nullptr)
@@ -1269,6 +1260,10 @@ bool Planner::_compute_shortest_path()
 						{
 							_rhs(nbrs[i], _compute_cost(nbrs[i], nbrs[i]->cknbr(u), u));
 							nbrs[i]->bptr(nbrs[i]->cknbr(u));
+							if (!Math::equals(_rhs(nbrs[i]), Math::INF))
+								_h(nbrs[i], get<3>(_compute_bp(nbrs[i], nbrs[i]->cknbr(u), u)));
+							else
+								_h(nbrs[i], Math::INF);
 						}
 					}
 					if (!Math::equals(_rhs(u), rhs_old))
@@ -1281,6 +1276,10 @@ bool Planner::_compute_shortest_path()
 			argmin_min = _min_interpol_succ(u);
 			_rhs(u, argmin_min.second);
 			u->bptr(argmin_min.first);
+			if (!Math::equals(argmin_min.second, Math::INF))
+				_h(u, get<3>(_compute_bp(u, argmin_min.first, u->ccknbr(argmin_min.first))));
+			else
+				_h(u, Math::INF);
 			if (Math::less(_g(u), _rhs(u)))
 			{
 				_g(u, Math::INF);
@@ -1296,6 +1295,7 @@ bool Planner::_compute_shortest_path()
 								if (Math::less(_g(nbrs[i]), _rhs(nbrs[i])) || _open_hash.find(nbrs[i]) == _open_hash.end())
 								{
 									_rhs(nbrs[i], Math::INF);
+									// _h(nbrs[i], Math::INF);
 									_update_state(nbrs[i]);
 								}
 								else
@@ -1303,6 +1303,10 @@ bool Planner::_compute_shortest_path()
 									argmin_min = _min_interpol_succ(nbrs[i]);
 									_rhs(nbrs[i], argmin_min.second);
 									nbrs[i]->bptr(argmin_min.first);
+									if (!Math::equals(argmin_min.second, Math::INF))
+										_h(u, get<3>(_compute_bp(nbrs[i], argmin_min.first, nbrs[i]->ccknbr(argmin_min.first))));
+									else
+										_h(u, Math::INF);
 									_update_state(nbrs[i]);
 								}
 							}
@@ -1328,7 +1332,7 @@ bool Planner::_extract_path()
 
 	double total_path_cost, px, py, lapy, lapx, x_min, y_min, x_max, y_max, ax, ay, gx, gy;
 	int ipx, ipy, iax, iay, attempts1, attempts2;
-	pair<pair<double, double>, int> endpoints;
+	tuple<double, double, int, double> endpoints;
 	Map::CellPath *lookahead_cell_path;
 	Map::CellPath *top_cell_path;
 	Map::Cell *another_best;
@@ -1538,9 +1542,9 @@ bool Planner::_extract_path()
 				{
 					endpoints = _compute_bp((*_map)(iay, iax), ((*_map)(iay, iax))->bptr(), another_best);
 
-					ly = static_cast<double>(iay) + endpoints.first.first;
-					lx = static_cast<double>(iax) + endpoints.first.second;
-					low_path_type = endpoints.second;
+					ly = static_cast<double>(iay) + get<0>(endpoints);
+					lx = static_cast<double>(iax) + get<1>(endpoints);
+					low_path_type = get<2>(endpoints);
 				}
 			}
 
@@ -1554,9 +1558,9 @@ bool Planner::_extract_path()
 					{
 						endpoints = _compute_bp((*_map)(iay + 1, iax), ((*_map)(iay + 1, iax))->bptr(), another_best);
 
-						hy = static_cast<double>(iay) + 1.0 + endpoints.first.first;
-						hx = static_cast<double>(iax) + endpoints.first.second;
-						high_path_type = endpoints.second;
+						hy = static_cast<double>(iay) + 1.0 + get<0>(endpoints);
+						hx = static_cast<double>(iax) + get<1>(endpoints);
+						high_path_type = get<2>(endpoints);
 					}
 				}
 			}
@@ -1663,9 +1667,9 @@ bool Planner::_extract_path()
 				{
 					endpoints = _compute_bp((*_map)(iay, iax), ((*_map)(iay, iax))->bptr(), another_best);
 
-					ly = static_cast<double>(iay) + endpoints.first.first;
-					lx = static_cast<double>(iax) + endpoints.first.second;
-					low_path_type = endpoints.second;
+					ly = static_cast<double>(iay) + get<0>(endpoints);
+					lx = static_cast<double>(iax) + get<1>(endpoints);
+					low_path_type = get<2>(endpoints);
 				}
 			}
 
@@ -1679,9 +1683,9 @@ bool Planner::_extract_path()
 					{
 						endpoints = _compute_bp((*_map)(iay, iax + 1), ((*_map)(iay, iax + 1))->bptr(), another_best);
 
-						hy = static_cast<double>(iay) + endpoints.first.first;
-						hx = static_cast<double>(iax) + 1.0 + endpoints.first.second;
-						high_path_type = endpoints.second;
+						hy = static_cast<double>(iay) + get<0>(endpoints);
+						hx = static_cast<double>(iax) + 1.0 + get<1>(endpoints);
+						high_path_type = get<2>(endpoints);
 					}
 				}
 			}
@@ -1841,18 +1845,35 @@ bool Planner::_get_path(vector<pair<double, double>> &path, Map::Cell *s_a, Map:
 }
 
 /**
+ * Gets/Sets h value for a cell.
+ *
+ * @param Map::Cell* cell to retrieve/update
+ * @param double [optional] new h value
+ * @return double h value
+ */
+double Planner::_h(Map::Cell *u, double value)
+{
+	_cell(u);
+
+	if (value != DBL_MIN)
+		_heuristic_hash[u] = value;
+
+	return _heuristic_hash[u];
+}
+
+/**
  * Calculates heuristic between two cells (euclidean distance).
  *
  * @param Map::Cell* cell a
  * @param Map::Cell* cell b
  * @return double heuristic value
  */
-double Planner::_h(Map::Cell *a, Map::Cell *b)
+double Planner::_heuristic(Map::Cell *a, Map::Cell *b)
 {
-	return (0.0);
+	// return (0.0);
 	// return (max(sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)) - (2.0 * _Mc * Math::SQRT2), 0.0));
 	// return (0.125 * sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)));
-	// return (0.5 * sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)));
+	return (0.5 * sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)));
 	// return (15.0 * sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)));
 	// return (82.0 * sqrt(pow(b->x() - a->x(), 2) + pow(b->y() - a->y(), 2)));
 }
@@ -1868,7 +1889,7 @@ pair<double, double> Planner::_k(Map::Cell *u)
 	double g = _g(u);
 	double rhs = _rhs(u);
 	double min = (Math::less(g, rhs)) ? g : rhs;
-	return pair<double, double>((min + _h(_start, u)), min);
+	return pair<double, double>((min + _heuristic(_start, u)), min);
 }
 
 /**
@@ -2005,18 +2026,6 @@ void Planner::_path_s_list_insert(Map::CellPath *p, double k)
 {
 	PL::iterator pos = _secondary_cp_list.insert(PL_PAIR(k, p));
 	_secondary_cp_hash[p] = pos;
-}
-
-/**
- * Removes cell path from the secondary path list.
- *
- * @param Map::CellPath* cell path to remove
- * @return void
- */
-void Planner::_path_s_list_remove(Map::CellPath *p)
-{
-	_secondary_cp_list.erase(_secondary_cp_hash[p]);
-	_secondary_cp_hash.erase(_secondary_cp_hash.find(p));
 }
 
 /**
