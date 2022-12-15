@@ -439,47 +439,47 @@ void _neighborRules(uint32_t id, uint8_t depth, uint32_t length, uint8_t state, 
     */
 }
 
- /**
-   * Neighbor-finding algorithm with worst-case complexity O(level) and
-   * average-case complexity O(1)
-   */
-  uint32_t neighbor(uint8_t level, uint32_t position, uint32_t state, uint32_t facet) {
-    static const uint32_t stateMaskTable[] = {1, 0, 0, 2};
-    uint rem = position % 4;
-    uint32_t pState = state ^ stateMaskTable[rem];
+//  /**
+//    * Neighbor-finding algorithm with worst-case complexity O(level) and
+//    * average-case complexity O(1)
+//    */
+//   uint32_t neighbor(uint8_t level, uint32_t position, uint32_t state, uint32_t facet) {
+//     static const uint32_t stateMaskTable[] = {1, 0, 0, 2};
+//     uint rem = position % 4;
+//     uint32_t pState = state ^ stateMaskTable[rem];
 
-    auto neighborIndex = nTable[rem][pState][facet];
-    if (neighborIndex != -1) {
-      uint32_t resultingIndex = position - rem + neighborIndex;
-      return resultingIndex;
-    }
+//     auto neighborIndex = nTable[rem][pState][facet];
+//     if (neighborIndex != -1) {
+//       uint32_t resultingIndex = position - rem + neighborIndex;
+//       return resultingIndex;
+//     }
 
-    size_t quot = position / 4;  // TODO: replace by shift
+//     size_t quot = position / 4;  // TODO: replace by shift
 
-    for (size_t i = 1; i < level; ++i) {
-      state = pState;
-      levelTables[i] = &oTable[rem][state][0][0];
+//     for (size_t i = 1; i < level; ++i) {
+//       state = pState;
+//       levelTables[i] = &oTable[rem][state][0][0];
 
-      rem = quot % 4;
-      quot = quot / 4;
+//       rem = quot % 4;
+//       quot = quot / 4;
 
-      pState = state ^ stateMaskTable[rem];
+//       pState = state ^ stateMaskTable[rem];
 
-      neighborIndex = nTable[rem][pState][facet];
-      if (neighborIndex != -1) {
-        state = pState ^ stateMaskTable[neighborIndex];
-        quot = quot * 4 + neighborIndex;
-        for (; i > 0; --i) {
-          auto childIndex = levelTables[i][4 * state + facet];
-          quot = quot * 4 + childIndex;
-          state = state ^ stateMaskTable[childIndex];
-        }
-        return quot;
-      }
-    }
+//       neighborIndex = nTable[rem][pState][facet];
+//       if (neighborIndex != -1) {
+//         state = pState ^ stateMaskTable[neighborIndex];
+//         quot = quot * 4 + neighborIndex;
+//         for (; i > 0; --i) {
+//           auto childIndex = levelTables[i][4 * state + facet];
+//           quot = quot * 4 + childIndex;
+//           state = state ^ stateMaskTable[childIndex];
+//         }
+//         return quot;
+//       }
+//     }
 
-    return -1;
-  }
+//     return -1;
+//   }
 
 uint32_t Quadtree::_getNumTiles(uint8_t depth)
 {
